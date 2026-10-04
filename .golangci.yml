@@ -1,0 +1,117 @@
+version: "2"
+
+run:
+  go: "1.27"
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - contextcheck
+    - depguard
+    - errname
+    - errorlint
+    - exhaustive
+    - gochecksumtype # exhaustive switches on sealed interfaces (//sumtype:decl)
+    - gocritic
+    - gosec
+    - intrange
+    - nilerr
+    - noctx
+    - nolintlint
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - wastedassign
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: exported
+          arguments: [disableStutteringCheck]
+        - name: package-comments
+        - name: var-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: error-return
+        - name: error-naming
+        - name: receiver-naming
+        - name: unused-parameter
+        - name: redefines-builtin-id
+    gosec:
+      excludes:
+        - G304 # reading a file whose path comes from the configuration: intended
+    # Architecture rules: the API layer never touches the database or the media tools, the
+    # domain depends on nothing internal, and so on.
+    depguard:
+      rules:
+        domain:
+          list-mode: lax
+          files: ["**/internal/domain/**", "!$test"]
+          deny:
+            - pkg: github.com/laterna-project/laterna/
+              desc: "domain depends on no other package of the project"
+        pure:
+          list-mode: strict
+          files: ["**/internal/naming/**", "**/internal/playback/**", "**/internal/party/**", "**/internal/segments/**", "**/internal/stats/**", "**/internal/recommend/**", "**/internal/i18n/**", "!$test"]
+          allow:
+            - $gostd
+            - github.com/laterna-project/laterna/internal/domain
+        adapters:
+          list-mode: lax
+          files: ["**/internal/store/**", "**/internal/media/**", "**/internal/metadata/**", "**/internal/jobs/**", "**/internal/library/**", "**/internal/arr/**", "**/internal/oidc/**", "**/internal/jellyfin/**", "**/internal/discovery/**", "!$test"]
+          deny:
+            - pkg: github.com/laterna-project/laterna/internal/app
+              desc: "adapters are called by app, never the other way round"
+            - pkg: github.com/laterna-project/laterna/internal/api
+              desc: "adapters know nothing about HTTP"
+        api:
+          list-mode: lax
+          files: ["**/internal/api/**", "!$test"]
+          deny:
+            - pkg: github.com/laterna-project/laterna/internal/store
+              desc: "the API goes through app, never straight to the database"
+            - pkg: github.com/laterna-project/laterna/internal/media
+              desc: "the API goes through app"
+            - pkg: github.com/laterna-project/laterna/internal/metadata
+              desc: "the API goes through app"
+            - pkg: github.com/laterna-project/laterna/internal/library
+              desc: "the API goes through app"
+            - pkg: github.com/laterna-project/laterna/internal/jobs
+              desc: "the API goes through app"
+            - pkg: github.com/laterna-project/laterna/internal/arr
+              desc: "the API goes through app"
+        app:
+          list-mode: lax
+          files: ["**/internal/app/**", "!$test"]
+          deny:
+            - pkg: github.com/laterna-project/laterna/internal/api
+              desc: "app knows nothing about HTTP"
+  exclusions:
+    generated: strict
+    paths:
+      - internal/api/gen
+      - internal/store/sqlc
+    rules:
+      - path: _test\.go
+        linters: [noctx, contextcheck, bodyclose, gosec, unparam]
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes: [github.com/laterna-project/laterna]
+  exclusions:
+    generated: strict
+    paths:
+      - internal/api/gen
+      - internal/store/sqlc

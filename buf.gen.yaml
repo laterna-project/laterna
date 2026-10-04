@@ -1,0 +1,10 @@
+version: v2
+clean: true
+plugins:
+  # Plugins are pinned in tools/go.mod and run through `go tool` (nothing else to install).
+  - local: ["go", "tool", "-modfile=tools/go.mod", "protoc-gen-go"]
+    out: internal/api/gen
+    opt: paths=source_relative
+  - local: ["go", "tool", "-modfile=tools/go.mod", "protoc-gen-connect-go"]
+    out: internal/api/gen
+    opt: paths=source_relative

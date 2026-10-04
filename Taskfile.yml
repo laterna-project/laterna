@@ -1,0 +1,124 @@
+version: "3"
+
+vars:
+  # Tools are pinned in tools/go.mod: nothing to install besides Go and task.
+  TOOL: go tool -modfile=tools/go.mod
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  COMMIT:
+    sh: git rev-parse --short=12 HEAD 2>/dev/null || echo ""
+  LDFLAGS: -s -w -X github.com/laterna-project/laterna/internal/buildinfo.Version={{.VERSION}}
+
+env:
+  CGO_ENABLED: "0"
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task --list
+
+  dev:
+    desc: Run the server locally (data in .dev/, debug logs)
+    env:
+      LATERNA_DATA_DIR: .dev/data
+      LATERNA_CACHE_DIR: .dev/cache
+      LATERNA_METADATA_DIR: .dev/metadata
+      LATERNA_LOG_LEVEL: debug
+    cmds:
+      - go run -ldflags "{{.LDFLAGS}}" ./cmd/laterna serve {{.CLI_ARGS}}
+
+  build:
+    desc: Build the binary into bin/
+    cmds:
+      - go build -trimpath -ldflags "{{.LDFLAGS}}" -o bin/laterna{{exeExt}} ./cmd/laterna
+
+  gen:
+    desc: Regenerate code (sqlc from migrations/ and queries/, buf from proto/)
+    cmds:
+      - "{{.TOOL}} sqlc generate"
+      - "{{.TOOL}} buf generate"
+
+  gen:check:
+    desc: Check that generated code matches its sources (in CI, that everything is committed)
+    cmds:
+      - "{{.TOOL}} sqlc diff"
+      # buf has no diff mode: generate on the side, then compare.
+      - "{{.TOOL}} buf generate --output .dev/gencheck"
+      - cmd: git diff --no-index --exit-code --stat -- internal/api/gen .dev/gencheck/internal/api/gen
+      - cmd: echo "Generated code is up to date."
+        silent: true
+
+  fmt:
+    desc: Format Go code and .proto files
+    cmds:
+      - "{{.TOOL}} golangci-lint fmt ./..."
+      - "{{.TOOL}} buf format -w"
+
+  lint:
+    desc: golangci-lint (architecture rules included), buf lint, .proto formatting, sqlc vet
+    cmds:
+      - "{{.TOOL}} golangci-lint run ./..."
+      - "{{.TOOL}} buf lint"
+      - "{{.TOOL}} buf format --diff --exit-code"
+      - "{{.TOOL}} sqlc vet"
+
+  breaking:
+    desc: Reject any contract change that breaks existing clients
+    vars:
+      # Git ref to compare against: main locally, the previous commit in CI.
+      AGAINST_REF: '{{.AGAINST_REF | default "main"}}'
+    cmds:
+      - cmd: |
+          if git rev-parse --verify -q "{{.AGAINST_REF}}" >/dev/null; then
+            {{.TOOL}} buf breaking --against ".git#ref={{.AGAINST_REF}}"
+          else
+            echo "Ref {{.AGAINST_REF}} not found: breaking change check skipped."
+          fi
+
+  nilaway:
+    desc: Find possible nil dereferences
+    cmds:
+      - "{{.TOOL}} nilaway -include-pkgs=github.com/laterna-project/laterna -exclude-pkgs=github.com/laterna-project/laterna/internal/api/gen,github.com/laterna-project/laterna/internal/store/sqlc ./..."
+
+  test:
+    desc: Tests
+    cmds:
+      - go test ./... {{.CLI_ARGS}}
+
+  test:race:
+    desc: Tests with the race detector (needs a C compiler)
+    cmds:
+      # Set on the command line: a CGO_ENABLED variable already in the environment (CI)
+      # would win over an env block in the Taskfile.
+      - CGO_ENABLED=1 go test -race ./...
+
+  vuln:
+    desc: Known vulnerabilities in the code and its dependencies
+    cmds:
+      - "{{.TOOL}} govulncheck ./..."
+
+  check:
+    desc: Everything that must pass before a change is done
+    cmds:
+      - task: gen:check
+      - task: lint
+      - task: breaking
+      - task: nilaway
+      - task: test:race
+      - task: vuln
+
+  fixtures:
+    desc: Generate the synthetic test media in testdata/library (needs FFmpeg)
+    cmds:
+      - go run ./devtools/fixturegen -out testdata/library {{.CLI_ARGS}}
+
+  perf:
+    desc: Measure the performance budgets on a synthetic catalog (startup, memory, lists)
+    cmds:
+      - go run ./devtools/perfcheck {{.CLI_ARGS}}
+
+  docker:build:
+    desc: Build the local Docker image laterna:dev
+    cmds:
+      - docker build -f docker/Dockerfile --build-arg VERSION={{.VERSION}} --build-arg COMMIT={{.COMMIT}} -t laterna:dev .

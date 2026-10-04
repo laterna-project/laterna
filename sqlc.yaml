@@ -1,0 +1,23 @@
+version: "2"
+sql:
+  - engine: sqlite
+    schema: migrations
+    queries: internal/store/queries
+    gen:
+      go:
+        package: sqlc
+        out: internal/store/sqlc
+        emit_empty_slices: true
+        emit_interface: false
+        overrides:
+          # Schema convention: a BLOB is always an ID (UUIDv7, 16 bytes).
+          - db_type: BLOB
+            go_type:
+              import: github.com/laterna-project/laterna/internal/domain
+              type: ID
+          - db_type: BLOB
+            nullable: true
+            go_type:
+              import: github.com/laterna-project/laterna/internal/domain
+              type: ID
+              pointer: true

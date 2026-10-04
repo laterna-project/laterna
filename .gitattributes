@@ -1,0 +1,15 @@
+* text=auto eol=lf
+# Windows batch scripts need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
+*.webp binary
+*.mkv binary
+*.mp4 binary
+*.flac binary
+*.mp3 binary
+# Generated code (buf, sqlc): collapsed in reviews
+internal/api/gen/** linguist-generated=true
+internal/store/sqlc/*.go linguist-generated=true

@@ -1,0 +1,7 @@
+.git
+.dev
+bin
+dist
+testdata/library
+.env
+*.exe
