@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/catalog.proto";
+import "laterna/v1/options.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// CollectionService groups movies and series into collections shared by the whole server:
+//
+// - franchises read from NFO files (the <set> Radarr writes), refreshed every time metadata is
+//   read and not editable here;
+// - selections made by an administrator.
+//
+// A profile only sees the collections it can see an item of, and only those items. They are ordered
+// by release date.
+service CollectionService {
+  // ListCollections lists the collections, by name.
+  rpc ListCollections(ListCollectionsRequest) returns (ListCollectionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetCollection returns a collection and its movies and series.
+  rpc GetCollection(GetCollectionRequest) returns (GetCollectionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // CreateCollection creates a collection.
+  rpc CreateCollection(CreateCollectionRequest) returns (CreateCollectionResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // UpdateCollection renames a manual collection, changes its overview, adds or removes movies and
+  // series.
+  rpc UpdateCollection(UpdateCollectionRequest) returns (UpdateCollectionResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeleteCollection deletes a manual collection (never its movies and series).
+  rpc DeleteCollection(DeleteCollectionRequest) returns (DeleteCollectionResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+}
+
+message Collection {
+  string id = 1;
+  string name = 2;
+  string overview = 3;
+  // Made by hand; otherwise read from NFO files.
+  bool manual = 4;
+  // Movies and series the profile can see.
+  int32 item_count = 5;
+  // Posters of the first items (four at most), to build a cover.
+  repeated Image images = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// CollectionItem is a movie or a series of a collection.
+message CollectionItem {
+  oneof item {
+    MovieSummary movie = 1;
+    SeriesSummary series = 2;
+  }
+}
+
+message ListCollectionsRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+}
+
+message ListCollectionsResponse {
+  repeated Collection collections = 1;
+}
+
+message GetCollectionRequest {
+  string collection_id = 1;
+}
+
+message GetCollectionResponse {
+  Collection collection = 1;
+  repeated CollectionItem items = 2;
+}
+
+message CreateCollectionRequest {
+  string name = 1;
+  string overview = 2;
+  // Movies and series.
+  repeated string item_ids = 3;
+}
+
+message CreateCollectionResponse {
+  Collection collection = 1;
+}
+
+message UpdateCollectionRequest {
+  string collection_id = 1;
+  optional string name = 2;
+  optional string overview = 3;
+  repeated string add_item_ids = 4;
+  repeated string remove_item_ids = 5;
+}
+
+message UpdateCollectionResponse {
+  Collection collection = 1;
+}
+
+message DeleteCollectionRequest {
+  string collection_id = 1;
+}
+
+message DeleteCollectionResponse {}

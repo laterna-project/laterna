@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/options.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// EventService tells clients what changes, so that they can refresh without polling the server.
+service EventService {
+  // Subscribe opens an event stream, until the client closes it. Events say what changed, not the
+  // new state: the client reloads what it shows. The stream gets a Heartbeat every 30 seconds
+  // without another event (it keeps the connection open through proxies). User data events are
+  // those of the profile picked when the stream was opened: after SelectProfile, open the stream
+  // again. After a disconnection, open the stream again and reload everything.
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+}
+
+message SubscribeRequest {}
+
+message SubscribeResponse {
+  Event event = 1;
+}
+
+message Event {
+  google.protobuf.Timestamp time = 1;
+  oneof kind {
+    Heartbeat heartbeat = 2;
+    Resync resync = 3;
+    LibrariesChanged libraries_changed = 4;
+    LibraryScanned library_scanned = 5;
+    ItemsChanged items_changed = 6;
+    UserDataChanged user_data_changed = 7;
+    DownloadsChanged downloads_changed = 8;
+    ThemesChanged themes_changed = 9;
+  }
+}
+
+// Heartbeat keeps the stream open; nothing to do.
+message Heartbeat {}
+
+// Resync: events were lost (client too slow); everything on screen should be reloaded.
+message Resync {}
+
+// LibrariesChanged: a library was created, changed or deleted.
+message LibrariesChanged {}
+
+// LibraryScanned: the scan of a library ended (administrators only). Added or changed files still
+// have to be analyzed: their items come later through ItemsChanged.
+message LibraryScanned {
+  string library_id = 1;
+  int32 files = 2;
+  int32 added = 3;
+  int32 changed = 4;
+  int32 moved = 5;
+  int32 missing = 6;
+  int32 returned = 7;
+  int32 forgotten = 8;
+}
+
+// ItemsChanged: items of a library were added, changed or removed. Batched (at most one event per
+// library every two seconds).
+message ItemsChanged {
+  string library_id = 1;
+  repeated string item_ids = 2;
+  // True if the list is incomplete (too many items, or items removed): reload the whole library.
+  bool truncated = 3;
+}
+
+// UserDataChanged: played, resume point or favorite changed for items of the profile, possibly from
+// another device.
+message UserDataChanged {
+  repeated string item_ids = 1;
+  // True if there are too many items to list: reload everything.
+  bool truncated = 2;
+}
+
+// DownloadsChanged: downloads of this device changed (created, being prepared (at most every two
+// seconds), ready, failed, removed): reload them (DownloadService).
+message DownloadsChanged {
+  repeated string download_ids = 1;
+}
+
+// ThemesChanged: the theme to show may have changed (theme edited or deleted, server theme changed,
+// or the profile's choice changed from another device); call ThemeService.GetMyTheme again.
+message ThemesChanged {}

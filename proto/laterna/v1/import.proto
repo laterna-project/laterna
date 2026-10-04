@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "laterna/v1/options.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// ImportService imports data from another server: for now Jellyfin 10.11 or later, whose data
+// folder the server reads (a copy of its database, never the database itself). Each Jellyfin user
+// becomes an account, a profile of an existing account, or joins an existing profile. What they
+// watched, their positions and favorites are matched to Laterna items by file path, and their
+// sessions from Jellyfin's activity log go into the history. Running it again copies nothing. There
+// is no compatibility with Jellyfin's API: only its data is read.
+service ImportService {
+  // PreviewJellyfinImport says what would be imported, and where: the proposed target of each user
+  // (the account of the same name if it exists, otherwise a new account), what would be matched,
+  // and the Jellyfin files Laterna does not have. INVALID_ARGUMENT if the folder cannot be read or
+  // the database is from an unsupported version.
+  rpc PreviewJellyfinImport(PreviewJellyfinImportRequest) returns (PreviewJellyfinImportResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // ImportJellyfin imports the data, to the proposed targets or the given ones.
+  rpc ImportJellyfin(ImportJellyfinRequest) returns (ImportJellyfinResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+}
+
+message PreviewJellyfinImportRequest {
+  // Jellyfin's data folder as the Laterna server sees it (the one that holds data/jellyfin.db:
+  // /config in the official image), or the jellyfin.db file.
+  string path = 1;
+}
+
+message PreviewJellyfinImportResponse {
+  repeated JellyfinUser users = 1;
+  // Data of items that are gone from Jellyfin, or of a kind we do not import (books, channels...).
+  int32 orphaned_user_data = 2;
+  int32 unsupported_user_data = 3;
+  // Playback starts in the log without a stop: ignored.
+  int32 unpaired_sessions = 4;
+  // Jellyfin files (with data) that Laterna does not have, and a few examples.
+  int32 unmatched_files = 5;
+  repeated string unmatched_samples = 6;
+}
+
+// JellyfinUser is a Jellyfin user and what would be imported for them.
+message JellyfinUser {
+  string id = 1;
+  string name = 2;
+  bool administrator = 3;
+  bool disabled = 4;
+  // Their Jellyfin password will keep working (otherwise a password has to be set).
+  bool has_password = 5;
+  JellyfinTarget target = 6;
+  // The target, spelled out.
+  string account_name = 7;
+  string profile_name = 8;
+  // Items they have data for, and those found in Laterna.
+  int32 user_data = 9;
+  int32 user_data_matched = 10;
+  // Sessions that will go into the history, and those whose item is found (the others only keep
+  // their title).
+  int32 sessions = 11;
+  int32 sessions_matched = 12;
+  // Why the proposed target is not possible (the target is then SKIP), in the language of the
+  // request. problem_text is the same for translation ("import.problem.name_refused"...).
+  string problem = 13;
+  Text problem_text = 14;
+}
+
+// JellyfinTarget says where the data of a Jellyfin user goes.
+message JellyfinTarget {
+  JellyfinTargetKind kind = 1;
+  // Account of a new profile (NEW_PROFILE).
+  string account_id = 2;
+  // Existing profile (PROFILE).
+  string profile_id = 3;
+}
+
+enum JellyfinTargetKind {
+  JELLYFIN_TARGET_KIND_UNSPECIFIED = 0;
+  // An account of the same name, with its profile: administrator flag, libraries, parental control
+  // and password carry over.
+  JELLYFIN_TARGET_KIND_NEW_ACCOUNT = 1;
+  // A profile of the same name in an existing account (reused if it already exists).
+  JELLYFIN_TARGET_KIND_NEW_PROFILE = 2;
+  // An existing profile.
+  JELLYFIN_TARGET_KIND_PROFILE = 3;
+  // Nothing is imported.
+  JELLYFIN_TARGET_KIND_SKIP = 4;
+}
+
+message ImportJellyfinRequest {
+  string path = 1;
+  // Overridden targets, by Jellyfin user ID; the others keep the target proposed by
+  // PreviewJellyfinImport.
+  map<string, JellyfinTarget> targets = 2;
+}
+
+message ImportJellyfinResponse {
+  repeated JellyfinImport users = 1;
+}
+
+// JellyfinImport is what was imported for one user.
+message JellyfinImport {
+  string id = 1;
+  string name = 2;
+  string account_id = 3;
+  string profile_id = 4;
+  string profile_name = 5;
+  bool account_created = 6;
+  bool profile_created = 7;
+  // Items updated, sessions added to the history.
+  int32 user_data = 8;
+  int32 history = 9;
+}

@@ -1,0 +1,247 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/catalog.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// PartyService is for watch parties. A profile creates a group and shares its code; other profiles
+// (from the same account or from other accounts of the server) join it, provided they can see
+// everything the group watches. Each member plays on their own device
+// (PlaybackService.StartPlayback, with their own device profile); the group only shares state:
+// playing or paused, current item, position.
+//
+// Synchronization:
+//   - a playing state says "at time at (server clock) the position was position, and it has been
+//     moving since"; at may be slightly in the future (common start). Each device works out its
+//     position from it and adjusts (a slight speed-up for a small gap, a seek otherwise);
+//   - the server clock is measured with GetServerTime (round trip) and comes with every update;
+//   - while waiting (PARTY_STATUS_WAITING), each device loads the item, seeks to position, then
+//     reports ready (ReportPartyStatus); the group goes on once everyone is (15 s at most:
+//     stragglers catch up afterwards). A device whose playback stalls reports it (buffering) and
+//     the group waits for it;
+//   - a member who joins during playback catches up without stopping the others.
+//
+// Groups live in memory: a server restart wipes them. A member whose stream (WatchParty) stays
+// closed for 30 s leaves the group; the last one to leave ends it.
+service PartyService {
+  // CreateParty creates a group with the caller as host, paused at the start of the first item. The
+  // queue follows playlist rules (a season stands for its episodes, an album for its tracks).
+  rpc CreateParty(CreatePartyRequest) returns (CreatePartyResponse);
+  // JoinParty lets the caller into a group by its code. They must be able to see everything the
+  // group watches; if they join during playback they catch up without stopping the others.
+  rpc JoinParty(JoinPartyRequest) returns (JoinPartyResponse);
+  // GetParty returns a group the caller belongs to.
+  rpc GetParty(GetPartyRequest) returns (GetPartyResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // WatchParty streams the updates of the group: the state right away, then on every change;
+  // messages; the end of the group (or the removal of the caller).
+  rpc WatchParty(WatchPartyRequest) returns (stream WatchPartyResponse);
+  // ControlParty controls the group (play, pause, seek, item, queue); host only if host_only is
+  // set.
+  rpc ControlParty(ControlPartyRequest) returns (ControlPartyResponse);
+  // ReportPartyStatus reports the state of the device: ready, buffering, or done with the item (the
+  // group moves to the next one).
+  rpc ReportPartyStatus(ReportPartyStatusRequest) returns (ReportPartyStatusResponse);
+  // SendPartyMessage sends a message or a reaction to the group; nothing is stored.
+  rpc SendPartyMessage(SendPartyMessageRequest) returns (SendPartyMessageResponse);
+  // LeaveParty takes the caller out; if it was the host, the oldest member takes over.
+  rpc LeaveParty(LeavePartyRequest) returns (LeavePartyResponse);
+  // KickPartyMember removes a member (host only); their device cannot come back with the code.
+  rpc KickPartyMember(KickPartyMemberRequest) returns (KickPartyMemberResponse);
+  // EndParty ends the group for everyone (host only).
+  rpc EndParty(EndPartyRequest) returns (EndPartyResponse);
+  // GetServerTime returns the server's time, to calibrate the device clock.
+  rpc GetServerTime(GetServerTimeRequest) returns (GetServerTimeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+enum PartyStatus {
+  PARTY_STATUS_UNSPECIFIED = 0;
+  PARTY_STATUS_PAUSED = 1;
+  PARTY_STATUS_PLAYING = 2;
+  // Waiting for members (loading, seek); it then goes on as resume says.
+  PARTY_STATUS_WAITING = 3;
+}
+
+message PartyMember {
+  string id = 1;
+  // Name of the profile.
+  string name = 2;
+  bool host = 3;
+  // Ready: has loaded the item at the requested position since the last wait.
+  bool ready = 4;
+  // Its playback has stalled to buffer.
+  bool buffering = 5;
+  // False for a member who joined during playback, as long as they are catching up.
+  bool synced = 6;
+}
+
+message PartyState {
+  // IDs of the queue items (movies, episodes, tracks).
+  repeated string queue = 1;
+  int32 index = 2;
+  PartyStatus status = 3;
+  // What the group will do after a wait (play or pause).
+  PartyStatus resume = 4;
+  // Position in the item at time at (server clock); while playing it moves on from there.
+  google.protobuf.Duration position = 5;
+  google.protobuf.Timestamp at = 6;
+  // In join order.
+  repeated PartyMember members = 7;
+  bool host_only = 8;
+  // Grows with every change: drop a state older than the one you have.
+  int64 version = 9;
+}
+
+message PartyItem {
+  oneof item {
+    MovieSummary movie = 1;
+    Episode episode = 2;
+    Track track = 3;
+  }
+}
+
+message Party {
+  string id = 1;
+  // Code to share to join the group (6 characters, without 0/O or 1/I/L).
+  string code = 2;
+  // The caller, within the group (PartyMember.id).
+  string member_id = 3;
+  // The queue items, in order.
+  repeated PartyItem items = 4;
+  PartyState state = 5;
+}
+
+message PartyMessage {
+  string member_id = 1;
+  string name = 2;
+  string text = 3;
+  // A reaction (an emoji, shown over the picture) rather than a message.
+  bool reaction = 4;
+  google.protobuf.Timestamp at = 5;
+}
+
+message CreatePartyRequest {
+  // Movies, episodes, tracks, seasons, series, albums or artists (500 items at most).
+  repeated string item_ids = 1;
+  // Only the host controls.
+  bool host_only = 2;
+}
+
+message CreatePartyResponse {
+  Party party = 1;
+}
+
+message JoinPartyRequest {
+  // Case does not matter.
+  string code = 1;
+}
+
+message JoinPartyResponse {
+  Party party = 1;
+}
+
+message GetPartyRequest {
+  string party_id = 1;
+}
+
+message GetPartyResponse {
+  Party party = 1;
+}
+
+message WatchPartyRequest {
+  string party_id = 1;
+}
+
+message WatchPartyResponse {
+  // Server time when sent.
+  google.protobuf.Timestamp server_time = 1;
+  oneof update {
+    PartyState state = 2;
+    PartyMessage message = 3;
+    // End of the group for the caller (group ended, removed by the host): the reason, in the
+    // language of the request.
+    string ended = 4;
+    // Keep-alive (every 30 s without anything else sent).
+    bool heartbeat = 5;
+  }
+  // With ended: the reason, for translation ("party.ended.left", "party.ended.removed",
+  // "party.ended.by_host").
+  Text ended_text = 6;
+}
+
+// PartyQueue replaces the queue.
+message PartyQueue {
+  repeated string item_ids = 1;
+  // Starting item in the new queue.
+  int32 index = 2;
+}
+
+message ControlPartyRequest {
+  string party_id = 1;
+  oneof command {
+    bool play = 2;
+    bool pause = 3;
+    google.protobuf.Duration seek = 4;
+    // Queue item (next, previous...), from its start.
+    int32 select = 5;
+    PartyQueue queue = 6;
+    // Restrict controls to the host, or open them again (host only).
+    bool host_only = 7;
+  }
+}
+
+message ControlPartyResponse {
+  PartyState state = 1;
+}
+
+message ReportPartyStatusRequest {
+  string party_id = 1;
+  bool ready = 2;
+  bool buffering = 3;
+  // Item that finished on the device (PartyState.index): the group moves to the next one.
+  optional int32 ended_index = 4;
+}
+
+message ReportPartyStatusResponse {}
+
+message SendPartyMessageRequest {
+  string party_id = 1;
+  // 500 characters at most; 32 for a reaction.
+  string text = 2;
+  bool reaction = 3;
+}
+
+message SendPartyMessageResponse {}
+
+message LeavePartyRequest {
+  string party_id = 1;
+}
+
+message LeavePartyResponse {}
+
+message KickPartyMemberRequest {
+  string party_id = 1;
+  string member_id = 2;
+}
+
+message KickPartyMemberResponse {}
+
+message EndPartyRequest {
+  string party_id = 1;
+}
+
+message EndPartyResponse {}
+
+message GetServerTimeRequest {}
+
+message GetServerTimeResponse {
+  google.protobuf.Timestamp now = 1;
+}

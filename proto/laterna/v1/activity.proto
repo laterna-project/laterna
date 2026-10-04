@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/auth.proto";
+import "laterna/v1/options.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// ActivityService shows what is going on on the server: the activity log, the signed-in devices of
+// every account, the playbacks in progress. Administrators only, from an unrestricted profile.
+service ActivityService {
+  // ListActivity reads the activity log, newest first (90 days are kept).
+  rpc ListActivity(ListActivityRequest) returns (ListActivityResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // ListDevices lists the signed-in devices of every account.
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // RevokeDevice signs out a device of any account.
+  rpc RevokeDevice(RevokeDeviceRequest) returns (RevokeDeviceResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // ListPlaybacks lists the playbacks in progress: who is watching what, where and how.
+  rpc ListPlaybacks(ListPlaybacksRequest) returns (ListPlaybacksResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // EndPlayback stops a playback in progress of any profile.
+  rpc EndPlayback(EndPlaybackRequest) returns (EndPlaybackResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+}
+
+// ActivityKind is the kind of an activity log entry.
+enum ActivityKind {
+  ACTIVITY_KIND_UNSPECIFIED = 0;
+  ACTIVITY_KIND_LOGIN = 1;
+  ACTIVITY_KIND_LOGIN_FAILED = 2;
+  ACTIVITY_KIND_ACCOUNT_CREATED = 3;
+  ACTIVITY_KIND_ACCOUNT_UPDATED = 4;
+  ACTIVITY_KIND_ACCOUNT_DELETED = 5;
+  ACTIVITY_KIND_SESSION_REVOKED = 6;
+  ACTIVITY_KIND_LIBRARY_CREATED = 7;
+  ACTIVITY_KIND_LIBRARY_UPDATED = 8;
+  ACTIVITY_KIND_LIBRARY_DELETED = 9;
+  ACTIVITY_KIND_LIBRARY_SCANNED = 10;
+  ACTIVITY_KIND_PLAYBACK_STARTED = 11;
+  ACTIVITY_KIND_PLAYBACK_STOPPED = 12;
+  ACTIVITY_KIND_SETTINGS_UPDATED = 13;
+  ACTIVITY_KIND_INTEGRATION = 14;
+  ACTIVITY_KIND_WEBHOOK = 15;
+  ACTIVITY_KIND_JOB_FAILED = 16;
+  // Watch party started (PartyService).
+  ACTIVITY_KIND_PARTY_STARTED = 17;
+  // Data imported from another server (ImportService).
+  ACTIVITY_KIND_IMPORT = 18;
+}
+
+message ActivityEntry {
+  int64 id = 1;
+  google.protobuf.Timestamp at = 2;
+  ActivityKind kind = 3;
+  // Worth a look (refused login, failed job).
+  bool warning = 4;
+  // Who, and on what; unset for the server itself, or cleared since.
+  string account_id = 5;
+  string profile_id = 6;
+  string item_id = 7;
+  // Sentence written by the server in the language of the request. It keeps the names.
+  string summary = 8;
+  // The same, for translation ("activity.login", params "username", "device"...). An entry written
+  // before texts were keyed is a "literal" text: its original sentence.
+  Text text = 9;
+}
+
+message ListActivityRequest {
+  // Token from the previous page; empty starts from the newest.
+  string page_token = 1;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 2;
+  bool warnings_only = 3;
+  // Only what this account did; empty means everything.
+  string account_id = 4;
+}
+
+message ListActivityResponse {
+  repeated ActivityEntry entries = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+}
+
+// DeviceSession is a signed-in device, as an administrator sees it.
+message DeviceSession {
+  string session_id = 1;
+  string account_id = 2;
+  string username = 3;
+  // Profile picked on the device; empty if none.
+  string profile_name = 4;
+  Device device = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp last_used_at = 7;
+  string last_ip = 8;
+  // True for the device making the call.
+  bool current = 9;
+}
+
+message ListDevicesRequest {}
+
+message ListDevicesResponse {
+  repeated DeviceSession devices = 1;
+}
+
+message RevokeDeviceRequest {
+  string session_id = 1;
+}
+
+message RevokeDeviceResponse {}
+
+// ActivePlayback is a playback in progress.
+message ActivePlayback {
+  string id = 1;
+  string account_id = 2;
+  string username = 3;
+  string profile_id = 4;
+  string profile_name = 5;
+  // Device playing.
+  string device = 6;
+  string item_id = 7;
+  // Title (an episode with its series).
+  string title = 8;
+  // Playback method: "direct", "remux", "transcode".
+  string method = 9;
+  bool copy_video = 10;
+  bool copy_audio = 11;
+  // Video encoder and HDR to SDR conversion, if the video is re-encoded.
+  string encoder = 12;
+  string tone_map = 13;
+  bool gpu = 14;
+  google.protobuf.Timestamp started_at = 15;
+  // Last position reported by the client, and duration.
+  google.protobuf.Duration position = 16;
+  google.protobuf.Duration duration = 17;
+  // An FFmpeg process is working for this playback right now.
+  bool transcoding = 18;
+}
+
+message ListPlaybacksRequest {}
+
+message ListPlaybacksResponse {
+  repeated ActivePlayback playbacks = 1;
+}
+
+message EndPlaybackRequest {
+  string playback_id = 1;
+}
+
+message EndPlaybackResponse {}

@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/options.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// ProfileService manages the profiles of an account, "Who's watching?" style. History, favorites
+// and resume points belong to the profile, not to the account.
+//
+// Rules: a restricted profile (kid, or under parental control) manages nothing: not the profiles,
+// the devices, the password or the server; changing or deleting a protected profile requires its
+// PIN; an account always keeps at least one unrestricted profile.
+service ProfileService {
+  // ListProfiles lists the profiles of the account.
+  rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // CreateProfile adds a profile to the account.
+  rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // UpdateProfile changes a profile (name, PIN, kid profile).
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // DeleteProfile deletes a profile and its data (history, favorites).
+  rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // SelectProfile picks the profile used by the current session.
+  rpc SelectProfile(SelectProfileRequest) returns (SelectProfileResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // SetLanguage changes the language of the picked profile. Everyone sets their own, even from a
+  // restricted profile.
+  rpc SetLanguage(SetLanguageRequest) returns (SetLanguageResponse);
+}
+
+message Profile {
+  string id = 1;
+  string name = 2;
+  // True if a PIN is required to pick this profile.
+  bool has_pin = 3;
+  // Kid profile: adapted UI; manages nothing.
+  bool kid = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // Parental control of the profile; the account's applies on top of it (the stricter wins).
+  ParentalControl parental = 6;
+  // Language chosen for this profile (BCP 47 tag: "fr", "en-GB", "pt-BR"); empty means none: the
+  // device's language, then the server's. The client may follow it so that the language follows the
+  // profile from one device to another. The server uses it for the texts it writes when the request
+  // asks for no language (no Accept-Language header).
+  string language = 7;
+}
+
+// ParentalControl hides content by its rating: the "mpaa" field of NFO files (TV-14, PG-13, -12,
+// 16+...), converted to an age. An episode or a season without a rating takes that of its series.
+// Hidden content cannot be found anywhere: lists, search, details, home and playback.
+message ParentalControl {
+  // Highest age allowed; unset means no age limit.
+  optional int32 max_age = 1;
+  // Also hides content without a rating (common without an NFO).
+  bool block_unrated = 2;
+}
+
+message ListProfilesRequest {}
+
+message ListProfilesResponse {
+  repeated Profile profiles = 1;
+}
+
+message CreateProfileRequest {
+  string name = 1;
+  // PIN of 4 to 8 digits; empty means no PIN.
+  string pin = 2;
+  bool kid = 3;
+  // Unset: age 10 at most and unrated hidden for a kid profile, no control otherwise.
+  ParentalControl parental = 4;
+  // Language of the profile; empty means none.
+  string language = 5;
+}
+
+message CreateProfileResponse {
+  Profile profile = 1;
+}
+
+message UpdateProfileRequest {
+  string profile_id = 1;
+  // Current PIN, required if the profile has one.
+  string current_pin = 2;
+  optional string name = 3;
+  // New PIN; an empty string removes the PIN. Unset leaves it unchanged.
+  optional string pin = 4;
+  optional bool kid = 5;
+  // New parental control; unset leaves it unchanged (a profile that becomes a kid profile without a
+  // control gets the default one). An empty control removes it.
+  ParentalControl parental = 6;
+  // New language; an empty string means none. Unset leaves it unchanged.
+  optional string language = 7;
+}
+
+message UpdateProfileResponse {
+  Profile profile = 1;
+}
+
+message DeleteProfileRequest {
+  string profile_id = 1;
+  // Current PIN, required if the profile has one.
+  string current_pin = 2;
+}
+
+message DeleteProfileResponse {}
+
+message SelectProfileRequest {
+  string profile_id = 1;
+  // PIN of the profile, if it has one.
+  string pin = 2;
+}
+
+message SelectProfileResponse {
+  Profile profile = 1;
+}
+
+message SetLanguageRequest {
+  // BCP 47 tag; empty means none.
+  string language = 1;
+}
+
+message SetLanguageResponse {
+  Profile profile = 1;
+}

@@ -1,0 +1,844 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/library.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// Names made up by the server. For lack of anything better, the server itself names a season
+// ("Season 1", "Specials"), an untitled episode ("Episode 5"), the artist or album of an untagged
+// track ("Unknown artist", "Various artists", "Unknown album"), a volume of a book series ("Series
+// – Volume 3"). These names are written in the language of the request wherever they show up. On
+// the season, episode, artist, album or book itself, a "..._text" field also says that the name
+// comes from the server and gives it for translation ("name.season" with "number", "name.specials",
+// "name.episode", "name.unknown_artist", "name.various_artists", "name.unknown_album",
+// "name.book_volume").
+
+// CatalogService browses the content of the libraries for the picked profile: lists, details,
+// search, and what the profile has played or favorited.
+//
+// An item is only listed if at least one of its files is present; its details stay readable during
+// the grace period of a vanished file. Lists are paged: pass next_page_token from the response as
+// page_token of the next request, with the same criteria.
+service CatalogService {
+  // ListCatalogLibraries lists the libraries to browse, in the order chosen by the administrator
+  // (LibraryService.ReorderLibraries).
+  rpc ListCatalogLibraries(ListCatalogLibrariesRequest) returns (ListCatalogLibrariesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListMovies returns a page of movies.
+  rpc ListMovies(ListMoviesRequest) returns (ListMoviesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetMovie returns the details of a movie and its files.
+  rpc GetMovie(GetMovieRequest) returns (GetMovieResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListSeries returns a page of series.
+  rpc ListSeries(ListSeriesRequest) returns (ListSeriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetSeries returns the details of a series and its seasons.
+  rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListEpisodes lists the episodes of a series, or of one of its seasons, in order.
+  rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetEpisode returns the details of an episode and its files.
+  rpc GetEpisode(GetEpisodeRequest) returns (GetEpisodeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListGenres lists the genres of movies, series and albums, to filter lists.
+  rpc ListGenres(ListGenresRequest) returns (ListGenresResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Search looks up movies, series, episodes, artists, albums and tracks by title, ignoring accents
+  // and case; each word may be just the beginning of a word.
+  rpc Search(SearchRequest) returns (SearchResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListSimilar returns the movies and series closest to a movie or a series (an episode or a
+  // season stands for its series), closest first: genres, directors, writers, top-billed actors,
+  // studios, collection, decade. What is rare counts more.
+  rpc ListSimilar(ListSimilarRequest) returns (ListSimilarResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // SetPlayed marks an item as played or unplayed; for a series or a season, all its episodes; for
+  // an artist or an album, all its tracks. The resume point goes back to the start.
+  rpc SetPlayed(SetPlayedRequest) returns (SetPlayedResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // SetFavorite adds an item to the profile's favorites or removes it.
+  rpc SetFavorite(SetFavoriteRequest) returns (SetFavoriteResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+// Items.
+
+// UserData is what the profile did with an item.
+message UserData {
+  // For a series or a season: all its present episodes are played.
+  bool played = 1;
+  // Number of complete plays.
+  int32 play_count = 2;
+  // Resume point; unset means from the start.
+  google.protobuf.Duration position = 3;
+  google.protobuf.Timestamp last_played_at = 4;
+  bool favorite = 5;
+}
+
+enum ImageKind {
+  IMAGE_KIND_UNSPECIFIED = 0;
+  // Portrait poster (2:3); also the square cover of an album and the picture of an artist.
+  IMAGE_KIND_POSTER = 1;
+  // Landscape background (16:9), without text.
+  IMAGE_KIND_BACKDROP = 2;
+  // Title logo, transparent background.
+  IMAGE_KIND_LOGO = 3;
+  // Landscape thumbnail (episode, landscape card).
+  IMAGE_KIND_THUMB = 4;
+  // Very wide banner.
+  IMAGE_KIND_BANNER = 5;
+  // The photo itself (PhotoService), orientation applied: width and height as displayed.
+  IMAGE_KIND_PHOTO = 6;
+}
+
+message Image {
+  ImageKind kind = 1;
+  // Path to append to the server's address. Add "?w=<width>" for a resized version (rounded up to
+  // the next tier: 160, 240, 320, 480, 640, 960, 1280, 1920). The URL changes when the image
+  // changes, so it can be cached forever.
+  string url = 2;
+  int32 width = 3;
+  int32 height = 4;
+  // Blurred preview (blurhash) to show while loading.
+  string blurhash = 5;
+}
+
+// MovieSummary is a movie as a list shows it.
+message MovieSummary {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  int32 year = 4;
+  google.protobuf.Duration runtime = 5;
+  string official_rating = 6;
+  // Audience rating out of 10; 0 if unknown.
+  double community_rating = 7;
+  repeated Image images = 8;
+  UserData user_data = 9;
+  google.protobuf.Timestamp added_at = 10;
+}
+
+// Movie is the details of a movie.
+message Movie {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  string original_title = 4;
+  int32 year = 5;
+  // Release date as YYYY-MM-DD; empty if unknown.
+  string premiere_date = 6;
+  string overview = 7;
+  string tagline = 8;
+  string official_rating = 9;
+  double community_rating = 10;
+  google.protobuf.Duration runtime = 11;
+  repeated string genres = 12;
+  repeated string studios = 13;
+  repeated Credit credits = 14;
+  // IDs at metadata providers, as found in the NFO: "tmdb", "imdb", "tvdb"...
+  map<string, string> provider_ids = 15;
+  repeated Image images = 16;
+  UserData user_data = 17;
+  google.protobuf.Timestamp added_at = 18;
+  // Collections the movie belongs to.
+  repeated CollectionRef collections = 19;
+}
+
+// SeriesSummary is a series as a list shows it.
+message SeriesSummary {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  int32 year = 4;
+  string official_rating = 5;
+  double community_rating = 6;
+  repeated Image images = 7;
+  // Episodes present, and those the profile has not played.
+  int32 episode_count = 8;
+  int32 unplayed_count = 9;
+  UserData user_data = 10;
+  google.protobuf.Timestamp added_at = 11;
+}
+
+// Series is the details of a series.
+message Series {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  string original_title = 4;
+  int32 year = 5;
+  string premiere_date = 6;
+  string overview = 7;
+  string tagline = 8;
+  string official_rating = 9;
+  double community_rating = 10;
+  repeated string genres = 11;
+  repeated string studios = 12;
+  repeated Credit credits = 13;
+  // See Movie.provider_ids.
+  map<string, string> provider_ids = 14;
+  repeated Image images = 15;
+  int32 episode_count = 16;
+  int32 unplayed_count = 17;
+  UserData user_data = 18;
+  google.protobuf.Timestamp added_at = 19;
+  // Collections the series belongs to.
+  repeated CollectionRef collections = 20;
+}
+
+message Season {
+  string id = 1;
+  string series_id = 2;
+  int32 number = 3;
+  string title = 4;
+  string overview = 5;
+  repeated Image images = 6;
+  int32 episode_count = 7;
+  int32 unplayed_count = 8;
+  UserData user_data = 9;
+  // Set if the season has no title of its own.
+  Text title_text = 10;
+}
+
+message Episode {
+  string id = 1;
+  string series_id = 2;
+  string series_title = 3;
+  string season_id = 4;
+  int32 season_number = 5;
+  int32 number = 6;
+  // Last episode of a file that holds several ("S01E01-E02"); 0 otherwise.
+  int32 number_end = 7;
+  string title = 8;
+  string overview = 9;
+  string premiere_date = 10;
+  google.protobuf.Duration runtime = 11;
+  double community_rating = 12;
+  repeated Image images = 13;
+  UserData user_data = 14;
+  google.protobuf.Timestamp added_at = 15;
+  // Set if the episode has no title of its own.
+  Text title_text = 16;
+}
+
+// Music (MusicService).
+
+// ArtistSummary is an artist as a list shows it: the artist of at least one album.
+message ArtistSummary {
+  string id = 1;
+  string library_id = 2;
+  string name = 3;
+  repeated Image images = 4;
+  // Albums and tracks present.
+  int32 album_count = 5;
+  int32 track_count = 6;
+  UserData user_data = 7;
+  google.protobuf.Timestamp added_at = 8;
+  // Set if the name comes from the server (unknown artist, various artists).
+  Text name_text = 9;
+}
+
+// Artist is the details of an artist.
+message Artist {
+  string id = 1;
+  string library_id = 2;
+  string name = 3;
+  // Biography (artist.nfo); empty if unknown.
+  string overview = 4;
+  repeated string genres = 5;
+  // "musicbrainz_artist".
+  map<string, string> provider_ids = 6;
+  repeated Image images = 7;
+  int32 album_count = 8;
+  int32 track_count = 9;
+  UserData user_data = 10;
+  google.protobuf.Timestamp added_at = 11;
+  // Set if the name comes from the server (unknown artist, various artists).
+  Text name_text = 12;
+}
+
+// AlbumSummary is an album as a list shows it. Its poster (IMAGE_KIND_POSTER) is its square cover.
+message AlbumSummary {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  string artist_id = 4;
+  string artist_name = 5;
+  int32 year = 6;
+  repeated Image images = 7;
+  // Tracks present, and their total duration.
+  int32 track_count = 8;
+  google.protobuf.Duration runtime = 9;
+  UserData user_data = 10;
+  google.protobuf.Timestamp added_at = 11;
+  // Set if the title comes from the server (unknown album).
+  Text title_text = 12;
+}
+
+// Album is the details of an album.
+message Album {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  string artist_id = 4;
+  string artist_name = 5;
+  int32 year = 6;
+  // Release date as YYYY-MM-DD; empty if unknown.
+  string premiere_date = 7;
+  // Description (album.nfo); empty if unknown.
+  string overview = 8;
+  // Genres of its tracks, most frequent first.
+  repeated string genres = 9;
+  // "musicbrainz_release", "musicbrainz_releasegroup".
+  map<string, string> provider_ids = 10;
+  repeated Image images = 11;
+  int32 track_count = 12;
+  google.protobuf.Duration runtime = 13;
+  UserData user_data = 14;
+  google.protobuf.Timestamp added_at = 15;
+  // Set if the title comes from the server (unknown album).
+  Text title_text = 16;
+}
+
+// ReplayGain is the volume correction of a track, as its tags give it. The client applies it so
+// that all tracks sound equally loud (the album one keeps the intended differences between its
+// tracks).
+message ReplayGain {
+  // Correction in dB (negative: the track is louder than the reference).
+  optional double track_gain = 1;
+  // Peak (1 is full scale): caps the correction to avoid clipping.
+  optional double track_peak = 2;
+  optional double album_gain = 3;
+  optional double album_peak = 4;
+}
+
+// Track is a track.
+message Track {
+  string id = 1;
+  string album_id = 2;
+  string album_title = 3;
+  // Artist of the album.
+  string artist_id = 4;
+  string artist_name = 5;
+  // Artists of the track, as its tags spell them ("Stardust feat. Benjamin Diamond"); often the
+  // album artist.
+  string artists = 6;
+  // Disc and position on it; 0 if unknown.
+  int32 disc = 7;
+  int32 number = 8;
+  string title = 9;
+  google.protobuf.Duration runtime = 10;
+  // Cover of its album.
+  repeated Image images = 11;
+  UserData user_data = 12;
+  // Unset if the tags do not say.
+  ReplayGain replay_gain = 13;
+  google.protobuf.Timestamp added_at = 14;
+}
+
+// Books (BookService).
+
+// BookSeries is a book series (the volumes of a comic, a manga, a saga). Its poster
+// (IMAGE_KIND_POSTER) is the cover of its first volume.
+message BookSeries {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  repeated Image images = 4;
+  // Books present.
+  int32 book_count = 5;
+  // played: all its books are read.
+  UserData user_data = 6;
+  google.protobuf.Timestamp added_at = 7;
+}
+
+// ReadingProgress is where the profile is in a book.
+message ReadingProgress {
+  // Page (zero-based) of a paged book or a document.
+  int32 page = 1;
+  // Location given by the reader (EPUB: CFI), returned as is.
+  string locator = 2;
+  // From 0 to 1.
+  double progression = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+// BookSummary is a book as a list shows it. Its poster (IMAGE_KIND_POSTER) is its cover.
+message BookSummary {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  // Series and volume; unset for a standalone book.
+  string series_id = 4;
+  string series_title = 5;
+  // Volume (0.5 or 12.5 happen); 0 if standalone or unknown.
+  double number = 6;
+  int32 year = 7;
+  repeated Image images = 8;
+  // played: read.
+  UserData user_data = 9;
+  // Unset if the profile has not started it.
+  ReadingProgress progress = 10;
+  google.protobuf.Timestamp added_at = 11;
+  // Set if the book has no title of its own ("name.book_volume": "series", "number").
+  Text title_text = 12;
+}
+
+// Book is the details of a book.
+message Book {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  string series_id = 4;
+  string series_title = 5;
+  double number = 6;
+  int32 year = 7;
+  // Publication date as YYYY-MM-DD; empty if unknown.
+  string premiere_date = 8;
+  // Description, as text (paragraphs separated by a blank line).
+  string overview = 9;
+  string publisher = 10;
+  // Language of the text (BCP 47); empty if unknown.
+  string language = 11;
+  string isbn = 12;
+  repeated string genres = 13;
+  // Authors (CREDIT_ROLE_WRITER) and illustrators (CREDIT_ROLE_ILLUSTRATOR).
+  repeated Credit credits = 14;
+  repeated Image images = 15;
+  UserData user_data = 16;
+  ReadingProgress progress = 17;
+  google.protobuf.Timestamp added_at = 18;
+  // Set if the book has no title of its own.
+  Text title_text = 19;
+}
+
+enum BookFormat {
+  BOOK_FORMAT_UNSPECIFIED = 0;
+  BOOK_FORMAT_EPUB = 1;
+  BOOK_FORMAT_PDF = 2;
+  BOOK_FORMAT_CBZ = 3;
+}
+
+// BookLayout is how a book file is read, decided by the server.
+enum BookLayout {
+  BOOK_LAYOUT_UNSPECIFIED = 0;
+  // One image per page, served by the server at the requested width (CBZ, scanned PDF).
+  BOOK_LAYOUT_IMAGES = 1;
+  // Text laid out by the reader from the file (EPUB).
+  BOOK_LAYOUT_REFLOWABLE = 2;
+  // Fixed pages rendered by the reader from the file (PDF).
+  BOOK_LAYOUT_DOCUMENT = 3;
+}
+
+// BookFile says how to read a book file.
+message BookFile {
+  BookFormat format = 1;
+  BookLayout layout = 2;
+  // Pages go right to left (manga).
+  bool right_to_left = 3;
+  // 0 if unknown (EPUB).
+  int32 page_count = 4;
+}
+
+// Photos (PhotoService).
+
+// PhotoAlbum is a photo album: a folder. Its poster (IMAGE_KIND_POSTER) is its most recent photo
+// (its own or one from an album inside it).
+message PhotoAlbum {
+  string id = 1;
+  string library_id = 2;
+  string title = 3;
+  // Album that contains it; empty at the top level.
+  string parent_id = 4;
+  repeated Image images = 5;
+  // Photos present (its own, not those of the albums inside it), and albums inside it.
+  int32 photo_count = 6;
+  int32 album_count = 7;
+  UserData user_data = 8;
+  google.protobuf.Timestamp added_at = 9;
+}
+
+// PhotoSummary is a photo as a timeline shows it. Its image (IMAGE_KIND_PHOTO) is the photo itself,
+// to load resized ("?w=").
+message PhotoSummary {
+  string id = 1;
+  string library_id = 2;
+  // Album; empty for a photo at the root.
+  string album_id = 3;
+  // File name, without extension.
+  string title = 4;
+  // When the picture was taken: exact if the camera recorded its time zone (utc_offset), otherwise
+  // the camera's clock read in the server's time zone, otherwise the file date.
+  google.protobuf.Timestamp taken_at = 5;
+  // Offset of the camera ("+02:00" is 2 h); unset if unknown.
+  google.protobuf.Duration utc_offset = 6;
+  // Dimensions as displayed.
+  int32 width = 7;
+  int32 height = 8;
+  repeated Image images = 9;
+  // Only favorite means anything.
+  UserData user_data = 10;
+  google.protobuf.Timestamp added_at = 11;
+}
+
+// GeoPoint is a location in degrees (south and west are negative).
+message GeoPoint {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+// Photo is the details of a photo: what its EXIF data says.
+message Photo {
+  PhotoSummary summary = 1;
+  string camera_make = 2;
+  string camera_model = 3;
+  string lens = 4;
+  // Aperture (f/1.8 gives 1.8) and focal length (mm); 0 if unknown.
+  double f_number = 5;
+  double focal_length = 6;
+  // Exposure time ("1/250", "2" seconds); empty if unknown.
+  string exposure_time = 7;
+  int32 iso = 8;
+  // Unset if the camera does not say.
+  GeoPoint location = 9;
+}
+
+// CollectionRef points to a collection (CollectionService).
+message CollectionRef {
+  string id = 1;
+  string name = 2;
+}
+
+enum CreditRole {
+  CREDIT_ROLE_UNSPECIFIED = 0;
+  CREDIT_ROLE_ACTOR = 1;
+  CREDIT_ROLE_DIRECTOR = 2;
+  // Writer; author of a book.
+  CREDIT_ROLE_WRITER = 3;
+  // Illustrator of a comic.
+  CREDIT_ROLE_ILLUSTRATOR = 4;
+}
+
+message Credit {
+  string person_id = 1;
+  string name = 2;
+  CreditRole role = 3;
+  // Character played (actors).
+  string character = 4;
+  // Photo of the person (kind POSTER); unset until it is ready.
+  Image image = 5;
+}
+
+// Files.
+
+// MediaFile is a file of a movie, an episode or a track, as the analysis saw it.
+message MediaFile {
+  string id = 1;
+  // Name of the version ("4K", "Director's Cut"); empty if there is only one.
+  string version = 2;
+  // Part of a split movie (CD1, CD2...); 0 otherwise.
+  int32 part = 3;
+  // False during the grace period of a vanished file.
+  bool available = 4;
+  // File format ("mkv", "mp4"...).
+  string container = 5;
+  google.protobuf.Duration duration = 6;
+  int64 size = 7;
+  // Overall bitrate in bit/s.
+  int64 bitrate = 8;
+  repeated MediaStream streams = 9;
+  repeated Chapter chapters = 10;
+  // Scrubbing thumbnails; unset until they are ready.
+  Trickplay trickplay = 11;
+  // Book file: how to read it; unset until it is analyzed.
+  BookFile book = 12;
+  // Segments the player may offer to skip (intro, credits, recap, preview), ordered by start; empty
+  // as long as nothing was found.
+  repeated MediaSegment segments = 13;
+}
+
+// Trickplay describes the scrubbing thumbnails of a file: count thumbnails, one every interval (the
+// n-th shows position n x interval), laid out row by row on sheets of columns x rows. Thumbnail n
+// is on sheet n / (columns x rows), at column n % columns and row (n / columns) % rows.
+message Trickplay {
+  google.protobuf.Duration interval = 1;
+  // Size of one thumbnail.
+  int32 width = 2;
+  int32 height = 3;
+  int32 columns = 4;
+  int32 rows = 5;
+  int32 count = 6;
+  // URLs of the sheets (JPEG), to append to the server's address; immutable.
+  repeated string sheets = 7;
+}
+
+enum StreamKind {
+  STREAM_KIND_UNSPECIFIED = 0;
+  STREAM_KIND_VIDEO = 1;
+  STREAM_KIND_AUDIO = 2;
+  STREAM_KIND_SUBTITLE = 3;
+}
+
+enum DynamicRange {
+  DYNAMIC_RANGE_UNSPECIFIED = 0;
+  DYNAMIC_RANGE_SDR = 1;
+  DYNAMIC_RANGE_HDR10 = 2;
+  DYNAMIC_RANGE_HLG = 3;
+  DYNAMIC_RANGE_DOLBY_VISION = 4;
+}
+
+// MediaStream is a video, audio or subtitle stream (others are not listed).
+message MediaStream {
+  // Position of the stream in the file.
+  int32 index = 1;
+  StreamKind kind = 2;
+  string codec = 3;
+  string profile = 4;
+  // Language code as written in the file (ISO 639-2: "fre", "jpn").
+  string language = 5;
+  string title = 6;
+  bool default = 7;
+  bool forced = 8;
+  bool hearing_impaired = 9;
+  // Video.
+  int32 width = 10;
+  int32 height = 11;
+  int32 bit_depth = 12;
+  double frame_rate = 13;
+  DynamicRange dynamic_range = 14;
+  // Audio.
+  int32 channels = 15;
+  string channel_layout = 16;
+  int32 sample_rate = 17;
+  int64 bitrate = 18;
+}
+
+message Chapter {
+  google.protobuf.Duration start = 1;
+  google.protobuf.Duration end = 2;
+  string title = 3;
+}
+
+enum MediaSegmentKind {
+  MEDIA_SEGMENT_KIND_UNSPECIFIED = 0;
+  // Intro: "Skip intro".
+  MEDIA_SEGMENT_KIND_INTRO = 1;
+  // End credits: the time to offer the next episode.
+  MEDIA_SEGMENT_KIND_CREDITS = 2;
+  // Recap of the previous episodes.
+  MEDIA_SEGMENT_KIND_RECAP = 3;
+  // Preview of the next episode.
+  MEDIA_SEGMENT_KIND_PREVIEW = 4;
+}
+
+// MediaSegment is a part of a file a player may offer to skip. It comes from a named chapter of the
+// file ("Opening", "Ending"...) or, for an episode, from the same audio found in another episode of
+// the season (accurate to a quarter of a second).
+message MediaSegment {
+  MediaSegmentKind kind = 1;
+  google.protobuf.Duration start = 2;
+  google.protobuf.Duration end = 3;
+}
+
+// Requests.
+
+message CatalogLibrary {
+  string id = 1;
+  string name = 2;
+  LibraryKind kind = 3;
+  ItemCounts counts = 4;
+}
+
+message ListCatalogLibrariesRequest {}
+
+message ListCatalogLibrariesResponse {
+  repeated CatalogLibrary libraries = 1;
+}
+
+enum ItemSort {
+  // By title.
+  ITEM_SORT_UNSPECIFIED = 0;
+  // A to Z (leading articles and accents ignored).
+  ITEM_SORT_TITLE = 1;
+  // Most recently added first.
+  ITEM_SORT_ADDED = 2;
+  // Newest first (release date, otherwise year).
+  ITEM_SORT_RELEASED = 3;
+  // Best rated first.
+  ITEM_SORT_RATING = 4;
+}
+
+message ListMoviesRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  ItemSort sort = 2;
+  // Reverses the sort order.
+  bool reverse = 3;
+  // Keep only this genre (case does not matter).
+  string genre = 4;
+  // Keep only played (true) or unplayed (false) movies; unset means all.
+  optional bool played = 5;
+  bool favorites_only = 6;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 7;
+  string page_token = 8;
+}
+
+message ListMoviesResponse {
+  repeated MovieSummary movies = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+  // Number of movies across all pages.
+  int32 total_size = 3;
+}
+
+message GetMovieRequest {
+  string movie_id = 1;
+}
+
+message GetMovieResponse {
+  Movie movie = 1;
+  // By version, then part.
+  repeated MediaFile files = 2;
+}
+
+message ListSeriesRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  ItemSort sort = 2;
+  bool reverse = 3;
+  string genre = 4;
+  bool favorites_only = 5;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 6;
+  string page_token = 7;
+}
+
+message ListSeriesResponse {
+  repeated SeriesSummary series = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message GetSeriesRequest {
+  string series_id = 1;
+}
+
+message GetSeriesResponse {
+  Series series = 1;
+  // Seasons with at least one episode present, in order.
+  repeated Season seasons = 2;
+}
+
+message ListEpisodesRequest {
+  string series_id = 1;
+  // Empty means all seasons.
+  string season_id = 2;
+}
+
+message ListEpisodesResponse {
+  repeated Episode episodes = 1;
+}
+
+message GetEpisodeRequest {
+  string episode_id = 1;
+}
+
+message GetEpisodeResponse {
+  Episode episode = 1;
+  repeated MediaFile files = 2;
+  // Guest stars, directors and writers of the episode.
+  repeated Credit credits = 3;
+}
+
+message ListGenresRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+}
+
+message Genre {
+  string name = 1;
+  // Movies, series and albums with this genre.
+  int32 count = 2;
+}
+
+message ListGenresResponse {
+  repeated Genre genres = 1;
+}
+
+message SearchRequest {
+  string query = 1;
+  // 1 to 50; 0 means 20.
+  int32 limit = 2;
+}
+
+message SearchResult {
+  oneof item {
+    MovieSummary movie = 1;
+    SeriesSummary series = 2;
+    Episode episode = 3;
+    ArtistSummary artist = 4;
+    AlbumSummary album = 5;
+    Track track = 6;
+    BookSeries book_series = 7;
+    BookSummary book = 8;
+    PhotoAlbum photo_album = 9;
+  }
+}
+
+message SearchResponse {
+  // Movies, series, artists and albums first, then episodes and tracks; each group by relevance.
+  repeated SearchResult results = 1;
+}
+
+message ListSimilarRequest {
+  string item_id = 1;
+  // 1 to 50; 0 means 20.
+  int32 limit = 2;
+}
+
+message ListSimilarResponse {
+  repeated SimilarItem items = 1;
+}
+
+message SimilarItem {
+  oneof item {
+    MovieSummary movie = 1;
+    SeriesSummary series = 2;
+  }
+}
+
+message SetPlayedRequest {
+  // Movie, episode, season, series, track, album, artist, book or book series. A book marked unread
+  // is read again from the start.
+  string item_id = 1;
+  bool played = 2;
+}
+
+message SetPlayedResponse {}
+
+message SetFavoriteRequest {
+  string item_id = 1;
+  bool favorite = 2;
+}
+
+message SetFavoriteResponse {}

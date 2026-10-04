@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/catalog.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// PlaylistService manages the playlists of the picked profile: movies, episodes and tracks in a
+// chosen order, where the same item may appear more than once. What the profile can no longer see
+// (parental control, vanished file) does not show up, but is not removed either.
+service PlaylistService {
+  // ListPlaylists lists the playlists of the profile, most recently changed first.
+  rpc ListPlaylists(ListPlaylistsRequest) returns (ListPlaylistsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetPlaylist returns a playlist and its entries, in order.
+  rpc GetPlaylist(GetPlaylistRequest) returns (GetPlaylistResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // CreatePlaylist creates a playlist (100 per profile at most).
+  rpc CreatePlaylist(CreatePlaylistRequest) returns (CreatePlaylistResponse);
+  // RenamePlaylist renames a playlist.
+  rpc RenamePlaylist(RenamePlaylistRequest) returns (RenamePlaylistResponse);
+  // DeletePlaylist deletes a playlist.
+  rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistResponse);
+  // AddToPlaylist adds items (2,000 entries per playlist at most). A movie, an episode or a track
+  // is added as is; a season adds its episodes in order; a series adds those of its seasons,
+  // without specials; an album adds its tracks in order; an artist adds those of their albums.
+  rpc AddToPlaylist(AddToPlaylistRequest) returns (AddToPlaylistResponse);
+  // RemoveFromPlaylist removes entries.
+  rpc RemoveFromPlaylist(RemoveFromPlaylistRequest) returns (RemoveFromPlaylistResponse);
+  // MovePlaylistEntry moves an entry.
+  rpc MovePlaylistEntry(MovePlaylistEntryRequest) returns (MovePlaylistEntryResponse);
+}
+
+message Playlist {
+  string id = 1;
+  string name = 2;
+  // Entries the profile can see, and their total duration.
+  int32 entry_count = 3;
+  google.protobuf.Duration duration = 4;
+  // Posters or thumbs of the first entries (four at most).
+  repeated Image images = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// PlaylistEntry is an entry of a playlist: its ID (the same item may appear more than once) and the
+// item.
+message PlaylistEntry {
+  string id = 1;
+  oneof item {
+    MovieSummary movie = 2;
+    Episode episode = 3;
+    Track track = 4;
+  }
+}
+
+message ListPlaylistsRequest {}
+
+message ListPlaylistsResponse {
+  repeated Playlist playlists = 1;
+}
+
+message GetPlaylistRequest {
+  string playlist_id = 1;
+}
+
+message GetPlaylistResponse {
+  Playlist playlist = 1;
+  repeated PlaylistEntry entries = 2;
+}
+
+message CreatePlaylistRequest {
+  string name = 1;
+  // First items (see AddToPlaylist).
+  repeated string item_ids = 2;
+}
+
+message CreatePlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message RenamePlaylistRequest {
+  string playlist_id = 1;
+  string name = 2;
+}
+
+message RenamePlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message DeletePlaylistRequest {
+  string playlist_id = 1;
+}
+
+message DeletePlaylistResponse {}
+
+message AddToPlaylistRequest {
+  string playlist_id = 1;
+  // Movies, episodes, seasons, series, tracks, albums or artists.
+  repeated string item_ids = 2;
+  // Insert position; unset or past the end means at the end.
+  optional int32 position = 3;
+}
+
+message AddToPlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message RemoveFromPlaylistRequest {
+  string playlist_id = 1;
+  repeated string entry_ids = 2;
+}
+
+message RemoveFromPlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message MovePlaylistEntryRequest {
+  string playlist_id = 1;
+  string entry_id = 2;
+  // New position, clamped to the list (0 is the top).
+  int32 position = 3;
+}
+
+message MovePlaylistEntryResponse {
+  Playlist playlist = 1;
+}

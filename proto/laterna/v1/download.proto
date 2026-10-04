@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/catalog.proto";
+import "laterna/v1/playback.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// DownloadService manages the offline downloads of the caller's device, for their profile. As with
+// playback, the device says what it can play: the server hands over the file as it is when it can,
+// otherwise it prepares in the background an MP4 (H.264 video, AAC audio; an M4A for music) that
+// copies whatever the device plays. A file the device plays and that fits the requested quality is
+// never re-encoded.
+//
+// Files are fetched with the "Authorization: Bearer <token>" header (the device's token), and Range
+// requests are accepted (an interrupted download resumes where it stopped):
+//
+//   GET /downloads/{id}/file                            the file
+//   GET /downloads/{id}/subtitles/{index}.{format}      a subtitle (Download.subtitles)
+//
+// Fonts for ASS subtitles are in Download.fonts (no authentication).
+//
+// The preparation is announced through EventService (DownloadsChanged). A ready download is
+// forgotten by the server, and its prepared copy deleted, seven days later (expires_at): the device
+// keeps its file and asks again if it needs to.
+service DownloadService {
+  // CreateDownloads asks for downloads. Movies, episodes and tracks are downloaded as such; a
+  // season, a series, an album or an artist stands for its episodes or tracks (as in
+  // AddToPlaylist). An item already requested at the same quality is not requested again. Refused
+  // if the account is not allowed to download (Account.deny_downloads).
+  rpc CreateDownloads(CreateDownloadsRequest) returns (CreateDownloadsResponse);
+  // ListDownloads lists the downloads of the device, oldest first.
+  rpc ListDownloads(ListDownloadsRequest) returns (ListDownloadsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetDownload returns a download of the device.
+  rpc GetDownload(GetDownloadRequest) returns (GetDownloadResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // DeleteDownloads removes downloads: a preparation in progress stops and the prepared copy is
+  // deleted. Call it once the device has its file, or gives up on it.
+  rpc DeleteDownloads(DeleteDownloadsRequest) returns (DeleteDownloadsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // SyncOfflinePlayback reports what the device played offline, once the network is back. A
+  // finished playback always counts; a resume point only replaces what the profile did earlier
+  // elsewhere. Sending the same report again does not count twice.
+  rpc SyncOfflinePlayback(SyncOfflinePlaybackRequest) returns (SyncOfflinePlaybackResponse);
+}
+
+enum DownloadQuality {
+  // Same as ORIGINAL.
+  DOWNLOAD_QUALITY_UNSPECIFIED = 0;
+  // The file as it is if the device plays it; otherwise re-encoded as close as possible (1080p at
+  // most).
+  DOWNLOAD_QUALITY_ORIGINAL = 1;
+  // 1080p at most, about 8 Mbit/s; music: AAC at 256 kbit/s.
+  DOWNLOAD_QUALITY_HIGH = 2;
+  // 720p at most, about 4 Mbit/s; music: AAC at 160 kbit/s.
+  DOWNLOAD_QUALITY_MEDIUM = 3;
+  // 480p at most, about 1.5 Mbit/s; music: AAC at 96 kbit/s.
+  DOWNLOAD_QUALITY_LOW = 4;
+}
+
+enum DownloadState {
+  DOWNLOAD_STATE_UNSPECIFIED = 0;
+  // Waiting to be prepared (one file at a time).
+  DOWNLOAD_STATE_QUEUED = 1;
+  // Being prepared (progress).
+  DOWNLOAD_STATE_PREPARING = 2;
+  // Ready: url gives the file.
+  DOWNLOAD_STATE_READY = 3;
+  // Preparation failed (error): ask again, maybe at another quality.
+  DOWNLOAD_STATE_FAILED = 4;
+}
+
+enum DownloadMethod {
+  DOWNLOAD_METHOD_UNSPECIFIED = 0;
+  // The file as it is.
+  DOWNLOAD_METHOD_ORIGINAL = 1;
+  // MP4 without re-encoding (only the container changes).
+  DOWNLOAD_METHOD_REMUX = 2;
+  // Re-encoded MP4 (video, audio, or both).
+  DOWNLOAD_METHOD_TRANSCODE = 3;
+  // Music converted to AAC (M4A).
+  DOWNLOAD_METHOD_CONVERTED = 4;
+}
+
+message Download {
+  string id = 1;
+  // What is downloaded.
+  oneof item {
+    MovieSummary movie = 2;
+    Episode episode = 3;
+    Track track = 4;
+  }
+  // Version downloaded (MediaFile.id).
+  string file_id = 5;
+  DownloadQuality quality = 6;
+  DownloadState state = 7;
+  DownloadMethod method = 8;
+  // Progress of the preparation, from 0 to 1.
+  double progress = 9;
+  // Expected size, then the real one once ready (bytes).
+  int64 estimated_size = 10;
+  int64 size = 11;
+  // Path of the file, to append to the server's address; empty until it is ready.
+  string url = 12;
+  // Suggested name to save it under ("Show - S01E02 - Title.mp4").
+  string file_name = 13;
+  // Streams re-encoded (DOWNLOAD_METHOD_TRANSCODE, CONVERTED).
+  bool video_transcoded = 14;
+  bool audio_transcoded = 15;
+  // Why the file is not delivered as it is, in the language of the request.
+  repeated string reasons = 16;
+  // Subtitles of the file, in the formats the device renders, and fonts for the ASS ones; empty
+  // until they are extracted (file just added).
+  repeated SubtitleTrack subtitles = 17;
+  repeated Font fonts = 18;
+  // Why the preparation failed (DOWNLOAD_STATE_FAILED).
+  string error = 19;
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp ready_at = 21;
+  // When the server forgets it: fetch it before then.
+  google.protobuf.Timestamp expires_at = 22;
+  google.protobuf.Duration duration = 23;
+  // Audio stream kept (MediaStream.index); unset without audio.
+  optional int32 audio_stream_index = 24;
+  // The reasons, for translation (as in StartPlaybackResponse.reason_texts).
+  repeated Text reason_texts = 25;
+}
+
+message CreateDownloadsRequest {
+  // Movies, episodes, tracks, seasons, series, albums or artists.
+  repeated string item_ids = 1;
+  // Version (MediaFile.id), for a single movie, episode or track; empty means the first present
+  // one.
+  string file_id = 2;
+  DownloadQuality quality = 3;
+  // Audio stream (MediaStream.index); unset means the default one.
+  optional int32 audio_stream_index = 4;
+  // What the device plays (subtitle formats included: those it renders are provided).
+  DeviceProfile device = 5;
+}
+
+message CreateDownloadsResponse {
+  // In the order of the items (those already requested included).
+  repeated Download downloads = 1;
+}
+
+message ListDownloadsRequest {}
+
+message ListDownloadsResponse {
+  repeated Download downloads = 1;
+}
+
+message GetDownloadRequest {
+  string download_id = 1;
+}
+
+message GetDownloadResponse {
+  Download download = 1;
+}
+
+message DeleteDownloadsRequest {
+  repeated string download_ids = 1;
+}
+
+message DeleteDownloadsResponse {}
+
+// OfflinePlay is a playback that happened offline.
+message OfflinePlay {
+  // Movie, episode or track.
+  string item_id = 1;
+  // Where playback stopped.
+  google.protobuf.Duration position = 2;
+  // Played to the end (otherwise worked out from the position and the resume thresholds).
+  bool finished = 3;
+  // When playback stopped (device clock; unset means now).
+  google.protobuf.Timestamp played_at = 4;
+}
+
+message SyncOfflinePlaybackRequest {
+  // 1,000 at most.
+  repeated OfflinePlay plays = 1;
+}
+
+message SyncOfflinePlaybackResponse {}

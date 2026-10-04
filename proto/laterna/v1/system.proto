@@ -1,0 +1,443 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/options.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// SystemService administers the server: status, settings, job queue, scheduled tasks, logs.
+// Administrators only, from an unrestricted profile.
+//
+// Log files are downloaded with GET /logs/{name}, with the same "Authorization: Bearer <token>"
+// header.
+service SystemService {
+  // GetSystemStatus describes the server: version, FFmpeg, detected encoders and graphics card,
+  // folders, playbacks and jobs in progress.
+  rpc GetSystemStatus(GetSystemStatusRequest) returns (GetSystemStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // GetSettings returns the runtime settings.
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // UpdateSettings changes settings; they apply right away, without a restart.
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // GetOidcProvider describes the configured OpenID Connect provider, without its secret.
+  rpc GetOidcProvider(GetOidcProviderRequest) returns (GetOidcProviderResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // SetOidcProvider sets the provider (an empty issuer turns OpenID Connect login off). It is
+  // discovered before being stored (INVALID_ARGUMENT if it does not answer).
+  rpc SetOidcProvider(SetOidcProviderRequest) returns (SetOidcProviderResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // GetMetrics reports whether metrics (/metrics, Prometheus text format) are on.
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // EnableMetrics turns /metrics on with a new token, returned only once (the old one stops
+  // working): give it to Prometheus as a Bearer token.
+  rpc EnableMetrics(EnableMetricsRequest) returns (EnableMetricsResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DisableMetrics turns /metrics off.
+  rpc DisableMetrics(DisableMetricsRequest) returns (DisableMetricsResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // ListBackups lists the database backups, newest first: nightly (rotated), manual, taken before a
+  // migration, taken before a restore. Each one is downloaded with GET /backups/{name} and an
+  // administrator's token.
+  rpc ListBackups(ListBackupsRequest) returns (ListBackupsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // CreateBackup backs the database up right now, without stopping the server.
+  rpc CreateBackup(CreateBackupRequest) returns (CreateBackupResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeleteBackup deletes a backup.
+  rpc DeleteBackup(DeleteBackupRequest) returns (DeleteBackupResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // RestoreBackup prepares the restore of a backup: it will replace the database the next time the
+  // server starts (the current database is then kept among the backups). INVALID_ARGUMENT if it
+  // cannot be read or comes from a newer version of Laterna.
+  rpc RestoreBackup(RestoreBackupRequest) returns (RestoreBackupResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // CancelRestore cancels a prepared restore.
+  rpc CancelRestore(CancelRestoreRequest) returns (CancelRestoreResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // ListJobs describes the job queue: counts by kind and state, failed jobs.
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // RetryJobs retries failed jobs.
+  rpc RetryJobs(RetryJobsRequest) returns (RetryJobsResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeleteJobs forgets failed jobs.
+  rpc DeleteJobs(DeleteJobsRequest) returns (DeleteJobsResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // RunTask runs a scheduled task without waiting for its time.
+  rpc RunTask(RunTaskRequest) returns (RunTaskResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // ListLogs returns the latest log messages, newest first.
+  rpc ListLogs(ListLogsRequest) returns (ListLogsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // ListLogFiles lists the daily log files (14 days).
+  rpc ListLogFiles(ListLogFilesRequest) returns (ListLogFilesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+}
+
+message SystemStatus {
+  string version = 1;
+  string commit = 2;
+  google.protobuf.Timestamp started_at = 3;
+  // OS, architecture, Go version.
+  string os = 4;
+  string arch = 5;
+  string go_version = 6;
+  // First line of "ffmpeg -version"; empty if FFmpeg does not start.
+  string ffmpeg = 7;
+  // Usable H.264 encoders, from the preferred one to the last resort.
+  repeated string encoders = 8;
+  // Usable HDR to SDR conversions.
+  repeated string tone_mappers = 9;
+  // The chain on the graphics card (decoding and scaling) is usable.
+  bool gpu = 10;
+  string data_dir = 11;
+  string cache_dir = 12;
+  string metadata_dir = 13;
+  string log_dir = 14;
+  // Playbacks in progress, and FFmpeg processes working for them.
+  int32 playbacks = 15;
+  int32 ffmpeg_running = 16;
+  // Jobs waiting, running, failed.
+  int32 jobs_pending = 17;
+  int32 jobs_running = 18;
+  int32 jobs_failed = 19;
+  // Active video transcodes, and the cap in effect.
+  int32 transcodes = 20;
+  int32 transcode_limit = 21;
+}
+
+message GetSystemStatusRequest {}
+
+message GetSystemStatusResponse {
+  SystemStatus status = 1;
+}
+
+// Settings are the runtime settings.
+message Settings {
+  // Name of the server, announced to clients.
+  string server_name = 1;
+  // Download the images that only an NFO gives a URL for (posters, thumbs, cast photos); false
+  // means no outgoing request at all.
+  bool download_images = 2;
+  // Time between automatic library scans (15 min to 7 days); 0 means never.
+  google.protobuf.Duration scan_interval = 3;
+  // Delay before a vanished file is forgotten (1 h to 90 days); if it comes back before that it
+  // keeps its history.
+  google.protobuf.Duration missing_grace = 4;
+  // Generate scrubbing thumbnails for videos (in the background, one file at a time).
+  bool trickplay = 5;
+  // Watch library folders and scan them as soon as they change (after 10 s of quiet); the periodic
+  // scan remains the safety net.
+  bool watch_libraries = 6;
+  // Look for the intro and credits of episodes by audio, comparing with the other episodes of the
+  // season (in the background, one file at a time); named chapters are always used.
+  bool detect_segments = 7;
+  // Address at which clients reach the server ("https://media.example.org", possibly with a path
+  // behind a proxy); empty if unknown. It sets the passkey relying party and the OIDC redirect
+  // address.
+  string public_url = 8;
+  // Passkey relying party ID (a domain name, that of the public URL or one of its parents); empty
+  // means the host of the public URL.
+  string passkey_rp_id = 9;
+  // Origins allowed besides that of the public URL: a web client hosted elsewhere
+  // ("https://app.example.org"), an Android app ("android:apk-key-hash:..."); ten at most.
+  repeated string passkey_origins = 10;
+  // Concurrent video transcodes allowed; 0 means automatic: 4 with a hardware encoder, otherwise
+  // one per four cores. Beyond that StartPlayback answers RESOURCE_EXHAUSTED; a playback in
+  // progress is never cut off.
+  int32 max_transcodes = 11;
+  // Nightly database backups to keep (7 by default, 90 at most); 0 turns automatic backups off.
+  int32 backup_keep = 12;
+  // Language of the texts the server writes when neither the request (Accept-Language) nor the
+  // profile asks for one it knows: one of GetServerInfoResponse.languages; "en" by default.
+  string language = 13;
+  // Address of the web client ("https://app.example.org"), where Laterna is opened in a browser;
+  // empty means public_url (web client served at the same address as the server). The server puts
+  // the page where a device login code is approved there
+  // (StartDeviceLoginResponse.verification_url).
+  string web_url = 14;
+}
+
+// StringList is a list of strings whose absence can be told from an empty list.
+message StringList {
+  repeated string values = 1;
+}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  Settings settings = 1;
+}
+
+message UpdateSettingsRequest {
+  // Unset leaves it unchanged.
+  optional string server_name = 1;
+  optional bool download_images = 2;
+  google.protobuf.Duration scan_interval = 3;
+  google.protobuf.Duration missing_grace = 4;
+  optional bool trickplay = 5;
+  optional bool watch_libraries = 6;
+  optional bool detect_segments = 7;
+  optional string public_url = 8;
+  optional string passkey_rp_id = 9;
+  StringList passkey_origins = 10;
+  // 0 means automatic; 64 at most.
+  optional int32 max_transcodes = 11;
+  optional int32 backup_keep = 12;
+  optional string language = 13;
+  optional string web_url = 14;
+}
+
+message UpdateSettingsResponse {
+  Settings settings = 1;
+}
+
+// JobCount counts the jobs of a kind in a state.
+message JobCount {
+  // Kind ("file.analyze", "item.metadata", "library.scan"...).
+  string kind = 1;
+  // State: "pending", "running", "failed".
+  string state = 2;
+  int32 count = 3;
+}
+
+// FailedJob is a job that failed for good.
+message FailedJob {
+  int64 id = 1;
+  string kind = 2;
+  // What the job was about, in readable form (file, item, library, image); empty if unknown.
+  string label = 3;
+  int32 attempts = 4;
+  string last_error = 5;
+  google.protobuf.Timestamp failed_at = 6;
+}
+
+message ListJobsRequest {}
+
+message ListJobsResponse {
+  repeated JobCount counts = 1;
+  // The 200 most recent ones.
+  repeated FailedJob failed = 2;
+}
+
+message RetryJobsRequest {
+  // Jobs to retry; empty means all failed jobs.
+  repeated int64 ids = 1;
+}
+
+message RetryJobsResponse {
+  int32 count = 1;
+}
+
+message DeleteJobsRequest {
+  // Jobs to forget; empty means all failed jobs.
+  repeated int64 ids = 1;
+}
+
+message DeleteJobsResponse {
+  int32 count = 1;
+}
+
+// SystemTask is a scheduled task.
+enum SystemTask {
+  SYSTEM_TASK_UNSPECIFIED = 0;
+  // Scan of every library (normally at the configured interval).
+  SYSTEM_TASK_SCAN_LIBRARIES = 1;
+  // Purges: expired sessions, activity older than 90 days, subtitles, fonts, people, images and
+  // thumbnails that are no longer used, audio conversions unused for 30 days (normally every day).
+  SYSTEM_TASK_PURGE = 2;
+}
+
+message RunTaskRequest {
+  SystemTask task = 1;
+}
+
+message RunTaskResponse {}
+
+// LogLevel is the severity of a message.
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_DEBUG = 1;
+  LOG_LEVEL_INFO = 2;
+  LOG_LEVEL_WARN = 3;
+  LOG_LEVEL_ERROR = 4;
+}
+
+message LogAttr {
+  string key = 1;
+  string value = 2;
+}
+
+message LogEntry {
+  google.protobuf.Timestamp time = 1;
+  LogLevel level = 2;
+  string message = 3;
+  repeated LogAttr attrs = 4;
+}
+
+message ListLogsRequest {
+  // Minimum level; unspecified means all those kept (depending on the log level).
+  LogLevel min_level = 1;
+  // Text to look for in the message and the attributes, ignoring case.
+  string query = 2;
+  // 1 to 1000; 0 means 200. The server keeps the last 2,000 messages in memory.
+  int32 limit = 3;
+}
+
+message ListLogsResponse {
+  repeated LogEntry entries = 1;
+}
+
+message LogFile {
+  // Name to pass to GET /logs/{name} ("laterna_20260930.log").
+  string name = 1;
+  int64 size = 2;
+  google.protobuf.Timestamp modified_at = 3;
+}
+
+message ListLogFilesRequest {}
+
+message ListLogFilesResponse {
+  repeated LogFile files = 1;
+}
+
+// OidcProvider is the configured OpenID Connect provider.
+message OidcProvider {
+  // Issuer URL ("https://auth.example.org"); empty means no provider.
+  string issuer = 1;
+  string client_id = 2;
+  // Label of the sign-in button ("Authelia").
+  string name = 3;
+  // Create an account for a provider user who has none yet (regular account).
+  bool auto_create = 4;
+  // The client secret is set (it is never returned).
+  bool has_secret = 5;
+  // Redirect URL to register at the provider; empty until the server's public URL is set.
+  string callback_url = 6;
+}
+
+message GetOidcProviderRequest {}
+
+message GetOidcProviderResponse {
+  OidcProvider provider = 1;
+}
+
+message SetOidcProviderRequest {
+  string issuer = 1;
+  string client_id = 2;
+  // Empty keeps the one of the same client.
+  string client_secret = 3;
+  string name = 4;
+  bool auto_create = 5;
+}
+
+message SetOidcProviderResponse {
+  OidcProvider provider = 1;
+}
+
+message GetMetricsRequest {}
+
+message GetMetricsResponse {
+  bool enabled = 1;
+  // Path to append to the server's address.
+  string path = 2;
+}
+
+message EnableMetricsRequest {}
+
+message EnableMetricsResponse {
+  // Metrics token, shown only once.
+  string token = 1;
+  string path = 2;
+}
+
+message DisableMetricsRequest {}
+
+message DisableMetricsResponse {}
+
+// Backup is a database backup.
+message Backup {
+  // File name, which identifies it.
+  string name = 1;
+  BackupKind kind = 2;
+  int64 size_bytes = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+enum BackupKind {
+  BACKUP_KIND_UNSPECIFIED = 0;
+  // Nightly: only the most recent ones are kept (backup_keep setting).
+  BACKUP_KIND_AUTO = 1;
+  // Requested by an administrator: kept until they delete it.
+  BACKUP_KIND_MANUAL = 2;
+  // Taken before a schema upgrade (the last three are kept).
+  BACKUP_KIND_MIGRATION = 3;
+  // The database a restore replaced (the last three are kept).
+  BACKUP_KIND_REPLACED = 4;
+}
+
+message ListBackupsRequest {}
+
+message ListBackupsResponse {
+  repeated Backup backups = 1;
+  // A restore is waiting for the next start.
+  bool restore_pending = 2;
+}
+
+message CreateBackupRequest {}
+
+message CreateBackupResponse {
+  Backup backup = 1;
+}
+
+message DeleteBackupRequest {
+  string name = 1;
+}
+
+message DeleteBackupResponse {}
+
+message RestoreBackupRequest {
+  string name = 1;
+}
+
+message RestoreBackupResponse {}
+
+message CancelRestoreRequest {}
+
+message CancelRestoreResponse {
+  // False if there was nothing to cancel.
+  bool cancelled = 1;
+}

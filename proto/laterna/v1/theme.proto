@@ -1,0 +1,245 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/catalog.proto";
+import "laterna/v1/options.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// ThemeService serves the themes of the server: design tokens (colors by role in dark and light,
+// radius, density, font, optional logo and background) that each client maps to its own UI. Never
+// CSS. A theme whose text does not contrast enough with its background (WCAG AA) is rejected, so
+// every accepted theme is readable. Administrators create the themes and pick the server's; each
+// profile picks its own theme and mode. A ThemesChanged event asks clients to reload the theme when
+// it may have changed.
+service ThemeService {
+  // GetServerTheme returns the server's theme, without signing in: the one of the sign-in screen.
+  rpc GetServerTheme(GetServerThemeRequest) returns (GetServerThemeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_PUBLIC;
+  }
+  // GetMyTheme returns the theme to show for the picked profile (its own, otherwise the server's)
+  // and its mode.
+  rpc GetMyTheme(GetMyThemeRequest) returns (GetMyThemeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // SetMyTheme sets the theme of the picked profile (empty means the server's) and its mode. Any
+  // profile can, even a restricted one.
+  rpc SetMyTheme(SetMyThemeRequest) returns (SetMyThemeResponse);
+  // ListThemes lists the themes, built-in first.
+  rpc ListThemes(ListThemesRequest) returns (ListThemesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // CreateTheme creates a theme. INVALID_ARGUMENT says what is wrong (color, insufficient contrast
+  // with its value, radius, density, font).
+  rpc CreateTheme(CreateThemeRequest) returns (CreateThemeResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // UpdateTheme replaces the name and tokens of a theme (FAILED_PRECONDITION for a built-in theme:
+  // make a copy instead).
+  rpc UpdateTheme(UpdateThemeRequest) returns (UpdateThemeResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeleteTheme deletes a theme. Profiles that had picked it go back to the server's theme, and the
+  // built-in theme replaces the server's if that was the one deleted.
+  rpc DeleteTheme(DeleteThemeRequest) returns (DeleteThemeResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // SetServerTheme picks the server's theme.
+  rpc SetServerTheme(SetServerThemeRequest) returns (SetServerThemeResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // SetThemeImage replaces the logo or the background of a theme (JPEG, PNG or WebP, 8 MiB at
+  // most); empty removes it.
+  rpc SetThemeImage(SetThemeImageRequest) returns (SetThemeImageResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // ExportTheme returns a theme as a JSON file (tokens and images) to import elsewhere.
+  rpc ExportTheme(ExportThemeRequest) returns (ExportThemeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // ImportTheme creates a theme from an exported file, checked like a new theme. A name that is
+  // already taken gets a number.
+  rpc ImportTheme(ImportThemeRequest) returns (ImportThemeResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+}
+
+// Theme is a theme.
+message Theme {
+  string id = 1;
+  string name = 2;
+  // Ships with Laterna: cannot be edited or deleted.
+  bool built_in = 3;
+  ThemeTokens tokens = 4;
+  // Logo (of the server) and background (of the home page and the sign-in screen), both optional.
+  Image logo = 5;
+  Image background = 6;
+  // It is the server's theme.
+  bool server_default = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  // Theme that ships with Laterna: its name is written in the language of the request and given
+  // here for translation ("theme.name.laterna", "theme.name.ocean"...).
+  Text name_text = 9;
+}
+
+// ThemeTokens are the tokens of a theme.
+message ThemeTokens {
+  Palette dark = 1;
+  Palette light = 2;
+  // Corner radius, in points (0 to 24).
+  int32 radius = 3;
+  ThemeDensity density = 4;
+  ThemeFont font = 5;
+}
+
+// Palette gives each role a color, as "#rrggbb". Required contrasts: text and text_muted on
+// background and surface (and text on surface_raised), on_accent on accent, on_error on error:
+// 4.5:1; accent, error, success and warning on background: 3:1.
+message Palette {
+  // App background.
+  string background = 1;
+  // Cards, panels.
+  string surface = 2;
+  // Menus, dialogs, hovered item.
+  string surface_raised = 3;
+  // Main text, and secondary text.
+  string text = 4;
+  string text_muted = 5;
+  // Buttons, selection, progress; and the text drawn on it.
+  string accent = 6;
+  string on_accent = 7;
+  // Borders and dividers (decorative).
+  string outline = 8;
+  string error = 9;
+  string on_error = 10;
+  string success = 11;
+  string warning = 12;
+}
+
+enum ThemeDensity {
+  THEME_DENSITY_UNSPECIFIED = 0;
+  THEME_DENSITY_COMPACT = 1;
+  THEME_DENSITY_COMFORTABLE = 2;
+  THEME_DENSITY_SPACIOUS = 3;
+}
+
+// ThemeFont is a font from a fixed list: the client bundles it, or uses the system font.
+enum ThemeFont {
+  THEME_FONT_UNSPECIFIED = 0;
+  THEME_FONT_SYSTEM = 1;
+  THEME_FONT_INTER = 2;
+  // Atkinson Hyperlegible, designed for low-vision readers.
+  THEME_FONT_ATKINSON = 3;
+  THEME_FONT_LEXEND = 4;
+  THEME_FONT_SERIF = 5;
+}
+
+// ThemeMode: dark, light, or whatever the device uses.
+enum ThemeMode {
+  THEME_MODE_UNSPECIFIED = 0;
+  THEME_MODE_AUTO = 1;
+  THEME_MODE_DARK = 2;
+  THEME_MODE_LIGHT = 3;
+}
+
+enum ThemeImageKind {
+  THEME_IMAGE_KIND_UNSPECIFIED = 0;
+  THEME_IMAGE_KIND_LOGO = 1;
+  THEME_IMAGE_KIND_BACKGROUND = 2;
+}
+
+message GetServerThemeRequest {}
+
+message GetServerThemeResponse {
+  Theme theme = 1;
+}
+
+message GetMyThemeRequest {}
+
+message GetMyThemeResponse {
+  // The theme to show.
+  Theme theme = 1;
+  ThemeMode mode = 2;
+  // The profile has not picked one: this is the server's theme.
+  bool follows_server = 3;
+}
+
+message SetMyThemeRequest {
+  // Empty means follow the server's theme.
+  string theme_id = 1;
+  // Unspecified means the device's.
+  ThemeMode mode = 2;
+}
+
+message SetMyThemeResponse {}
+
+message ListThemesRequest {}
+
+message ListThemesResponse {
+  repeated Theme themes = 1;
+}
+
+message CreateThemeRequest {
+  string name = 1;
+  ThemeTokens tokens = 2;
+}
+
+message CreateThemeResponse {
+  Theme theme = 1;
+}
+
+message UpdateThemeRequest {
+  string theme_id = 1;
+  string name = 2;
+  ThemeTokens tokens = 3;
+}
+
+message UpdateThemeResponse {
+  Theme theme = 1;
+}
+
+message DeleteThemeRequest {
+  string theme_id = 1;
+}
+
+message DeleteThemeResponse {}
+
+message SetServerThemeRequest {
+  string theme_id = 1;
+}
+
+message SetServerThemeResponse {}
+
+message SetThemeImageRequest {
+  string theme_id = 1;
+  ThemeImageKind kind = 2;
+  // Empty removes the image.
+  bytes data = 3;
+}
+
+message SetThemeImageResponse {
+  Theme theme = 1;
+}
+
+message ExportThemeRequest {
+  string theme_id = 1;
+}
+
+message ExportThemeResponse {
+  // Suggested file name ("<name>.laterna-theme.json").
+  string file_name = 1;
+  bytes data = 2;
+}
+
+message ImportThemeRequest {
+  bytes data = 1;
+}
+
+message ImportThemeResponse {
+  Theme theme = 1;
+}

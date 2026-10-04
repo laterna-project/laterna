@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "laterna/v1/catalog.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// MusicService browses the music libraries for the picked profile: artists (those with at least one
+// album), albums and tracks, taken from the tags of the files; album.nfo, artist.nfo and the images
+// next to them complete them.
+//
+// Search, favorites, "played" (SetPlayed: an album or an artist means all its tracks) and playback
+// (PlaybackService.StartPlayback with the ID of a track) go through the shared services. Lists are
+// paged, like those of CatalogService.
+service MusicService {
+  // ListArtists returns a page of artists.
+  rpc ListArtists(ListArtistsRequest) returns (ListArtistsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetArtist returns the details of an artist and their albums, newest first.
+  rpc GetArtist(GetArtistRequest) returns (GetArtistResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListAlbums returns a page of albums, from a whole library or from one artist.
+  rpc ListAlbums(ListAlbumsRequest) returns (ListAlbumsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetAlbum returns the details of an album and its present tracks, in disc order.
+  rpc GetAlbum(GetAlbumRequest) returns (GetAlbumResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListTracks returns a page of tracks (all of them, or the favorites).
+  rpc ListTracks(ListTracksRequest) returns (ListTracksResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetTrack returns a track and its files.
+  rpc GetTrack(GetTrackRequest) returns (GetTrackResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListArtistTracks returns all the present tracks of an artist, album by album (oldest first):
+  // enough to play everything, or shuffle everything.
+  rpc ListArtistTracks(ListArtistTracksRequest) returns (ListArtistTracksResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message ListArtistsRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  ItemSort sort = 2;
+  bool reverse = 3;
+  bool favorites_only = 4;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message ListArtistsResponse {
+  repeated ArtistSummary artists = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message GetArtistRequest {
+  string artist_id = 1;
+}
+
+message GetArtistResponse {
+  Artist artist = 1;
+  repeated AlbumSummary albums = 2;
+}
+
+message ListAlbumsRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  // Empty means all artists.
+  string artist_id = 2;
+  ItemSort sort = 3;
+  bool reverse = 4;
+  // Keep only this genre (case does not matter).
+  string genre = 5;
+  bool favorites_only = 6;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 7;
+  string page_token = 8;
+}
+
+message ListAlbumsResponse {
+  repeated AlbumSummary albums = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message GetAlbumRequest {
+  string album_id = 1;
+}
+
+message GetAlbumResponse {
+  Album album = 1;
+  repeated Track tracks = 2;
+}
+
+message ListTracksRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  ItemSort sort = 2;
+  bool reverse = 3;
+  bool favorites_only = 4;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message ListTracksResponse {
+  repeated Track tracks = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message GetTrackRequest {
+  string track_id = 1;
+}
+
+message GetTrackResponse {
+  Track track = 1;
+  // By version ("FLAC", "MP3"): the files of one track.
+  repeated MediaFile files = 2;
+}
+
+message ListArtistTracksRequest {
+  string artist_id = 1;
+}
+
+message ListArtistTracksResponse {
+  repeated Track tracks = 1;
+}

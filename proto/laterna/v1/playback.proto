@@ -1,0 +1,199 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "laterna/v1/catalog.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// PlaybackService opens and follows the playbacks of the picked profile. The client says what the
+// device can play; the server picks direct play of the file, otherwise HLS that copies each stream
+// the device plays and re-encodes the others (H.264, AAC), and returns the URL of the stream. A
+// music track is played directly or converted to AAC (a whole file: never HLS for music).
+//
+// Stream URLs (url) need no Authorization header, because a <video> element cannot send one. They
+// hold a secret specific to the session and are only valid while it plays.
+//
+// Subtitles are extracted at import time and served on the side: the client renders them itself,
+// right from the start, and switches without restarting anything. Only a subtitle the device cannot
+// render is burned into the picture (last resort: the video is then re-encoded, and switching
+// subtitles reopens the playback).
+service PlaybackService {
+  // StartPlayback opens the playback of a movie, an episode or a track.
+  rpc StartPlayback(StartPlaybackRequest) returns (StartPlaybackResponse);
+  // ReportProgress reports the playback position (about every ten seconds, and on pause). It is
+  // saved regularly and used for resuming and for the home page.
+  rpc ReportProgress(ReportProgressRequest) returns (ReportProgressResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // StopPlayback ends the playback: position saved, resources released. A forgotten session closes
+  // on its own after 30 minutes without news.
+  rpc StopPlayback(StopPlaybackRequest) returns (StopPlaybackResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // GetSubtitles reads the subtitles and fonts of a playback again: for a file that was just added
+  // and whose extraction was not done when the playback opened (subtitles_ready false).
+  rpc GetSubtitles(GetSubtitlesRequest) returns (GetSubtitlesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// DeviceProfile is what the device can play. Each client builds it from its own capabilities (a
+// browser probes them with MediaSource.isTypeSupported). The server assumes nothing.
+message DeviceProfile {
+  // Containers played directly: "mp4", "mkv", "webm"...; for music: "flac", "mp3", "m4a", "ogg",
+  // "wav"...
+  repeated string containers = 1;
+  repeated VideoSupport video = 2;
+  // Audio codecs: "aac", "mp3", "opus", "flac", "ac3", "eac3"...
+  repeated string audio_codecs = 3;
+  // Can play HLS with fMP4 segments.
+  bool hls = 4;
+  // Subtitle formats the client renders itself: "vtt" (WebVTT), "ass" (libass, JASSUB), "sup"
+  // (PGS).
+  repeated string subtitle_formats = 5;
+}
+
+message VideoSupport {
+  // "h264", "hevc", "av1", "vp9"...
+  string codec = 1;
+  // Highest bit depth (8, 10...); 0 means 8.
+  int32 max_bit_depth = 2;
+  // Displays HDR; otherwise an HDR source has to be tone mapped.
+  bool hdr = 3;
+}
+
+enum PlaybackMethod {
+  PLAYBACK_METHOD_UNSPECIFIED = 0;
+  // The file as it is (url: the file, Range requests accepted).
+  PLAYBACK_METHOD_DIRECT = 1;
+  // HLS without re-encoding (url: the .m3u8 playlist).
+  PLAYBACK_METHOD_HLS_REMUX = 2;
+  // Transcoded HLS (url: the .m3u8 playlist).
+  PLAYBACK_METHOD_HLS_TRANSCODE = 3;
+  // Music converted to AAC by the server (url: the whole .m4a file, Range requests accepted). The
+  // first response waits for the conversion to finish (about 2 s for a 4 min song, 5 s for 10 min;
+  // nothing afterwards); it then plays like a direct file.
+  PLAYBACK_METHOD_CONVERTED = 4;
+}
+
+message StartPlaybackRequest {
+  // Movie, episode or track.
+  string item_id = 1;
+  // Version to play (MediaFile.id); empty means the first present one.
+  string file_id = 2;
+  // Audio stream (MediaStream.index); unset means the default one.
+  optional int32 audio_stream_index = 3;
+  DeviceProfile device = 4;
+  // Subtitle shown from the start (SubtitleTrack.index, from an earlier playback of this file);
+  // unset means none. Only a subtitle the device cannot render changes the playback: it is burned
+  // in.
+  optional int32 subtitle_index = 5;
+}
+
+message StartPlaybackResponse {
+  string session_id = 1;
+  PlaybackMethod method = 2;
+  // Path of the stream, to append to the server's address.
+  string url = 3;
+  string file_id = 4;
+  // Audio stream played; unset if the file has no audio.
+  optional int32 audio_stream_index = 5;
+  google.protobuf.Duration duration = 6;
+  // Resume point of the profile; unset means from the start.
+  google.protobuf.Duration resume_position = 7;
+  // Why playback is not direct (playback info), in the language of the request; empty for direct
+  // play.
+  repeated string reasons = 8;
+  // Streams re-encoded (PLAYBACK_METHOD_HLS_TRANSCODE): video to H.264, audio to AAC.
+  bool video_transcoded = 9;
+  bool audio_transcoded = 10;
+  // Encoder of the re-encoded video ("h264_nvenc", "libx264"...).
+  string video_encoder = 11;
+  // Subtitles of the file: its streams, then the files next to it.
+  repeated SubtitleTrack subtitles = 12;
+  // Fonts of the ASS subtitles (attached to the file), to give to the renderer.
+  repeated Font fonts = 13;
+  // False until the subtitles are extracted (file just added): their URLs wait for it, and the font
+  // list is still empty.
+  bool subtitles_ready = 14;
+  // Subtitle burned into the picture (SubtitleTrack.index); unset otherwise.
+  optional int32 burned_subtitle_index = 15;
+  // The reasons, for translation: "reason.video_unsupported" (params "codec", "bit_depth",
+  // "dynamic_range"), "reason.audio_unsupported", "reason.container_unsupported"...
+  repeated Text reason_texts = 19;
+  // HDR to SDR conversion of the re-encoded video ("libplacebo", "opencl", "zscale"...); empty if
+  // none.
+  string tone_mapping = 16;
+  // Re-encoded video decoded and processed on the graphics card (Vulkan).
+  bool gpu = 17;
+  // Segments to offer to skip (intro, credits, recap, preview) in the file played.
+  repeated MediaSegment segments = 18;
+}
+
+// SubtitleTrack is a subtitle of the file played: one of its streams or a file next to it.
+message SubtitleTrack {
+  // Position in the list (StartPlaybackRequest.subtitle_index).
+  int32 index = 1;
+  // ISO 639-2 code ("fre", "jpn"); empty if unknown.
+  string language = 2;
+  string title = 3;
+  // "ass", "subrip", "hdmv_pgs_subtitle"...
+  string codec = 4;
+  bool default = 5;
+  bool forced = 6;
+  bool hearing_impaired = 7;
+  // File next to the video (otherwise a stream of the file).
+  bool external = 8;
+  // Image subtitle (PGS, VobSub): rendered by a client that reads "sup", burned in otherwise.
+  bool image = 9;
+  // Versions served.
+  repeated SubtitleFile files = 10;
+}
+
+message SubtitleFile {
+  // "ass" (the original with its styles, for libass or JASSUB), "vtt" (WebVTT; when derived from
+  // ASS, dialogue only, without signs or effects), "sup" (PGS), "mks" (VobSub).
+  string format = 1;
+  // Path, to append to the server's address.
+  string url = 2;
+}
+
+// Font is a font used by the ASS subtitles of the file played.
+message Font {
+  // Names a subtitle may call it by, in lower case.
+  repeated string names = 1;
+  // Path, to append to the server's address: no authentication, and immutable (the content hash is
+  // part of it; a font shared by a whole series is loaded once).
+  string url = 2;
+  int64 size = 3;
+}
+
+message ReportProgressRequest {
+  string session_id = 1;
+  google.protobuf.Duration position = 2;
+}
+
+message ReportProgressResponse {}
+
+message StopPlaybackRequest {
+  string session_id = 1;
+  // Position when stopping; unset means the last one reported.
+  google.protobuf.Duration position = 2;
+}
+
+message StopPlaybackResponse {}
+
+message GetSubtitlesRequest {
+  string session_id = 1;
+  // Wait for the extraction to finish (two minutes at most) before answering.
+  bool wait = 2;
+}
+
+message GetSubtitlesResponse {
+  repeated SubtitleTrack subtitles = 1;
+  repeated Font fonts = 2;
+  bool subtitles_ready = 3;
+}

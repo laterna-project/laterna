@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// Access says who may call a method. The server enforces it before running the call. A method
+// without the option requires a picked profile by default, so forgetting to protect one is not
+// possible.
+enum Access {
+  // Default value: same as ACCESS_PROFILE.
+  ACCESS_UNSPECIFIED = 0;
+  // No authentication (server discovery, login).
+  ACCESS_PUBLIC = 1;
+  // Signed-in account, profile not necessarily picked (profile selection, device management).
+  ACCESS_ACCOUNT = 2;
+  // Signed-in account and picked profile: everything that touches the catalog and playback.
+  ACCESS_PROFILE = 3;
+  // Administrator account. A profile is not required, but a restricted one is refused.
+  ACCESS_ADMIN = 4;
+}
+
+extend google.protobuf.MethodOptions {
+  // Access level the method requires.
+  Access access = 50001;
+}

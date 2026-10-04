@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "laterna/v1/catalog.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// PhotoService browses the photo libraries for the picked profile: a timeline, most recently taken
+// first, and one album per folder. Photos are loaded through the image route (IMAGE_KIND_PHOTO,
+// "?w=" for a resized version), orientation applied. Favorites and album search go through the
+// shared services; a photo cannot be "played".
+service PhotoService {
+  // ListPhotos returns a page of photos, most recently taken first.
+  rpc ListPhotos(ListPhotosRequest) returns (ListPhotosResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListPhotoMonths counts the photos of each month (for a scrubber).
+  rpc ListPhotoMonths(ListPhotoMonthsRequest) returns (ListPhotoMonthsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListPhotoAlbums lists the top-level albums, starting with the one that got photos most
+  // recently.
+  rpc ListPhotoAlbums(ListPhotoAlbumsRequest) returns (ListPhotoAlbumsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetPhotoAlbum returns an album and the albums inside it; its photos are read with ListPhotos
+  // (album_id).
+  rpc GetPhotoAlbum(GetPhotoAlbumRequest) returns (GetPhotoAlbumResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetPhoto returns the details of a photo and its file.
+  rpc GetPhoto(GetPhotoRequest) returns (GetPhotoResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message ListPhotosRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  // Empty means all albums; otherwise the photos of this album (not those of the albums inside it).
+  string album_id = 2;
+  bool favorites_only = 3;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListPhotosResponse {
+  repeated PhotoSummary photos = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message ListPhotoMonthsRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  // Empty means all albums.
+  string album_id = 2;
+  bool favorites_only = 3;
+}
+
+message PhotoMonth {
+  int32 year = 1;
+  // 1 to 12.
+  int32 month = 2;
+  int32 count = 3;
+}
+
+message ListPhotoMonthsResponse {
+  // Most recent first.
+  repeated PhotoMonth months = 1;
+}
+
+message ListPhotoAlbumsRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+}
+
+message ListPhotoAlbumsResponse {
+  repeated PhotoAlbum albums = 1;
+}
+
+message GetPhotoAlbumRequest {
+  string album_id = 1;
+}
+
+message GetPhotoAlbumResponse {
+  PhotoAlbum album = 1;
+  repeated PhotoAlbum albums = 2;
+}
+
+message GetPhotoRequest {
+  string photo_id = 1;
+}
+
+message GetPhotoResponse {
+  Photo photo = 1;
+  repeated MediaFile files = 2;
+}

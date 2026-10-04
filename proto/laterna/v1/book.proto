@@ -1,0 +1,142 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "laterna/v1/catalog.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// BookService browses the book libraries for the picked profile and prepares reading: series (the
+// volumes of a comic, a manga, a saga) and books, described by what the files say (the OPF of an
+// EPUB, ComicInfo.xml, the Info of a PDF) and by the metadata.opf of a Calibre library.
+//
+// A book is read in one of the three ways BookLayout lists. Pages and the file are loaded from
+// immutable URLs without an authentication header: the key in the URL stands in for it. Search,
+// favorites and "read" (SetPlayed) go through the shared services.
+service BookService {
+  // ListBookSeries returns a page of book series.
+  rpc ListBookSeries(ListBookSeriesRequest) returns (ListBookSeriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetBookSeries returns a series and its present books, in volume order.
+  rpc GetBookSeries(GetBookSeriesRequest) returns (GetBookSeriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListBooks returns a page of books, from a whole library or from one series.
+  rpc ListBooks(ListBooksRequest) returns (ListBooksResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetBook returns the details of a book and its files (one per format).
+  rpc GetBook(GetBookRequest) returns (GetBookResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // OpenBook prepares reading a book: layout, pages, URLs, progress.
+  rpc OpenBook(OpenBookRequest) returns (OpenBookResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // SaveReadingProgress stores where the profile is; past 98% the book is read.
+  rpc SaveReadingProgress(SaveReadingProgressRequest) returns (SaveReadingProgressResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+message ListBookSeriesRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  ItemSort sort = 2;
+  bool reverse = 3;
+  bool favorites_only = 4;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message ListBookSeriesResponse {
+  repeated BookSeries series = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message GetBookSeriesRequest {
+  string series_id = 1;
+}
+
+message GetBookSeriesResponse {
+  BookSeries series = 1;
+  repeated BookSummary books = 2;
+}
+
+message ListBooksRequest {
+  // Empty means all libraries.
+  string library_id = 1;
+  // Empty means all series (and standalone books).
+  string series_id = 2;
+  ItemSort sort = 3;
+  bool reverse = 4;
+  // Keep only this genre (case does not matter).
+  string genre = 5;
+  // Keep only read (true) or unread (false) books; unset means all.
+  optional bool read = 6;
+  bool favorites_only = 7;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 8;
+  string page_token = 9;
+}
+
+message ListBooksResponse {
+  repeated BookSummary books = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message GetBookRequest {
+  string book_id = 1;
+}
+
+message GetBookResponse {
+  Book book = 1;
+  // One per format ("EPUB", "PDF", "CBZ" in MediaFile.version); MediaFile.book says how to read
+  // each.
+  repeated MediaFile files = 2;
+}
+
+message OpenBookRequest {
+  string book_id = 1;
+  // File to read; empty means the one the server prefers (the one read page by page, if any).
+  string file_id = 2;
+}
+
+// PageSize is the size of a page in pixels.
+message PageSize {
+  int32 width = 1;
+  int32 height = 2;
+}
+
+message OpenBookResponse {
+  BookSummary book = 1;
+  string file_id = 2;
+  BookFile file = 3;
+  // BOOK_LAYOUT_IMAGES: size of each page, in order (a page wider than it is tall is a double
+  // page).
+  repeated PageSize pages = 4;
+  // URL of the whole file, to append to the server's address; Range requests are accepted.
+  string file_url = 5;
+  // BOOK_LAYOUT_IMAGES: the URL of page n is page_url_prefix + n, to append to the server's
+  // address. Add "?w=<width>" for a resized version (same tiers as images). Immutable.
+  string page_url_prefix = 6;
+  // Unset if the profile has not started it.
+  ReadingProgress progress = 7;
+}
+
+message SaveReadingProgressRequest {
+  string book_id = 1;
+  // Page (zero-based) of a paged book or a document.
+  int32 page = 2;
+  // Location given by the reader (EPUB: CFI); 4,096 characters at most.
+  string locator = 3;
+  // From 0 to 1.
+  double progression = 4;
+}
+
+message SaveReadingProgressResponse {}

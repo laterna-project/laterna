@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/catalog.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// HistoryService gives the playback history of the picked profile, its statistics and its yearly
+// recap. Each playback of a movie, an episode or a track is kept, with the time actually watched
+// (seeks and pauses excluded), as soon as it goes over one minute (30 s for a track, or half of a
+// shorter item). Offline plays go in when the device reports them. The history outlives a forgotten
+// file: the title stays.
+service HistoryService {
+  // ListHistory lists the plays, newest first.
+  rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // DeleteHistoryEntry deletes a play.
+  rpc DeleteHistoryEntry(DeleteHistoryEntryRequest) returns (DeleteHistoryEntryResponse);
+  // ClearHistory wipes the whole history of the profile (items stay marked as played).
+  rpc ClearHistory(ClearHistoryRequest) returns (ClearHistoryResponse);
+  // GetStats sums up the history of a calendar year (the yearly recap) or of all time.
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+enum HistoryKind {
+  HISTORY_KIND_UNSPECIFIED = 0;
+  HISTORY_KIND_MOVIE = 1;
+  HISTORY_KIND_EPISODE = 2;
+  HISTORY_KIND_TRACK = 3;
+}
+
+// HistoryEntry is one playback.
+message HistoryEntry {
+  string id = 1;
+  // The item as it is today; unset if it was forgotten or the profile can no longer see it (title
+  // and subtitle stay).
+  oneof item {
+    MovieSummary movie = 2;
+    Episode episode = 3;
+    Track track = 4;
+  }
+  HistoryKind kind = 5;
+  // Title at the time of the playback. subtitle is the series of an episode or the artists of a
+  // track.
+  string title = 6;
+  string subtitle = 7;
+  google.protobuf.Timestamp started_at = 8;
+  google.protobuf.Timestamp ended_at = 9;
+  // Time actually watched. position is where playback stopped.
+  google.protobuf.Duration watched = 10;
+  google.protobuf.Duration position = 11;
+  // Played up to the end credits.
+  bool completed = 12;
+  // Device that played it.
+  string device = 13;
+  // Played offline and reported later (watched is then the position reached).
+  bool offline = 14;
+}
+
+message ListHistoryRequest {
+  // 50 by default, 200 at most.
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListHistoryResponse {
+  repeated HistoryEntry entries = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+}
+
+message DeleteHistoryEntryRequest {
+  string entry_id = 1;
+}
+
+message DeleteHistoryEntryResponse {}
+
+message ClearHistoryRequest {}
+
+message ClearHistoryResponse {
+  int64 deleted = 1;
+}
+
+message GetStatsRequest {
+  // Calendar year (the yearly recap); 0 means all time.
+  int32 year = 1;
+  // Time zone of the client ("Europe/Paris"): it sets the days, hours and months; empty means the
+  // server's.
+  string time_zone = 2;
+}
+
+message GetStatsResponse {
+  Stats stats = 1;
+}
+
+// Stats sums up the plays of a period. Each play counts for the day, hour and month it started.
+message Stats {
+  // Time watched, in total and then per kind.
+  google.protobuf.Duration total = 1;
+  google.protobuf.Duration movies_time = 2;
+  google.protobuf.Duration episodes_time = 3;
+  google.protobuf.Duration music_time = 4;
+  // Plays; distinct movies, episodes and tracks; series with at least one episode watched.
+  int32 plays = 5;
+  int32 movies = 6;
+  int32 episodes = 7;
+  int32 series = 8;
+  int32 tracks = 9;
+  // Rankings, five at most: by time watched (tracks: by play count).
+  repeated StatEntry top_series = 10;
+  repeated StatEntry top_movies = 11;
+  repeated StatEntry top_artists = 12;
+  repeated StatEntry top_tracks = 13;
+  repeated StatEntry top_genres = 14;
+  // Time watched per month of a year (twelve), or per year for all time.
+  repeated TimeBucket timeline = 15;
+  // Time watched per weekday and hour: 168 values, Monday 0:00, Monday 1:00... Sunday 23:00.
+  repeated google.protobuf.Duration by_hour = 16;
+  // The busiest day; unset without any play.
+  TimeBucket busiest_day = 17;
+  // The most episodes of one series watched in a day; unset without any episode.
+  Binge binge = 18;
+  // First and last plays of the period (without the item: title and subtitle).
+  HistoryEntry first = 19;
+  HistoryEntry last = 20;
+}
+
+// StatEntry is one line of a ranking.
+message StatEntry {
+  // Series, movie, artist or track; empty for a genre, or a forgotten item.
+  string item_id = 1;
+  string name = 2;
+  google.protobuf.Duration time = 3;
+  int32 plays = 4;
+  // Images of the item if it still exists: poster, cover, artist photo.
+  repeated Image images = 5;
+}
+
+// TimeBucket is the time watched over a period starting at start (midnight, client time).
+message TimeBucket {
+  google.protobuf.Timestamp start = 1;
+  google.protobuf.Duration time = 2;
+}
+
+// Binge: episodes distinct episodes of a series watched on the same day.
+message Binge {
+  string series_id = 1;
+  string series = 2;
+  google.protobuf.Timestamp day = 3;
+  int32 episodes = 4;
+  google.protobuf.Duration time = 5;
+}

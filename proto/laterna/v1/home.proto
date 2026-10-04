@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "laterna/v1/catalog.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// HomeService builds the home page of the picked profile. The server decides which rows there are
+// and in what order: every client shows the same home page, and it gets better without updating
+// them.
+//
+// The order: what is in progress (resume, next up, continue reading); recently added in movie and
+// series libraries; recommendations; music (recently played albums, then recently added); recently
+// added books, then photos. Within each group, libraries follow the order chosen by the
+// administrator (LibraryService.ReorderLibraries).
+service HomeService {
+  // GetHome returns the rows of the home page; empty rows are left out.
+  rpc GetHome(GetHomeRequest) returns (GetHomeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+enum HomeRowKind {
+  HOME_ROW_KIND_UNSPECIFIED = 0;
+  // Movies and episodes started, most recently played first.
+  HOME_ROW_KIND_RESUME = 1;
+  // For each series in progress, the episode after the last one played.
+  HOME_ROW_KIND_NEXT_UP = 2;
+  // Movies recently added to a library.
+  HOME_ROW_KIND_LATEST_MOVIES = 3;
+  // Series of a library, starting with the one that got an episode most recently.
+  HOME_ROW_KIND_LATEST_SERIES = 4;
+  // Albums the profile played a track of, most recent listen first.
+  HOME_ROW_KIND_RECENT_ALBUMS = 5;
+  // Albums recently added to a music library.
+  HOME_ROW_KIND_LATEST_ALBUMS = 6;
+  // Books started and not finished, most recently read first.
+  HOME_ROW_KIND_READING = 7;
+  // Books recently added to a book library.
+  HOME_ROW_KIND_LATEST_BOOKS = 8;
+  // Photos recently added to a photo library.
+  HOME_ROW_KIND_LATEST_PHOTOS = 9;
+  // Movies and series the profile has not watched, close to what it did watch (genres, directors,
+  // actors, collection...), closest first.
+  HOME_ROW_KIND_RECOMMENDED = 10;
+  // Movies and series close to a movie or a series the profile watched recently (source_item_id).
+  HOME_ROW_KIND_BECAUSE_YOU_WATCHED = 11;
+}
+
+message HomeItem {
+  oneof item {
+    MovieSummary movie = 1;
+    SeriesSummary series = 2;
+    Episode episode = 3;
+    AlbumSummary album = 4;
+    BookSummary book = 5;
+    PhotoSummary photo = 6;
+  }
+}
+
+message HomeRow {
+  HomeRowKind kind = 1;
+  // Title written by the server in the language of the request ("Resume", "Recently added in
+  // Movies"); title_text gives it for translation.
+  string title = 2;
+  // Library of a recently added row; empty otherwise.
+  string library_id = 3;
+  repeated HomeItem items = 4;
+  // Movie or series of a HOME_ROW_KIND_BECAUSE_YOU_WATCHED row; empty otherwise.
+  string source_item_id = 5;
+  // The title, for translation: "home.resume", "home.latest" (param "library": the name of the
+  // library), "home.because_you_watched" (param "title")...
+  Text title_text = 6;
+}
+
+message GetHomeRequest {
+  // Items per row: 1 to 50; 0 means 20.
+  int32 row_size = 1;
+}
+
+message GetHomeResponse {
+  repeated HomeRow rows = 1;
+}

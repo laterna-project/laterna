@@ -1,0 +1,414 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/options.proto";
+import "laterna/v1/profile.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// AuthService manages accounts and sessions. A session is a signed-in device; its token goes in the
+// "Authorization: Bearer <token>" header.
+service AuthService {
+  // Setup creates the first account, an administrator, and signs it in. Refused once an account
+  // exists.
+  rpc Setup(SetupRequest) returns (SetupResponse) {
+    option (access) = ACCESS_PUBLIC;
+  }
+  // Login opens a session for a device.
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (access) = ACCESS_PUBLIC;
+  }
+  // Logout closes the current session.
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // GetSession describes the current session: account, picked profile, device.
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // ListSessions lists the devices signed in to the account.
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // RevokeSession signs a device out of the account.
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // ChangePassword changes the account's password and signs out the other devices.
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+
+  // Device login (modeled on RFC 8628), for a device without a convenient keyboard: it asks for a
+  // code (StartDeviceLogin) and shows it; the user, signed in on another device, types it
+  // (GetDeviceLogin shows who is asking) and approves; the device polls (PollDeviceLogin) at most
+  // every "interval" until it gets its session.
+
+  // StartDeviceLogin opens a device login request (valid for 10 minutes).
+  rpc StartDeviceLogin(StartDeviceLoginRequest) returns (StartDeviceLoginResponse) {
+    option (access) = ACCESS_PUBLIC;
+  }
+  // PollDeviceLogin returns the state of the request and, once approved, the session (handed over
+  // only once). Polling sooner than the interval returns RESOURCE_EXHAUSTED and makes the interval
+  // 5 s longer.
+  rpc PollDeviceLogin(PollDeviceLoginRequest) returns (PollDeviceLoginResponse) {
+    option (access) = ACCESS_PUBLIC;
+  }
+  // GetDeviceLogin describes the device waiting behind a code, before approving it.
+  rpc GetDeviceLogin(GetDeviceLoginRequest) returns (GetDeviceLoginResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // ApproveDeviceLogin signs the device in to the caller's account. Refused for a restricted
+  // profile.
+  rpc ApproveDeviceLogin(ApproveDeviceLoginRequest) returns (ApproveDeviceLoginResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // DenyDeviceLogin refuses the request.
+  rpc DenyDeviceLogin(DenyDeviceLoginRequest) returns (DenyDeviceLoginResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+
+  // Passkeys: signing in without a password, with a WebAuthn key (phone, computer, security key).
+  // The server gives options in the WebAuthn level 3 JSON form, to be passed as they are to the
+  // platform API:
+  //   - web: PublicKeyCredential.parseCreationOptionsFromJSON / parseRequestOptionsFromJSON, then
+  //     navigator.credentials.create / get;
+  //   - Android: Credential Manager (CreatePublicKeyCredentialRequest, GetPublicKeyCredentialOption);
+  //   - iOS: ASAuthorizationPlatformPublicKeyCredentialProvider.
+  // The authenticator's response comes back as JSON (PublicKeyCredential.toJSON()). A request is
+  // valid for five minutes and works only once. Passkeys are unavailable (FAILED_PRECONDITION) as
+  // long as the server's public URL is not set (GetServerInfoResponse.passkeys).
+
+  // BeginPasskeyRegistration prepares registering a passkey on the signed-in account.
+  rpc BeginPasskeyRegistration(BeginPasskeyRegistrationRequest) returns (BeginPasskeyRegistrationResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // FinishPasskeyRegistration verifies the authenticator's response and registers the passkey (20
+  // per account at most).
+  rpc FinishPasskeyRegistration(FinishPasskeyRegistrationRequest) returns (FinishPasskeyRegistrationResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // ListPasskeys lists the passkeys of the signed-in account.
+  rpc ListPasskeys(ListPasskeysRequest) returns (ListPasskeysResponse) {
+    option (access) = ACCESS_ACCOUNT;
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // DeletePasskey removes a passkey from the signed-in account.
+  rpc DeletePasskey(DeletePasskeyRequest) returns (DeletePasskeyResponse) {
+    option (access) = ACCESS_ACCOUNT;
+  }
+  // BeginPasskeyLogin prepares a passkey login, without a username.
+  rpc BeginPasskeyLogin(BeginPasskeyLoginRequest) returns (BeginPasskeyLoginResponse) {
+    option (access) = ACCESS_PUBLIC;
+  }
+  // FinishPasskeyLogin verifies the authenticator's response and opens a session, like Login.
+  // Failures are limited like password failures.
+  rpc FinishPasskeyLogin(FinishPasskeyLoginRequest) returns (FinishPasskeyLoginResponse) {
+    option (access) = ACCESS_PUBLIC;
+  }
+
+  // OpenID Connect: signing in with an account at the provider set up by the administrator
+  // (GetServerInfoResponse.oidc_provider). The client opens the authorization URL in a browser (a
+  // tab, Custom Tabs, ASWebAuthenticationSession, or a phone's browser for a TV, through a QR
+  // code); the user signs in there; the provider sends them back to the server, which opens the
+  // session; the client gets it by polling PollOidcLogin every "interval".
+
+  // StartOidcLogin starts a login (valid for 10 minutes).
+  rpc StartOidcLogin(StartOidcLoginRequest) returns (StartOidcLoginResponse) {
+    option (access) = ACCESS_PUBLIC;
+  }
+  // PollOidcLogin returns the state of the login and, once it succeeded, the session (handed over
+  // only once).
+  rpc PollOidcLogin(PollOidcLoginRequest) returns (PollOidcLoginResponse) {
+    option (access) = ACCESS_PUBLIC;
+  }
+}
+
+// Device describes the device signing in, as shown in the list of sessions.
+message Device {
+  // Readable name ("Living room", "Alex's iPhone").
+  string name = 1;
+  // Client application ("Laterna Web").
+  string client = 2;
+  string client_version = 3;
+  // Platform ("Android TV", "Windows", "iOS"...).
+  string platform = 4;
+}
+
+// Account is an account (a person or a household) that owns profiles.
+message Account {
+  string id = 1;
+  string username = 2;
+  bool is_admin = 3;
+  google.protobuf.Timestamp created_at = 4;
+  // Disabled account: cannot sign in.
+  bool disabled = 5;
+  // Libraries the account may browse; an administrator sees them all.
+  LibraryAccess libraries = 6;
+  // Parental control set by an administrator. It applies on top of each profile's, and the stricter
+  // wins. Never set on an administrator.
+  ParentalControl parental = 7;
+  // Offline downloads taken away by an administrator (DownloadService); never from an
+  // administrator.
+  bool deny_downloads = 8;
+}
+
+// LibraryAccess says which libraries an account may browse. The others do not exist for it: lists,
+// search, details, home and playback.
+message LibraryAccess {
+  // All of them, including those created later.
+  bool all = 1;
+  // Otherwise, these.
+  repeated string library_ids = 2;
+}
+
+message Session {
+  string id = 1;
+  Account account = 2;
+  // Profile picked on this device, unset until one is picked.
+  optional Profile profile = 3;
+  Device device = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp last_used_at = 6;
+  // The session expires if the device does not use it before this date (each use extends it).
+  google.protobuf.Timestamp expires_at = 7;
+  // True for the session making the call.
+  bool current = 8;
+}
+
+message SetupRequest {
+  string username = 1;
+  // At least 8 characters.
+  string password = 2;
+  Device device = 3;
+}
+
+message SetupResponse {
+  Session session = 1;
+  // Session token, shown only once: the server only keeps a hash of it.
+  string token = 2;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+  Device device = 3;
+}
+
+message LoginResponse {
+  Session session = 1;
+  // Session token, shown only once: the server only keeps a hash of it.
+  string token = 2;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+message GetSessionRequest {}
+
+message GetSessionResponse {
+  Session session = 1;
+}
+
+message ListSessionsRequest {}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+}
+
+message RevokeSessionRequest {
+  string session_id = 1;
+}
+
+message RevokeSessionResponse {}
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {}
+
+message StartDeviceLoginRequest {
+  // The device asking (its name is shown to the user who approves).
+  Device device = 1;
+}
+
+message StartDeviceLoginResponse {
+  // The device's secret, for PollDeviceLogin; never show it.
+  string device_code = 1;
+  // Code to show ("BDWP-HQPK": consonants only; case and the dash do not matter when typing it).
+  string user_code = 2;
+  google.protobuf.Timestamp expires_at = 3;
+  // Minimum time between two polls.
+  google.protobuf.Duration interval = 4;
+  // Page of the web client where the code is approved ("https://app.example.org/device"), to show
+  // next to the code. Empty if the administrator set neither the web client's address nor the
+  // server's (Settings.web_url, Settings.public_url): the device then shows the code alone, to be
+  // approved from the app.
+  string verification_url = 5;
+  // The same with the code included (".../device?code=BDWP-HQPK"), for a QR code. Empty in the same
+  // cases.
+  string verification_url_complete = 6;
+}
+
+enum DeviceLoginState {
+  DEVICE_LOGIN_STATE_UNSPECIFIED = 0;
+  // Not approved yet: poll again after "interval".
+  DEVICE_LOGIN_STATE_PENDING = 1;
+  // Approved: session and token are set.
+  DEVICE_LOGIN_STATE_APPROVED = 2;
+  DEVICE_LOGIN_STATE_DENIED = 3;
+  // Expired, already handed over, or unknown: ask for a new code.
+  DEVICE_LOGIN_STATE_EXPIRED = 4;
+}
+
+message PollDeviceLoginRequest {
+  string device_code = 1;
+}
+
+message PollDeviceLoginResponse {
+  DeviceLoginState state = 1;
+  // DEVICE_LOGIN_STATE_APPROVED: the open session and its token (as in LoginResponse).
+  Session session = 2;
+  string token = 3;
+  // Time to wait before the next poll.
+  google.protobuf.Duration interval = 4;
+}
+
+message GetDeviceLoginRequest {
+  string user_code = 1;
+}
+
+message GetDeviceLoginResponse {
+  Device device = 1;
+  // Address the request came from.
+  string ip = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message ApproveDeviceLoginRequest {
+  string user_code = 1;
+  // The device lands on the caller's profile (already unlocked, PIN included); otherwise it will
+  // pick its profile.
+  bool select_profile = 2;
+}
+
+message ApproveDeviceLoginResponse {}
+
+message DenyDeviceLoginRequest {
+  string user_code = 1;
+}
+
+message DenyDeviceLoginResponse {}
+
+// Passkey is a WebAuthn key of the account.
+message Passkey {
+  string id = 1;
+  // Name given at registration ("Alex's iPhone").
+  string name = 2;
+  google.protobuf.Timestamp created_at = 3;
+  // Last login with this passkey; unset if never used.
+  google.protobuf.Timestamp last_used_at = 4;
+}
+
+message BeginPasskeyRegistrationRequest {}
+
+message BeginPasskeyRegistrationResponse {
+  string registration_id = 1;
+  // PublicKeyCredentialCreationOptions, as JSON.
+  string options_json = 2;
+}
+
+message FinishPasskeyRegistrationRequest {
+  string registration_id = 1;
+  // The authenticator's response (PublicKeyCredential.toJSON()).
+  string credential_json = 2;
+  // Name of the passkey (64 characters at most); empty means "Passkey".
+  string name = 3;
+}
+
+message FinishPasskeyRegistrationResponse {
+  Passkey passkey = 1;
+}
+
+message ListPasskeysRequest {}
+
+message ListPasskeysResponse {
+  repeated Passkey passkeys = 1;
+}
+
+message DeletePasskeyRequest {
+  string passkey_id = 1;
+}
+
+message DeletePasskeyResponse {}
+
+message BeginPasskeyLoginRequest {}
+
+message BeginPasskeyLoginResponse {
+  string login_id = 1;
+  // PublicKeyCredentialRequestOptions, as JSON.
+  string options_json = 2;
+}
+
+message FinishPasskeyLoginRequest {
+  string login_id = 1;
+  // The authenticator's response (PublicKeyCredential.toJSON()).
+  string credential_json = 2;
+  Device device = 3;
+}
+
+message FinishPasskeyLoginResponse {
+  Session session = 1;
+  // Session token, shown only once.
+  string token = 2;
+}
+
+message StartOidcLoginRequest {
+  Device device = 1;
+}
+
+message StartOidcLoginResponse {
+  // Secret ID of the login, to pass to PollOidcLogin.
+  string login_id = 1;
+  // URL to open in a browser.
+  string authorization_url = 2;
+  google.protobuf.Duration interval = 3;
+  google.protobuf.Duration expires_in = 4;
+}
+
+enum OidcLoginState {
+  OIDC_LOGIN_STATE_UNSPECIFIED = 0;
+  // Not done yet: poll again after "interval".
+  OIDC_LOGIN_STATE_PENDING = 1;
+  // Succeeded: session and token are set.
+  OIDC_LOGIN_STATE_APPROVED = 2;
+  // Refused (provider, unknown or disabled account): message says why.
+  OIDC_LOGIN_STATE_DENIED = 3;
+  // Expired, already handed over, or unknown: start again.
+  OIDC_LOGIN_STATE_EXPIRED = 4;
+}
+
+message PollOidcLoginRequest {
+  string login_id = 1;
+}
+
+message PollOidcLoginResponse {
+  OidcLoginState state = 1;
+  Session session = 2;
+  string token = 3;
+  // Why the login was refused (OIDC_LOGIN_STATE_DENIED), in the language of the request.
+  // message_text is the same for translation ("oidc.denied_in_browser",
+  // "error.oidc.no_account"...).
+  string message = 4;
+  Text message_text = 5;
+}

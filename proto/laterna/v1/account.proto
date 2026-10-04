@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/auth.proto";
+import "laterna/v1/options.proto";
+import "laterna/v1/profile.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// AccountService manages the accounts of the server. Administrators only, from an unrestricted
+// profile.
+//
+// Rules: the server always keeps one enabled administrator; an administrator can neither disable
+// themselves, nor drop their own admin rights, nor delete their own account; an administrator sees
+// every library, without parental control.
+service AccountService {
+  // ListAccounts lists the accounts with their profile count and last activity.
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // CreateAccount creates an account with a profile of the same name.
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // UpdateAccount changes an account. A new password or disabling the account signs out all its
+  // devices.
+  rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeleteAccount deletes an account, its profiles and their data (history, favorites).
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+}
+
+// AccountSummary is an account as an administrator sees it.
+message AccountSummary {
+  Account account = 1;
+  int32 profile_count = 2;
+  // Last time one of its devices was used; unset if it has none.
+  google.protobuf.Timestamp last_active_at = 3;
+}
+
+message ListAccountsRequest {}
+
+message ListAccountsResponse {
+  repeated AccountSummary accounts = 1;
+}
+
+message CreateAccountRequest {
+  string username = 1;
+  // At least 8 characters.
+  string password = 2;
+  bool is_admin = 3;
+  // Unset means all libraries.
+  LibraryAccess libraries = 4;
+  // Unset means no parental control.
+  ParentalControl parental = 5;
+  // Takes offline downloads away (refused for an administrator).
+  bool deny_downloads = 6;
+}
+
+message CreateAccountResponse {
+  Account account = 1;
+}
+
+message UpdateAccountRequest {
+  string account_id = 1;
+  optional string username = 2;
+  // New password: signs out all the devices of the account.
+  optional string password = 3;
+  // Becoming an administrator lifts library restrictions and parental control.
+  optional bool is_admin = 4;
+  // Disabling signs out all the devices of the account.
+  optional bool disabled = 5;
+  // Unset leaves it unchanged.
+  LibraryAccess libraries = 6;
+  // Unset leaves it unchanged; an empty control removes it.
+  ParentalControl parental = 7;
+  // Takes offline downloads away (true) or gives them back (false); unset leaves it unchanged.
+  optional bool deny_downloads = 8;
+}
+
+message UpdateAccountResponse {
+  Account account = 1;
+}
+
+message DeleteAccountRequest {
+  string account_id = 1;
+}
+
+message DeleteAccountResponse {}

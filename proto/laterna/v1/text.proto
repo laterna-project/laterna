@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// Internationalization. The server imposes no language: every text it composes is a stable key plus
+// params, which the client translates with its own catalogs. The server also writes it itself, as a
+// fallback, in the language of the request (Accept-Language header, otherwise the profile's
+// language, otherwise the server's) if it has a catalog for it, in English otherwise. A client can
+// always show that text as is.
+
+// Text is a text composed by the server (reason for a transcode, activity log entry).
+message Text {
+  // Stable key of the message: "reason.video_codec", "activity.login". Lower-case letters, digits
+  // and underscores, families separated by dots. Once published a key never changes meaning.
+  string key = 1;
+  // Named params, as strings: numbers in decimal, durations in seconds ("..._seconds"), sizes in
+  // bytes ("..._bytes"), IDs in their canonical form. A "reason" param is a technical diagnostic in
+  // English (an error from another server, from a file).
+  map<string, string> params = 2;
+  // Texts to join into the message where its template says {list} (changes to a setting, counts of
+  // a scan).
+  repeated Text list = 3;
+  // The message written by the server in the language of the request.
+  string text = 4;
+}
+
+// ErrorDetail comes with every expected error: it is the detail of the Connect error (a single one,
+// of this type). The error message is the fallback text, written by the server in the language of
+// the request; the Connect code (NOT_FOUND, INVALID_ARGUMENT...) remains the family of the error.
+// An error without a detail comes from the transport (message too big, invalid JSON).
+message ErrorDetail {
+  // Stable code of the error: "library.not_found", "auth.username_too_long". A domain, a dot, a
+  // reason in snake_case. "server.internal" is an unexpected error, logged by the server with the
+  // request ID.
+  string code = 1;
+  // Named params of the message ("max" = "64"), like those of Text.
+  map<string, string> params = 2;
+  // What explains the error when it has several reasons ("playback.unplayable", "theme.rejected").
+  repeated Text causes = 3;
+}

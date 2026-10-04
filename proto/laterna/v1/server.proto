@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "laterna/v1/options.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// ServerService describes the server. No authentication needed: it is the first call any client
+// makes, to check that it is talking to a Laterna server.
+service ServerService {
+  // GetServerInfo returns the server's identity and version.
+  rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_PUBLIC;
+  }
+}
+
+message GetServerInfoRequest {}
+
+message GetServerInfoResponse {
+  // Stable ID of the server (UUID), kept across restarts.
+  string id = 1;
+  // Name of the server, shown by clients.
+  string name = 2;
+  // Laterna version ("0.3.0", "dev"...).
+  string version = 3;
+  // Git commit of the binary, empty if unknown.
+  string commit = 4;
+  // True as long as no account exists: the client then offers setup (AuthService.Setup).
+  bool setup_required = 5;
+  // Passkey login is available (AuthService.BeginPasskeyLogin): the server's public URL is set.
+  bool passkeys = 6;
+  // Label of the OpenID Connect sign-in button (AuthService.StartOidcLogin); empty if it is not
+  // available.
+  string oidc_provider = 7;
+  // Server language: the one used for the texts it writes when the request asks for none. A client
+  // may offer it as the default before anyone signs in.
+  string language = 8;
+  // Languages the server can write its texts in ("en", "fr"); for any other, the client translates
+  // itself from the keys and codes.
+  repeated string languages = 9;
+  // Public URL of the server ("https://media.example.org", set by the administrator); empty if
+  // unknown. It is the address of the API: the web client may be served elsewhere. For the QR code
+  // of a device login, use StartDeviceLoginResponse.verification_url_complete, which the server
+  // builds.
+  string public_url = 10;
+}

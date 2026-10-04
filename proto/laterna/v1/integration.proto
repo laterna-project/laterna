@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "laterna/v1/options.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// IntegrationService connects Laterna to Sonarr and Radarr. Administrators only.
+//
+// Laterna only reads local metadata: NFO files and images sitting next to the media. Sonarr and
+// Radarr write them ("Kodi (XBMC) / Emby" metadata) and tell Laterna about each import through a
+// webhook, which triggers a scan. Without an integration, NFO files are read again at the periodic
+// scan. The integration checks how the instances are set up, fixes it on request and reacts right
+// away.
+service IntegrationService {
+  // ListIntegrations returns the state of Sonarr and Radarr: connection, Kodi metadata, webhook,
+  // series or movies without an NFO. It queries the instances (a few seconds at most).
+  rpc ListIntegrations(ListIntegrationsRequest) returns (ListIntegrationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // SetIntegration stores the address and API key of an instance, after trying them.
+  rpc SetIntegration(SetIntegrationRequest) returns (SetIntegrationResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeleteIntegration forgets an instance and removes Laterna's webhook from it.
+  rpc DeleteIntegration(DeleteIntegrationRequest) returns (DeleteIntegrationResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // ConfigureIntegration sets an instance up for Laterna: each requested step changes its
+  // configuration.
+  rpc ConfigureIntegration(ConfigureIntegrationRequest) returns (ConfigureIntegrationResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+}
+
+enum IntegrationKind {
+  INTEGRATION_KIND_UNSPECIFIED = 0;
+  // Sonarr: series and anime.
+  INTEGRATION_KIND_SONARR = 1;
+  // Radarr: movies.
+  INTEGRATION_KIND_RADARR = 2;
+}
+
+message Integration {
+  IntegrationKind kind = 1;
+  // Address of the instance; empty means not configured.
+  string url = 2;
+  // The instance answers with the stored API key; if not, error says why, in the language of the
+  // request (error_text is the same for translation).
+  bool reachable = 3;
+  string error = 4;
+  string version = 5;
+  // Kodi metadata (NFO and images) is on with every option Laterna needs; missing_options names
+  // what is not (labels from the instance).
+  bool kodi_metadata = 6;
+  repeated string missing_options = 7;
+  // Laterna's webhook is installed and enabled.
+  bool webhook = 8;
+  // Tracked series or movies that have files.
+  int32 folders = 9;
+  // Those whose folder is in none of Laterna's libraries.
+  int32 unmapped = 10;
+  // Those without an NFO, and the first of their titles (alphabetical order).
+  int32 without_nfo = 11;
+  repeated string without_nfo_titles = 12;
+  // "error.integration.unauthorized", "error.integration.unreachable" (params "name", "reason")...;
+  // unset if the instance answers.
+  Text error_text = 13;
+}
+
+message ListIntegrationsRequest {}
+
+message ListIntegrationsResponse {
+  repeated Integration integrations = 1;
+}
+
+message SetIntegrationRequest {
+  IntegrationKind kind = 1;
+  // Address of the instance as Laterna sees it ("http://localhost:8989").
+  string url = 2;
+  // API key (Settings > General).
+  string api_key = 3;
+}
+
+message SetIntegrationResponse {
+  Integration integration = 1;
+}
+
+message DeleteIntegrationRequest {
+  IntegrationKind kind = 1;
+}
+
+message DeleteIntegrationResponse {}
+
+message ConfigureIntegrationRequest {
+  IntegrationKind kind = 1;
+  // Turns Kodi metadata on with every option we need (NFO and images for series, seasons and
+  // episodes, or for movies); other settings are left alone.
+  bool kodi_metadata = 2;
+  // Installs or updates Laterna's webhook, at this address of Laterna as seen from the instance
+  // ("http://192.168.1.10:8096"); the instance tries it right away. Empty leaves it unchanged.
+  string webhook_url = 3;
+  // Asks for a refresh of every series or movie (missing NFO files and images get written), then
+  // scans the libraries. The response does not wait for it to finish.
+  bool refresh = 4;
+}
+
+message ConfigureIntegrationResponse {
+  Integration integration = 1;
+}
