@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laterna playback console</title>
+<style>
+  :root { color-scheme: light dark; --border: #8884; }
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 0; padding: 16px; max-width: 1100px; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  fieldset { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 12px; min-width: 0; }
+  input { font: inherit; padding: 4px 6px; }
+  button { font: inherit; padding: 4px 10px; cursor: pointer; }
+  #items { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  #items button { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 6px; }
+  #items img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; background: #8882; }
+  video { width: 100%; max-height: 60vh; background: #000; }
+  pre { background: #8881; padding: 8px; overflow: auto; max-height: 30vh; font-size: 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  [hidden] { display: none !important; }
+  #book-page { display: block; max-width: 100%; max-height: 80vh; margin: 8px auto; background: #8882; }
+  #book-doc, #book-epub { width: 100%; height: 75vh; border: 1px solid var(--border); }
+  #photo-img { display: block; max-width: 100%; max-height: 80vh; margin: 8px auto; background: #8882; }
+</style>
+</head>
+<body>
+<h1>Laterna playback console</h1>
+<p>A development tool to exercise the server without a real client. The device profile comes from
+this browser (<code>MediaSource.isTypeSupported</code>); untick a codec to act as a device that
+cannot play it and force a transcode. ASS subtitles are rendered by
+<a href="https://github.com/ThaUnknown/jassub">JASSUB</a> (libass in WebAssembly), other text
+subtitles as WebVTT; a subtitle this browser cannot display (PGS) is burned in by the server.
+Music: untick "flac" to have FLAC files converted to AAC. Books: pages served by the server (CBZ,
+scanned PDF), EPUB rendered by <a href="https://github.com/futurepress/epub.js">epub.js</a>, text
+PDF by the browser. Photos: albums (folders) and the timeline, each photo scaled to the screen
+width.</p>
+
+<fieldset>
+  <legend>Sign in</legend>
+  <form id="login" class="row">
+    <input id="server" size="28" value="http://localhost:8096" aria-label="Server">
+    <input id="username" placeholder="Username" autocomplete="username">
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+    <button>Sign in</button>
+    <span id="status"></span>
+  </form>
+</fieldset>
+
+<fieldset>
+  <legend>Device profile</legend>
+  <div id="profile" class="row"></div>
+</fieldset>
+
+<fieldset>
+  <legend>Catalog</legend>
+  <div class="row"><input id="search" placeholder="Search…"><button id="movies-btn">Movies</button><button id="series-btn">Series</button><button id="music-btn">Music</button><button id="books-btn">Books</button><button id="photos-btn">Photos</button></div>
+  <div id="items"></div>
+</fieldset>
+
+<fieldset>
+  <legend>Playback</legend>
+  <video id="video" controls playsinline crossorigin="anonymous"></video>
+  <div class="row">
+    <button data-skip="-30">−30 s</button><button data-skip="30">+30 s</button>
+    <button id="stop">Stop</button>
+    <button id="skip" hidden></button>
+    <select id="subtitles" aria-label="Subtitles"><option value="">No subtitles</option></select>
+    <span id="playback"></span>
+  </div>
+  <pre id="log"></pre>
+</fieldset>
+
+<fieldset>
+  <legend>Book reader</legend>
+  <div class="row">
+    <button id="book-prev">◀</button><button id="book-next">▶</button>
+    <span id="book-status"></span>
+  </div>
+  <img id="book-page" alt="" hidden>
+  <iframe id="book-doc" title="Document" hidden></iframe>
+  <div id="book-epub" hidden></div>
+</fieldset>
+
+<fieldset>
+  <legend>Photo</legend>
+  <img id="photo-img" alt="" hidden>
+  <pre id="photo-info"></pre>
+</fieldset>
+
+<fieldset>
+  <legend>Watch party</legend>
+  <div class="row">
+    <button id="party-create">Create with the open item</button>
+    <input id="party-code" size="8" placeholder="Code" aria-label="Party code"><button id="party-join">Join</button>
+    <button id="party-play">Play</button><button id="party-pause">Pause</button><button id="party-seek">+30 s</button>
+    <input id="party-message" placeholder="Message…" aria-label="Message"><button id="party-leave">Leave</button>
+  </div>
+  <pre id="party-status"></pre>
+</fieldset>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script src="https://cdn.jsdelivr.net/npm/jassub@1.8.6/dist/jassub.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3/dist/epub.min.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const video = $('video');
+const state = { base: '', token: '', session: null, hls: null, errors: [], timer: null, removed: new Set(), jassub: null, itemId: null };
+window.laterna = state;
+
+function log(...args) {
+  const line = args.map((a) => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+  $('log').textContent = line + '\n' + $('log').textContent;
+}
+
+// Connect call (JSON over HTTP): POST /<service>/<method>.
+async function call(service, method, body) {
+  const res = await fetch(`${state.base}/laterna.v1.${service}/${method}`, {
+    method: 'POST', keepalive: method === 'StopPlayback',
+    headers: { 'Content-Type': 'application/json', ...(state.token && { Authorization: 'Bearer ' + state.token }) },
+    body: JSON.stringify(body ?? {}),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`${data.code}: ${data.message}`);
+  return data;
+}
+
+// Device profile: what this very browser can play, probed one codec at a time.
+function detectedProfile() {
+  const ms = (type) => window.MediaSource && MediaSource.isTypeSupported(type);
+  const video = [];
+  const codecs = { h264: ['avc1.640028', 8], hevc: ['hvc1.1.6.L120.90', 8], vp9: ['vp09.00.10.08', 8], av1: ['av01.0.08M.08', 8] };
+  const ten = { hevc: 'hvc1.2.4.L120.90', vp9: 'vp09.02.10.10', av1: 'av01.0.08M.10' };
+  for (const [codec, [str]] of Object.entries(codecs)) {
+    if (!ms(`video/mp4; codecs="${str}"`)) continue;
+    video.push({ codec, maxBitDepth: ten[codec] && ms(`video/mp4; codecs="${ten[codec]}"`) ? 10 : 8,
+      hdr: matchMedia('(dynamic-range: high)').matches });
+  }
+  const audio = { aac: 'mp4a.40.2', mp3: 'mp4a.69', opus: 'opus', flac: 'flac', ac3: 'ac-3', eac3: 'ec-3' };
+  const audioCodecs = Object.entries(audio).filter(([, c]) => ms(`audio/mp4; codecs="${c}"`)).map(([n]) => n);
+  const containers = ['mp4', 'webm'].filter((c) => video.length && document.createElement('video').canPlayType('video/' + c));
+  // Music: containers an <audio> element can play.
+  const audioTypes = { flac: 'audio/flac', mp3: 'audio/mpeg', m4a: 'audio/mp4', ogg: 'audio/ogg', wav: 'audio/wav' };
+  for (const [c, type] of Object.entries(audioTypes)) {
+    if (document.createElement('audio').canPlayType(type)) containers.push(c);
+  }
+  // Subtitles: native WebVTT, ASS when JASSUB is loaded. No PGS: the server burns it in.
+  const subtitleFormats = ['vtt', ...(window.JASSUB ? ['ass'] : [])];
+  return { containers, video, audioCodecs, hls: !!(window.Hls && Hls.isSupported()), subtitleFormats };
+}
+
+// The profile that is sent: the detected one minus the unticked codecs.
+function deviceProfile() {
+  const p = detectedProfile();
+  p.video = p.video.filter((v) => !state.removed.has(v.codec));
+  p.audioCodecs = p.audioCodecs.filter((c) => !state.removed.has(c));
+  p.subtitleFormats = p.subtitleFormats.filter((f) => !state.removed.has(f));
+  if (!p.video.length) p.containers = p.containers.filter((c) => c !== 'mp4' && c !== 'webm');
+  return p;
+}
+
+// One checkbox per detected codec (state kept in state.removed).
+function showProfile() {
+  const p = detectedProfile();
+  const box = $('profile');
+  box.replaceChildren();
+  for (const codec of [...p.video.map((v) => v.codec), ...p.audioCodecs, ...p.subtitleFormats]) {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = !state.removed.has(codec);
+    input.onchange = () => input.checked ? state.removed.delete(codec) : state.removed.add(codec);
+    const v = p.video.find((x) => x.codec === codec);
+    const kind = p.subtitleFormats.includes(codec) ? 'subtitles ' : '';
+    label.append(input, ' ' + kind + codec + (v && v.maxBitDepth > 8 ? ' 10-bit' : '') + (v && v.hdr ? ' HDR' : ''));
+    box.append(label);
+  }
+}
+showProfile();
+
+$('login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  state.base = $('server').value.replace(/\/$/, '');
+  try {
+    const res = await call('AuthService', 'Login', {
+      username: $('username').value, password: $('password').value,
+      device: { name: 'Dev console', client: 'Laterna console', clientVersion: '1', platform: navigator.userAgent.slice(0, 60) },
+    });
+    state.token = res.token;
+    if (!res.session.profile) {
+      const profiles = await call('ProfileService', 'ListProfiles');
+      await call('ProfileService', 'SelectProfile', { profileId: profiles.profiles[0].id });
+    }
+    $('status').textContent = 'signed in';
+    log('device profile', deviceProfile());
+    await list('ListMovies');
+  } catch (err) { $('status').textContent = err.message; }
+});
+
+async function list(method) {
+  const res = await call('CatalogService', method, { pageSize: 60 });
+  show((res.movies ?? res.series ?? []).map((m) => ({ ...m, kind: method === 'ListMovies' ? 'movie' : 'series' })));
+}
+$('movies-btn').onclick = () => list('ListMovies');
+$('series-btn').onclick = () => list('ListSeries');
+$('music-btn').onclick = async () => {
+  const res = await call('MusicService', 'ListAlbums', { pageSize: 60, sort: 'ITEM_SORT_ADDED' });
+  show((res.albums ?? []).map((a) => ({ ...a, kind: 'album' })));
+};
+$('books-btn').onclick = async () => {
+  const [series, books] = await Promise.all([
+    call('BookService', 'ListBookSeries', { pageSize: 60 }), call('BookService', 'ListBooks', { pageSize: 60, sort: 'ITEM_SORT_ADDED' }),
+  ]);
+  show([...(series.series ?? []).map((x) => ({ ...x, kind: 'book_series' })), ...(books.books ?? []).map((b) => ({ ...b, kind: 'book' }))]);
+};
+// Photos: top-level albums, then the timeline.
+$('photos-btn').onclick = async () => {
+  const [albums, photos] = await Promise.all([
+    call('PhotoService', 'ListPhotoAlbums', {}), call('PhotoService', 'ListPhotos', { pageSize: 60 }),
+  ]);
+  show([...(albums.albums ?? []).map((a) => ({ ...a, kind: 'photo_album' })), ...(photos.photos ?? []).map((x) => ({ ...x, kind: 'photo' }))]);
+};
+$('search').addEventListener('change', async () => {
+  const res = await call('CatalogService', 'Search', { query: $('search').value, limit: 40 });
+  show(res.results.map((r) => r.movie ? { ...r.movie, kind: 'movie' } : r.series ? { ...r.series, kind: 'series' }
+    : r.album ? { ...r.album, kind: 'album' } : r.track ? { ...r.track, kind: 'track' } : r.artist ? { ...r.artist, kind: 'artist' }
+    : r.bookSeries ? { ...r.bookSeries, kind: 'book_series' } : r.book ? { ...r.book, kind: 'book' }
+    : r.photoAlbum ? { ...r.photoAlbum, kind: 'photo_album' }
+    : { ...r.episode, kind: 'episode' }));
+});
+
+function show(items) {
+  const grid = $('items');
+  grid.replaceChildren();
+  for (const it of items) {
+    const b = document.createElement('button');
+    const poster = (it.images ?? []).find((i) => ['IMAGE_KIND_POSTER', 'IMAGE_KIND_THUMB', 'IMAGE_KIND_PHOTO'].includes(i.kind));
+    if (poster) { const img = document.createElement('img'); img.src = state.base + poster.url + '?w=240'; img.alt = ''; b.append(img); }
+    const label = it.kind === 'episode' ? `${it.seriesTitle} S${it.seasonNumber}E${it.number} — ${it.title}`
+      : it.kind === 'track' ? `${it.disc ?? 0}-${it.number ?? 0} ${it.title} — ${it.artists ?? ''}`
+      : it.kind === 'album' ? `${it.artistName} — ${it.title} (${it.year ?? '?'})`
+      : it.kind === 'artist' ? it.name
+      : it.kind === 'book_series' ? `${it.title} (${it.bookCount} books)`
+      : it.kind === 'book' ? bookLabel(it)
+      : it.kind === 'photo_album' ? `${it.title} (${it.photoCount ?? 0} photos, ${it.albumCount ?? 0} albums)`
+      : it.kind === 'photo' ? `${it.title} — ${new Date(it.takenAt).toLocaleString()}`
+      : `${it.title} (${it.year ?? '?'})`;
+    b.append(label);
+    b.onclick = () => it.kind === 'series' ? episodes(it.id) : it.kind === 'album' ? tracks(it.id)
+      : it.kind === 'artist' ? artistAlbums(it.id) : it.kind === 'book_series' ? seriesBooks(it.id)
+      : it.kind === 'book' ? openBook(it.id) : it.kind === 'photo_album' ? albumPhotos(it.id)
+      : it.kind === 'photo' ? showPhoto(it.id) : play(it.id);
+    grid.append(b);
+  }
+}
+
+async function tracks(albumId) {
+  const res = await call('MusicService', 'GetAlbum', { albumId });
+  show((res.tracks ?? []).map((t) => ({ ...t, kind: 'track' })));
+}
+
+async function artistAlbums(artistId) {
+  const res = await call('MusicService', 'GetArtist', { artistId });
+  show((res.albums ?? []).map((a) => ({ ...a, kind: 'album' })));
+}
+
+function bookLabel(b) {
+  const series = b.seriesTitle ? `${b.seriesTitle} ${b.number ?? ''} — ` : '';
+  const progress = b.progress ? ` (${Math.round((b.progress.progression ?? 0) * 100)}%)` : '';
+  return series + b.title + progress + (b.userData?.played ? ' ✓' : '');
+}
+
+async function albumPhotos(albumId) {
+  const [album, photos] = await Promise.all([
+    call('PhotoService', 'GetPhotoAlbum', { albumId }), call('PhotoService', 'ListPhotos', { albumId, pageSize: 60 }),
+  ]);
+  show([...(album.albums ?? []).map((a) => ({ ...a, kind: 'photo_album' })), ...(photos.photos ?? []).map((x) => ({ ...x, kind: 'photo' }))]);
+}
+
+// One photo, scaled to the screen width, and what its EXIF data says.
+async function showPhoto(photoId) {
+  const { photo } = await call('PhotoService', 'GetPhoto', { photoId });
+  const img = photo.summary.images?.find((i) => i.kind === 'IMAGE_KIND_PHOTO');
+  const el = $('photo-img');
+  el.hidden = !img;
+  if (img) {
+    const want = Math.min(1920, Math.ceil(el.parentElement.clientWidth * devicePixelRatio));
+    const w = imageTiers.find((t) => t >= want) ?? 1920;
+    el.src = `${state.base}${img.url}?w=${w}`;
+  }
+  $('photo-info').textContent = JSON.stringify({
+    title: photo.summary.title, takenAt: photo.summary.takenAt, utcOffset: photo.summary.utcOffset,
+    size: `${photo.summary.width}×${photo.summary.height}`, camera: `${photo.cameraMake ?? ''} ${photo.cameraModel ?? ''}`.trim(),
+    lens: photo.lens, fNumber: photo.fNumber, exposure: photo.exposureTime, iso: photo.iso, focalLength: photo.focalLength, location: photo.location,
+  }, null, 1);
+  el.scrollIntoView();
+}
+window.showPhoto = showPhoto;
+
+async function seriesBooks(seriesId) {
+  const res = await call('BookService', 'GetBookSeries', { seriesId });
+  show((res.books ?? []).map((b) => ({ ...b, kind: 'book' })));
+}
+
+// --- Books ----------------------------------------------------------------------------------
+// Three ways to read: pages served one by one by the server (scaled to the screen width, the
+// next one loaded ahead), a text PDF in the browser's own viewer, an EPUB rendered by epub.js.
+// Progress is saved on every page change.
+
+const reader = { open: null, page: 0, epub: null, rendition: null, saved: 0, loadStart: 0, loadMs: 0 };
+const imageTiers = [160, 240, 320, 480, 640, 960, 1280, 1920];
+
+function pageURL(n) {
+  const want = Math.min(1920, Math.ceil($('book-page').parentElement.clientWidth * devicePixelRatio));
+  const w = imageTiers.find((t) => t >= want) ?? 1920;
+  return `${state.base}${reader.open.pageUrlPrefix}${n}?w=${w}`;
+}
+
+async function openBook(bookId) {
+  const o = await call('BookService', 'OpenBook', { bookId });
+  reader.open = o;
+  reader.epub?.destroy?.();
+  reader.epub = null;
+  reader.rendition = null;
+  for (const id of ['book-page', 'book-doc', 'book-epub']) $(id).hidden = true;
+  const layout = o.file.layout;
+  log('book opened', { title: o.book.title, layout, rtl: !!o.file.rightToLeft, pages: o.pages?.length ?? o.file.pageCount, progress: o.progress });
+  if (layout === 'BOOK_LAYOUT_IMAGES') {
+    $('book-page').hidden = false;
+    goToPage(o.progress?.page ?? 0);
+  } else if (layout === 'BOOK_LAYOUT_DOCUMENT') {
+    $('book-doc').hidden = false;
+    $('book-doc').src = state.base + o.fileUrl + (o.progress?.page ? `#page=${o.progress.page + 1}` : '');
+    $('book-status').textContent = `document · ${o.file.pageCount} pages`;
+  } else {
+    $('book-epub').hidden = false;
+    $('book-epub').replaceChildren();
+    // Scroll chapter by chapter: epub.js column layout breaks on some books.
+    reader.epub = ePub(state.base + o.fileUrl, { openAs: 'epub' });
+    reader.rendition = reader.epub.renderTo('book-epub', { width: '100%', height: '100%', flow: 'scrolled-doc' });
+    const book = reader.epub;
+    reader.rendition.on('relocated', (loc) => {
+      // Exact progress once the locations index is built, per chapter until then.
+      const spine = book.spine.length || 1;
+      const progression = book.locations.length() ? book.locations.percentageFromCfi(loc.start.cfi) : loc.start.index / spine;
+      $('book-status').textContent = `EPUB · chapter ${loc.start.index + 1}/${spine} · ${Math.round(progression * 100)}%`;
+      saveReading({ locator: loc.start.cfi, progression });
+    });
+    await reader.rendition.display(o.progress?.locator || undefined);
+    book.ready.then(() => book.locations.generate(1600));
+  }
+}
+
+function goToPage(n) {
+  const o = reader.open;
+  const count = o.pages.length;
+  reader.page = Math.max(0, Math.min(count - 1, n));
+  const img = $('book-page');
+  reader.loadStart = performance.now();
+  img.onload = () => { reader.loadMs = Math.round(performance.now() - reader.loadStart); };
+  img.src = pageURL(reader.page);
+  // Load the next one ahead.
+  if (reader.page + 1 < count) new Image().src = pageURL(reader.page + 1);
+  const size = o.pages[reader.page];
+  const spread = size.width > size.height ? ' (spread)' : '';
+  $('book-status').textContent = `page ${reader.page + 1}/${count} · ${size.width}×${size.height}${spread}${o.file.rightToLeft ? ' · right to left' : ''}`;
+  saveReading({ page: reader.page, progression: (reader.page + 1) / count });
+}
+
+// The "next" page is on the left for a manga read right to left.
+function turn(forward) {
+  if (!reader.open) return;
+  if (reader.rendition) return forward ? reader.rendition.next() : reader.rendition.prev();
+  if (reader.open.file.layout === 'BOOK_LAYOUT_IMAGES') goToPage(reader.page + (forward ? 1 : -1));
+}
+$('book-next').onclick = () => turn(!reader.open?.file.rightToLeft);
+$('book-prev').onclick = () => turn(!!reader.open?.file.rightToLeft);
+document.addEventListener('keydown', (e) => {
+  if (!reader.open || e.target.closest('input, select')) return;
+  if (e.key === 'ArrowRight') turn(!reader.open.file.rightToLeft);
+  if (e.key === 'ArrowLeft') turn(!!reader.open.file.rightToLeft);
+});
+
+function saveReading(p) {
+  reader.saved++;
+  call('BookService', 'SaveReadingProgress', { bookId: reader.open.book.id, ...p }).catch((e) => log(e.message));
+}
+
+// For automated checks: state of the book reader.
+window.bookState = () => ({
+  layout: reader.open?.file.layout, page: reader.page, pages: reader.open?.pages?.length, src: $('book-page').src,
+  width: $('book-page').naturalWidth, loaded: $('book-page').complete, ms: reader.loadMs, saves: reader.saved,
+  epub: reader.rendition ? reader.rendition.location?.start?.cfi : undefined,
+});
+window.turnPage = turn;
+
+async function episodes(seriesId) {
+  const res = await call('CatalogService', 'ListEpisodes', { seriesId });
+  show(res.episodes.map((e) => ({ ...e, kind: 'episode' })));
+}
+
+async function stop() {
+  if (!state.session) return;
+  clearInterval(state.timer);
+  const sessionId = state.session.sessionId;
+  const position = video.currentTime; // read before the player is emptied
+  state.session = null;
+  clearSubtitles();
+  if (state.hls) { state.hls.destroy(); state.hls = null; }
+  video.removeAttribute('src'); video.load();
+  await call('PlaybackService', 'StopPlayback', { sessionId, position: position + 's' }).catch(() => {});
+}
+$('stop').onclick = stop;
+
+// Skippable segments: a button shows during each one and jumps to its end.
+const skipLabels = { MEDIA_SEGMENT_KIND_INTRO: 'Skip intro', MEDIA_SEGMENT_KIND_CREDITS: 'Skip credits',
+  MEDIA_SEGMENT_KIND_RECAP: 'Skip recap', MEDIA_SEGMENT_KIND_PREVIEW: 'Skip preview' };
+video.addEventListener('timeupdate', () => {
+  const t = video.currentTime;
+  const seg = (state.session?.segments ?? []).find((g) => t >= parseFloat(g.start) && t < parseFloat(g.end) - 1);
+  $('skip').hidden = !seg;
+  if (!seg) return;
+  $('skip').textContent = skipLabels[seg.kind] ?? 'Skip';
+  $('skip').onclick = () => { video.currentTime = parseFloat(seg.end); };
+});
+window.addEventListener('pagehide', stop);
+
+// play opens a playback. opts.subtitle: subtitle to start with (burned in if needed);
+// opts.start: position (the profile's resume point otherwise); opts.paused: do not start playing
+// (watch party: the group decides).
+async function play(itemId, opts = {}) {
+  await stop();
+  state.errors = [];
+  state.itemId = itemId;
+  try {
+    const s = await call('PlaybackService', 'StartPlayback', { itemId, device: deviceProfile(), subtitleIndex: opts.subtitle });
+    state.session = s;
+    const start = opts.start ?? parseFloat(s.resumePosition ?? '0');
+    const encoded = [s.videoTranscoded && `video transcoded (${s.videoEncoder}${s.gpu ? ', on the GPU' : ''})`, s.toneMapping && `HDR → SDR (${s.toneMapping})`,
+      s.audioTranscoded && 'audio transcoded'].filter(Boolean);
+    $('playback').textContent = [s.method.replace('PLAYBACK_METHOD_', ''), ...encoded, `resumed at ${start.toFixed(0)} s`].join(', ');
+    log('playback opened', s);
+    const url = state.base + s.url;
+    if (s.method === 'PLAYBACK_METHOD_DIRECT' || s.method === 'PLAYBACK_METHOD_CONVERTED') {
+      video.src = url;
+      video.currentTime = start;
+    } else {
+      state.hls = new Hls({ startPosition: start });
+      state.hls.on(Hls.Events.ERROR, (_, d) => { state.errors.push(d.details + (d.fatal ? ' (fatal)' : '')); log('hls.js error', d.details, d.fatal); });
+      state.hls.loadSource(url);
+      state.hls.attachMedia(video);
+    }
+    if (!opts.paused) video.play().catch(() => {});
+    state.timer = setInterval(report, 10_000);
+    listSubtitles(s);
+    if (s.segments?.length) log('segments', s.segments.map((g) => `${g.kind.replace('MEDIA_SEGMENT_KIND_', '')} ${g.start} → ${g.end}`).join(', '));
+  } catch (err) { log('playback refused:', err.message); $('playback').textContent = err.message; }
+}
+
+// --- Subtitles ------------------------------------------------------------------------------
+
+const JASSUB_CDN = 'https://cdn.jsdelivr.net/npm/jassub@1.8.6/dist/';
+// A worker must come from the page's own origin, so this one imports the script from the CDN.
+let jassubWorker = null;
+function jassubWorkerUrl() {
+  jassubWorker ??= URL.createObjectURL(new Blob([`importScripts('${JASSUB_CDN}jassub-worker.js')`], { type: 'text/javascript' }));
+  return jassubWorker;
+}
+
+function listSubtitles(s) {
+  const select = $('subtitles');
+  select.replaceChildren(new Option('No subtitles', ''));
+  for (const t of s.subtitles ?? []) {
+    const label = [t.language || '?', t.title, t.codec, t.forced && 'forced', t.hearingImpaired && 'SDH',
+      t.external && 'external', t.image && 'image'].filter(Boolean).join(' · ');
+    select.append(new Option(label, String(t.index ?? 0)));
+  }
+  select.value = s.burnedSubtitleIndex != null ? String(s.burnedSubtitleIndex) : '';
+  if (!s.subtitlesReady) waitSubtitles(s);
+}
+
+// A file that was just added: the list and the fonts arrive when the extraction ends.
+async function waitSubtitles(s) {
+  log('subtitles are being extracted');
+  const res = await call('PlaybackService', 'GetSubtitles', { sessionId: s.sessionId, wait: true }).catch((e) => log(e.message));
+  if (!res || state.session !== s) return;
+  const chosen = $('subtitles').value;
+  Object.assign(s, { subtitles: res.subtitles, fonts: res.fonts, subtitlesReady: res.subtitlesReady });
+  listSubtitles(s);
+  log('subtitles ready', `${res.subtitles?.length ?? 0} tracks, ${res.fonts?.length ?? 0} fonts`);
+  if (chosen) { $('subtitles').value = chosen; showSubtitle(chosen); }
+}
+
+function clearSubtitles() {
+  if (state.jassub) { state.jassub.destroy(); state.jassub = null; }
+  for (const tr of [...video.querySelectorAll('track')]) tr.remove();
+}
+
+// Shows a subtitle without restarting anything (ASS through JASSUB, WebVTT otherwise). Only a
+// subtitle this browser cannot display, or removing a burned-in one, reopens the playback.
+async function showSubtitle(value) {
+  if (!state.session) return;
+  const at = video.currentTime;
+  const formats = deviceProfile().subtitleFormats;
+  const track = () => (state.session.subtitles ?? []).find((x) => String(x.index ?? 0) === value);
+  const file = (t, f) => formats.includes(f) && t?.files?.find((x) => x.format === f);
+  const t = track();
+  const clientSide = !!(t && (file(t, 'ass') || file(t, 'vtt')));
+  if ((t && !clientSide) || state.session.burnedSubtitleIndex != null) {
+    log(t && !clientSide ? 'subtitle burned in by the server' : 'burn-in removed');
+    await play(state.itemId, { subtitle: t && !clientSide ? (t.index ?? 0) : undefined, start: at });
+    $('subtitles').value = value;
+    if (!clientSide) return;
+  }
+  clearSubtitles();
+  const u = track();
+  if (!u) return;
+  if (file(u, 'ass')) {
+    // Every font of the file: libass picks the right variant itself (regular, bold and italic
+    // often share one family name). The URLs are immutable, so fonts stay cached from one
+    // episode to the next.
+    const fonts = (state.session.fonts ?? []).map((f) => state.base + f.url);
+    state.jassub = new JASSUB({
+      video, subUrl: state.base + file(u, 'ass').url, workerUrl: jassubWorkerUrl(), wasmUrl: JASSUB_CDN + 'jassub-worker.wasm',
+      fonts, availableFonts: { 'liberation sans': JASSUB_CDN + 'default.woff2' }, fallbackFont: 'liberation sans',
+    });
+    log('ASS rendered by JASSUB:', u.title || u.language, `(${fonts.length} fonts)`);
+  } else {
+    const tr = document.createElement('track');
+    tr.kind = 'subtitles'; tr.src = state.base + file(u, 'vtt').url; tr.default = true;
+    video.append(tr);
+    tr.track.mode = 'showing';
+    log('WebVTT:', u.title || u.language);
+  }
+}
+$('subtitles').onchange = (e) => showSubtitle(e.target.value);
+
+function report() {
+  if (state.session) call('PlaybackService', 'ReportProgress', { sessionId: state.session.sessionId, position: video.currentTime + 's' }).catch((e) => log(e.message));
+}
+video.addEventListener('pause', report);
+for (const b of document.querySelectorAll('[data-skip]')) b.onclick = () => { video.currentTime += +b.dataset.skip; };
+
+// --- Watch party ----------------------------------------------------------------------------
+// Everyone plays on their own device; the group only shares a state. While playing, the state
+// says "at instant `at` (server time), the position was `position`": each client works out where
+// it should be and corrects itself (playback rate proportional to the drift, up to ±10%, for a
+// small drift; a catch-up seek beyond half a second).
+
+const party = { id: null, member: null, state: null, offset: 0, abort: null, startAt: null, starting: null, reported: null, catching: false, drift: 0 };
+window.laternaParty = party;
+const seconds = (d) => parseFloat(d ?? '0');
+const serverNow = () => Date.now() + party.offset;
+
+// Server time: the shortest of three round trips.
+async function syncClock() {
+  let best = null;
+  for (let i = 0; i < 3; i++) {
+    const t0 = Date.now();
+    const res = await call('PartyService', 'GetServerTime', {});
+    const t1 = Date.now();
+    if (!best || t1 - t0 < best.rtt) best = { rtt: t1 - t0, offset: Date.parse(res.now) - (t0 + t1) / 2 };
+  }
+  party.offset = best.offset;
+  log('clock synced', `offset ${best.offset.toFixed(0)} ms, round trip ${best.rtt} ms`);
+}
+
+// Position the group should be at, in seconds.
+function expected() {
+  const st = party.state;
+  if (!st) return 0;
+  const pos = seconds(st.position);
+  return st.status === 'PARTY_STATUS_PLAYING' ? pos + Math.max(0, serverNow() - Date.parse(st.at)) / 1000 : pos;
+}
+
+const me = () => party.state?.members?.find((m) => m.id === party.member);
+// Same timeline: membership changes are not part of it.
+const sameTimeline = (a, b) => a && b && a.status === b.status && a.position === b.position && a.at === b.at && a.index === b.index;
+
+// WatchParty stream in Connect JSON: envelopes (flags, length, message).
+async function watchParty() {
+  party.abort?.abort();
+  const ctrl = new AbortController();
+  party.abort = ctrl;
+  const body = new TextEncoder().encode(JSON.stringify({ partyId: party.id }));
+  const env = new Uint8Array(5 + body.length);
+  new DataView(env.buffer).setUint32(1, body.length);
+  env.set(body, 5);
+  try {
+    const res = await fetch(`${state.base}/laterna.v1.PartyService/WatchParty`, {
+      method: 'POST', signal: ctrl.signal, body: env,
+      headers: { 'Content-Type': 'application/connect+json', 'Connect-Protocol-Version': '1', Authorization: 'Bearer ' + state.token },
+    });
+    const reader = res.body.getReader();
+    let buf = new Uint8Array(0);
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const joined = new Uint8Array(buf.length + value.length);
+      joined.set(buf); joined.set(value, buf.length);
+      buf = joined;
+      while (buf.length >= 5) {
+        const len = new DataView(buf.buffer, buf.byteOffset).getUint32(1);
+        if (buf.length < 5 + len) break;
+        const flags = buf[0];
+        const msg = JSON.parse(new TextDecoder().decode(buf.subarray(5, 5 + len)));
+        buf = buf.subarray(5 + len);
+        if (flags & 2) { if (msg.error) log('party stream:', msg.error.message); return; }
+        onPartyUpdate(msg);
+      }
+    }
+  } catch (err) { if (!ctrl.signal.aborted) log('party stream interrupted:', err.message); }
+}
+
+function onPartyUpdate(msg) {
+  if (msg.state) applyPartyState(msg.state);
+  else if (msg.message) log(msg.message.reaction ? `${msg.message.name} reacts ${msg.message.text}` : `${msg.message.name}: ${msg.message.text}`);
+  else if (msg.ended) { log('party ended:', msg.ended); party.abort?.abort(); party.state = null; showParty(); }
+}
+
+// waitFor waits for an event, ten seconds at most (an item swapped along the way never fires it).
+const waitFor = (target, event) => new Promise((resolve) => {
+  target.addEventListener(event, resolve, { once: true });
+  setTimeout(resolve, 10_000);
+});
+
+async function applyPartyState(st) {
+  if (party.state && Number(st.version) <= Number(party.state.version)) return;
+  party.state = st;
+  showParty();
+  const itemId = st.queue[st.index ?? 0];
+  if (state.itemId !== itemId || !state.session) {
+    party.loading = true;
+    await play(itemId, { start: expected(), paused: true });
+    if (video.readyState < 3) await waitFor(video, 'canplay');
+    party.loading = false;
+  }
+  if (party.state !== st) return; // a newer state arrived in the meantime
+  if (st.status === 'PARTY_STATUS_WAITING' && !me()?.ready && party.reported !== st.version) {
+    party.reported = st.version;
+    video.pause();
+    video.currentTime = seconds(st.position);
+    await waitFor(video, 'seeked');
+    if (video.readyState < 3) await waitFor(video, 'canplay');
+    await call('PartyService', 'ReportPartyStatus', { partyId: party.id, ready: true }).catch((e) => log(e.message));
+  }
+  correct();
+}
+
+// Drift correction: called on every state and four times a second.
+function correct() {
+  const st = party.state;
+  if (!st || party.loading || !state.session) return;
+  const want = expected();
+  if (st.status !== 'PARTY_STATUS_PLAYING') {
+    clearTimeout(party.starting); party.startAt = null;
+    if (!video.paused) video.pause();
+    video.playbackRate = 1;
+    if (st.status === 'PARTY_STATUS_PAUSED' && Math.abs(video.currentTime - want) > 0.25) video.currentTime = want;
+    return;
+  }
+  const wait = Date.parse(st.at) - serverNow();
+  if (wait > 0) {
+    // Shared start, at instant `at`.
+    if (party.startAt !== st.at) {
+      party.startAt = st.at;
+      if (!video.paused) video.pause();
+      if (Math.abs(video.currentTime - seconds(st.position)) > 0.05) video.currentTime = seconds(st.position);
+      clearTimeout(party.starting);
+      party.starting = setTimeout(() => video.play().catch(() => {}), wait);
+    }
+    return;
+  }
+  if (party.catching) return;
+  const drift = video.currentTime - want;
+  party.drift = drift;
+  if (Math.abs(drift) > 0.5) { catchUp(); return; }
+  if (video.paused && !video.ended) video.play().catch(() => {});
+  video.playbackRate = Math.abs(drift) < 0.04 ? 1 : 1 - Math.max(-0.1, Math.min(0.1, drift / 2));
+  // Joined during playback: ready once in sync.
+  if (me() && !me().synced && Math.abs(drift) < 0.25 && party.reported !== st.version) {
+    party.reported = st.version;
+    call('PartyService', 'ReportPartyStatus', { partyId: party.id, ready: true }).catch(() => {});
+  }
+}
+setInterval(correct, 250);
+
+// Catching up after a large drift (joining mid-playback, falling behind): seek a little ahead of
+// the group, buffer, then start at the instant the group gets there. Seeking to the current
+// position would land late by the time it takes to load. The lead doubles as long as loading
+// takes longer than it.
+async function catchUp() {
+  party.catching = true;
+  try {
+    const st = party.state;
+    for (let lead = 1; lead <= 8; lead *= 2) {
+      const target = expected() + lead;
+      video.pause();
+      video.playbackRate = 1;
+      video.currentTime = target;
+      await waitFor(video, 'seeked');
+      if (video.readyState < 3) await waitFor(video, 'canplay');
+      if (!sameTimeline(party.state, st)) return; // the group moved on: correct takes over
+      const wait = (target - expected()) * 1000;
+      if (wait >= 0) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+        if (sameTimeline(party.state, st)) video.play().catch(() => {});
+        return;
+      }
+    }
+  } finally { party.catching = false; }
+}
+
+video.addEventListener('waiting', () => {
+  // Buffering we caused ourselves (catching up) does not make the group wait.
+  if (party.state?.status === 'PARTY_STATUS_PLAYING' && me()?.synced && !party.loading && !party.catching) {
+    call('PartyService', 'ReportPartyStatus', { partyId: party.id, buffering: true }).catch(() => {});
+  }
+});
+video.addEventListener('ended', () => {
+  if (party.state) call('PartyService', 'ReportPartyStatus', { partyId: party.id, endedIndex: party.state.index ?? 0 }).catch(() => {});
+});
+
+function showParty() {
+  const st = party.state;
+  if (!st) { $('party-status').textContent = party.id ? 'ended' : ''; return; }
+  const members = st.members.map((m) => `${m.name}${m.host ? ' (host)' : ''}${m.id === party.member ? ' ← you' : ''}: ${m.buffering ? 'buffering' : m.ready ? 'ready' : m.synced ? '—' : 'syncing'}`);
+  $('party-status').textContent = [`code ${party.code} · ${st.status.replace('PARTY_STATUS_', '')} · item ${(st.index ?? 0) + 1}/${st.queue.length} · ${seconds(st.position).toFixed(1)} s · version ${st.version}`, ...members].join('\n');
+}
+
+async function enterParty(p) {
+  party.id = p.id; party.member = p.memberId; party.code = p.code; party.state = null; party.reported = null;
+  await syncClock();
+  watchParty();
+}
+$('party-create').onclick = async () => {
+  if (!state.itemId) return log('open an item first');
+  try { await enterParty((await call('PartyService', 'CreateParty', { itemIds: [state.itemId] })).party); } catch (err) { log(err.message); }
+};
+$('party-join').onclick = async () => {
+  try { await enterParty((await call('PartyService', 'JoinParty', { code: $('party-code').value })).party); } catch (err) { log(err.message); }
+};
+const control = (command) => party.id && call('PartyService', 'ControlParty', { partyId: party.id, ...command }).catch((e) => log(e.message));
+$('party-play').onclick = () => control({ play: true });
+$('party-pause').onclick = () => control({ pause: true });
+$('party-seek').onclick = () => control({ seek: (expected() + 30).toFixed(3) + 's' });
+$('party-message').addEventListener('change', (e) => {
+  if (party.id && e.target.value) call('PartyService', 'SendPartyMessage', { partyId: party.id, text: e.target.value }).catch((err) => log(err.message));
+  e.target.value = '';
+});
+$('party-leave').onclick = async () => {
+  if (!party.id) return;
+  await call('PartyService', 'LeaveParty', { partyId: party.id }).catch(() => {});
+  party.abort?.abort(); party.id = null; party.state = null; showParty();
+};
+// For automated checks: state of the watch party as this client sees it.
+window.partyState = () => ({
+  status: party.state?.status, version: party.state?.version, t: video.currentTime, expected: expected(),
+  drift: video.currentTime - expected(), rate: video.playbackRate, paused: video.paused, members: party.state?.members?.length,
+});
+
+// For automated checks: state of the player.
+window.playerState = () => ({
+  t: video.currentTime, paused: video.paused, readyState: video.readyState, width: video.videoWidth,
+  buffered: [...Array(video.buffered.length).keys()].map((i) => [video.buffered.start(i), video.buffered.end(i)]),
+  errors: state.errors, session: state.session && state.session.sessionId,
+  subtitles: { jassub: !!state.jassub, tracks: [...video.textTracks].map((t) => ({ mode: t.mode, active: t.activeCues ? [...t.activeCues].map((c) => c.text) : [] })) },
+});
+</script>
+</body>
+</html>

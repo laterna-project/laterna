@@ -1,0 +1,42 @@
+// Command fixturegen generates the library of synthetic media used by tests (see
+// internal/testfixtures). Tests also generate it themselves when needed.
+//
+//	go run ./devtools/fixturegen [-out testdata/library] [-ffmpeg path] [-force]
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/laterna-project/laterna/internal/testfixtures"
+)
+
+func main() {
+	out := flag.String("out", testfixtures.Root(), "output folder")
+	ffmpeg := flag.String("ffmpeg", "", "ffmpeg executable (default: LATERNA_FFMPEG, then PATH)")
+	force := flag.Bool("force", false, "regenerate existing files")
+	flag.Parse()
+	if *ffmpeg == "" {
+		*ffmpeg, _, _ = testfixtures.FFmpeg()
+	}
+	if err := generate(*out, *ffmpeg, *force); err != nil {
+		fmt.Fprintln(os.Stderr, "fixturegen:", err)
+		os.Exit(1)
+	}
+}
+
+func generate(out, ffmpeg string, force bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	made, skipped, err := testfixtures.Generate(ctx, out, testfixtures.Options{
+		FFmpeg: ffmpeg, Force: force, Log: func(p string) { fmt.Println("  +", p) },
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("fixtures ready in %s (%d files generated, %d already there)\n", out, made, skipped)
+	return nil
+}
