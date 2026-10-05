@@ -25,11 +25,11 @@ func TestParseTags(t *testing.T) {
 			IDs: map[string]string{"musicbrainz_release": "a", "musicbrainz_releasegroup": "b", "musicbrainz_artist": "c", "musicbrainz_recording": "e"},
 		}},
 		{"MP3 (ID3): track over total, year only, compilation", map[string]string{
-			"title": " Titre ", "artist": "A feat. B", "album": "Été", "track": "03/12", "disc": "2/2", "date": "1999",
-			"compilation": "1", "album_artist-sort": "Artistes, Divers",
-		}, Tags{Title: "Titre", Artist: "A feat. B", Album: "Été", Disc: 2, Number: 3, Year: 1999, Compilation: true, ArtistSort: "Artistes, Divers"}},
-		{"date d'origine faute de date", map[string]string{"originalyear": "1977", "replaygain_track_gain": "n/a"}, Tags{Year: 1977}},
-		{"rien", map[string]string{"encoder": "Lavf"}, Tags{}},
+			"title": " Title ", "artist": "A feat. B", "album": "Café", "track": "03/12", "disc": "2/2", "date": "1999",
+			"compilation": "1", "album_artist-sort": "Artists, Various",
+		}, Tags{Title: "Title", Artist: "A feat. B", Album: "Café", Disc: 2, Number: 3, Year: 1999, Compilation: true, ArtistSort: "Artists, Various"}},
+		{"original year when there is no date", map[string]string{"originalyear": "1977", "replaygain_track_gain": "n/a"}, Tags{Year: 1977}},
+		{"nothing", map[string]string{"encoder": "Lavf"}, Tags{}},
 	}
 	for _, tc := range tests {
 		if got := ParseTags(tc.tags); !reflect.DeepEqual(got, tc.want) {
@@ -41,7 +41,7 @@ func TestParseTags(t *testing.T) {
 func TestParseMusicNFO(t *testing.T) {
 	album, err := ParseNFO(strings.NewReader(`<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <album>
-  <review>Deuxième album.</review>
+  <review>Second album.</review>
   <title>Discovery</title>
   <year>2001</year>
   <releasedate>2001-03-12</releasedate>
@@ -56,17 +56,17 @@ func TestParseMusicNFO(t *testing.T) {
 		t.Fatal(err)
 	}
 	if album.Kind != "album" || album.Title != "Discovery" || album.Year != 2001 || album.Premiered != "2001-03-12" ||
-		album.Plot != "Deuxième album." || !reflect.DeepEqual(album.Genres, []string{"Electronic"}) ||
+		album.Plot != "Second album." || !reflect.DeepEqual(album.Genres, []string{"Electronic"}) ||
 		!reflect.DeepEqual(album.IDs, map[string]string{"musicbrainz_release": "release-id", "musicbrainz_releasegroup": "group-id"}) {
 		t.Errorf("album: %+v", album)
 	}
 	artist, err := ParseNFO(strings.NewReader(`<artist><name>The Beatles</name><sortname>Beatles, The</sortname>
-<biography>Groupe de Liverpool.</biography><musicbrainzartistid>artist-id</musicbrainzartistid></artist>`))
+<biography>A band from Liverpool.</biography><musicbrainzartistid>artist-id</musicbrainzartistid></artist>`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if artist.Kind != "artist" || artist.Title != "The Beatles" || artist.SortTitle != "Beatles, The" ||
-		artist.Plot != "Groupe de Liverpool." || artist.IDs["musicbrainz_artist"] != "artist-id" {
+		artist.Plot != "A band from Liverpool." || artist.IDs["musicbrainz_artist"] != "artist-id" {
 		t.Errorf("artist: %+v", artist)
 	}
 }

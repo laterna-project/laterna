@@ -392,7 +392,7 @@ func populate(ctx context.Context, dir string) (sampleIDs, error) {
 	profile := domain.Profile{ID: domain.NewID(), AccountID: account.ID, Name: perfUser, CreatedAt: now, UpdatedAt: now}
 	libs := map[domain.LibraryKind]domain.Library{}
 	for _, k := range []domain.LibraryKind{domain.LibraryMovies, domain.LibraryShows, domain.LibraryMusic} {
-		root := filepath.Join(dir, "medias", string(k))
+		root := filepath.Join(dir, "media", string(k))
 		if err := os.MkdirAll(root, 0o750); err != nil {
 			return ids, err
 		}

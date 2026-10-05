@@ -38,7 +38,7 @@ func TestParties(t *testing.T) {
 	a, c := startMediaApp(t)
 	_, chloe := setupAdmin(t, a)
 	ctx := context.Background()
-	films, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{testRoot("Films")}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{testRoot("Movies")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	_, err = a.CreateAccount(ctx, chloe, NewAccount{Username: "Léa", Password: "a-password"})
@@ -94,10 +94,10 @@ func TestParties(t *testing.T) {
 	}
 
 	// A message and a reaction, received by everyone.
-	mustNil(t, a.SendPartyMessage(lea, pv.ID, "  Salut !  ", false))
+	mustNil(t, a.SendPartyMessage(lea, pv.ID, "  Hi there!  ", false))
 	for {
 		if u := nextUpdate(t, subC); u.Message != nil {
-			if u.Message.Text != "Salut !" || u.Message.Name != "Léa" || u.Message.Reaction {
+			if u.Message.Text != "Hi there!" || u.Message.Name != "Léa" || u.Message.Reaction {
 				t.Errorf("message: %+v", u.Message)
 			}
 			break

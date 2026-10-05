@@ -27,22 +27,22 @@ func TestCompute(t *testing.T) {
 	}
 	show, film, artist := id(), id(), id()
 	ep1, ep2, ep3, track := id(), id(), id(), id()
-	genres := map[domain.ID][]string{*show: {"Drame", "Anime"}, *film: {"Drame"}}
+	genres := map[domain.ID][]string{*show: {"Drama", "Anime"}, *film: {"Drama"}}
 	episode := func(item *domain.ID, title, start string) domain.Play {
-		return domain.Play{ItemID: item, Kind: domain.ItemEpisode, SeriesID: show, Title: title, Subtitle: "Série", StartedAt: at(start), Watched: 24 * time.Minute}
+		return domain.Play{ItemID: item, Kind: domain.ItemEpisode, SeriesID: show, Title: title, Subtitle: "Show", StartedAt: at(start), Watched: 24 * time.Minute}
 	}
 	plays := []domain.Play{
 		// March 14: three episodes of the series, one of them rewatched, then a movie in the
 		// evening.
 		episode(ep1, "Un", "2026-03-14 14:00"),
-		episode(ep2, "Deux", "2026-03-14 14:30"),
-		episode(ep2, "Deux", "2026-03-14 15:00"),
-		episode(ep3, "Trois", "2026-03-14 15:30"),
-		{ItemID: film, Kind: domain.ItemMovie, Title: "Film", StartedAt: at("2026-03-14 21:00"), Watched: 2 * time.Hour},
+		episode(ep2, "Two", "2026-03-14 14:30"),
+		episode(ep2, "Two", "2026-03-14 15:00"),
+		episode(ep3, "Three", "2026-03-14 15:30"),
+		{ItemID: film, Kind: domain.ItemMovie, Title: "Movie", StartedAt: at("2026-03-14 21:00"), Watched: 2 * time.Hour},
 		// January 1 at 00:30 in Paris is still December 31 in UTC.
-		{ItemID: track, Kind: domain.ItemTrack, ArtistID: artist, Title: "Piste", Subtitle: "Artiste", StartedAt: at("2026-01-01 00:30"), Watched: 4 * time.Minute},
+		{ItemID: track, Kind: domain.ItemTrack, ArtistID: artist, Title: "Track", Subtitle: "Artist", StartedAt: at("2026-01-01 00:30"), Watched: 4 * time.Minute},
 		// An episode forgotten since: counted by its title.
-		{Kind: domain.ItemEpisode, Title: "Pilote", Subtitle: "Autre série", StartedAt: at("2026-05-02 20:00"), Watched: 40 * time.Minute},
+		{Kind: domain.ItemEpisode, Title: "Pilot", Subtitle: "Other show", StartedAt: at("2026-05-02 20:00"), Watched: 40 * time.Minute},
 		// The year before: outside 2026.
 		episode(ep1, "Un", "2025-12-31 23:00"),
 	}
@@ -53,14 +53,14 @@ func TestCompute(t *testing.T) {
 	if st.Movies != 1 || st.Episodes != 4 || st.Series != 2 || st.Tracks != 1 {
 		t.Errorf("counts: %d movies, %d episodes, %d series, %d tracks", st.Movies, st.Episodes, st.Series, st.Tracks)
 	}
-	if len(st.TopSeries) != 2 || st.TopSeries[0].Name != "Série" || st.TopSeries[0].Plays != 4 || st.TopSeries[1].ID != nil {
+	if len(st.TopSeries) != 2 || st.TopSeries[0].Name != "Show" || st.TopSeries[0].Plays != 4 || st.TopSeries[1].ID != nil {
 		t.Errorf("series: %+v", st.TopSeries)
 	}
-	// Drame: the series (96 min) and the movie (2 h). Anime: the series alone.
-	if len(st.TopGenres) != 2 || st.TopGenres[0].Name != "Drame" || st.TopGenres[0].Time != 96*time.Minute+2*time.Hour {
+	// Drama: the series (96 min) and the movie (2 h). Anime: the series alone.
+	if len(st.TopGenres) != 2 || st.TopGenres[0].Name != "Drama" || st.TopGenres[0].Time != 96*time.Minute+2*time.Hour {
 		t.Errorf("genres: %+v", st.TopGenres)
 	}
-	if len(st.TopTracks) != 1 || st.TopTracks[0].Name != "Artiste — Piste" || len(st.TopArtists) != 1 || st.TopArtists[0].ID != artist {
+	if len(st.TopTracks) != 1 || st.TopTracks[0].Name != "Artist — Track" || len(st.TopArtists) != 1 || st.TopArtists[0].ID != artist {
 		t.Errorf("music: %+v %+v", st.TopTracks, st.TopArtists)
 	}
 	if len(st.Timeline) != 12 || st.Timeline[2].Time != 4*24*time.Minute+2*time.Hour || st.Timeline[0].Time != 4*time.Minute {
@@ -73,7 +73,7 @@ func TestCompute(t *testing.T) {
 	if st.BusiestDay == nil || !st.BusiestDay.Start.Equal(at("2026-03-14 00:00")) || st.BusiestDay.Time != 4*24*time.Minute+2*time.Hour {
 		t.Errorf("busiest day: %+v", st.BusiestDay)
 	}
-	if st.Binge == nil || st.Binge.Episodes != 3 || st.Binge.Series != "Série" || st.Binge.Time != 96*time.Minute {
+	if st.Binge == nil || st.Binge.Episodes != 3 || st.Binge.Series != "Show" || st.Binge.Time != 96*time.Minute {
 		t.Errorf("binge: %+v", st.Binge)
 	}
 
@@ -125,7 +125,7 @@ func BenchmarkCompute20000(b *testing.B) {
 	movies, shows, episodes, tracks, artists := pool(300), pool(40), pool(1000), pool(2000), pool(150)
 	genres := map[domain.ID][]string{}
 	for _, s := range append(shows, movies...) {
-		genres[*s] = []string{"Drame", "Anime"}
+		genres[*s] = []string{"Drama", "Anime"}
 	}
 	start := time.Date(2026, 1, 1, 8, 0, 0, 0, loc)
 	plays := make([]domain.Play, 20000)
@@ -133,9 +133,9 @@ func BenchmarkCompute20000(b *testing.B) {
 		p := domain.Play{StartedAt: start.Add(time.Duration(i) * 26 * time.Minute), Watched: 20 * time.Minute, Title: "x"}
 		switch i % 3 {
 		case 0:
-			p.Kind, p.ItemID, p.SeriesID, p.Subtitle = domain.ItemEpisode, episodes[i%len(episodes)], shows[i%len(shows)], "Série"
+			p.Kind, p.ItemID, p.SeriesID, p.Subtitle = domain.ItemEpisode, episodes[i%len(episodes)], shows[i%len(shows)], "Show"
 		case 1:
-			p.Kind, p.ItemID, p.ArtistID, p.Subtitle = domain.ItemTrack, tracks[i%len(tracks)], artists[i%len(artists)], "Artiste"
+			p.Kind, p.ItemID, p.ArtistID, p.Subtitle = domain.ItemTrack, tracks[i%len(tracks)], artists[i%len(artists)], "Artist"
 		default:
 			p.Kind, p.ItemID = domain.ItemMovie, movies[i%len(movies)]
 		}

@@ -18,7 +18,7 @@ import (
 )
 
 // Key is the API key the fake accepts.
-const Key = "cle-de-test"
+const Key = "test-key"
 
 // Server is a fake Sonarr or Radarr.
 type Server struct {

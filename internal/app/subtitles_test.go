@@ -21,9 +21,9 @@ import (
 // files there), imports it and returns its file.
 func subtitledMovie(t *testing.T) (*App, domain.Principal, domain.Item, domain.MediaFile, string) {
 	t.Helper()
-	src := testfixtures.Path(t, "Sous-titres/Polices (2022)")
+	src := testfixtures.Path(t, "Subtitles/Fonts (2022)")
 	root := t.TempDir()
-	dir := filepath.Join(root, "Polices (2022)")
+	dir := filepath.Join(root, "Fonts (2022)")
 	mustNil(t, os.MkdirAll(dir, 0o750))
 	entries, err := os.ReadDir(src)
 	mustNil(t, err)
@@ -33,7 +33,7 @@ func subtitledMovie(t *testing.T) (*App, domain.Principal, domain.Item, domain.M
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	_, err = a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+	_, err = a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	page, err := a.ListMovies(ctx, p, ListQuery{PageSize: 10})
@@ -98,7 +98,7 @@ func TestSubtitlesExtractedAtImport(t *testing.T) {
 	}
 	// The WebVTT derived from the ASS: dialogue only, the top line at the top.
 	vtt := readText(t, path(0, "vtt"))
-	for _, want := range []string{"00:00:01.000 --> 00:00:03.000 line:0\nTout en haut", "Réplique en <i>italique</i>.", "00:00:08.000 --> 00:00:11.000\nSeconde réplique."} {
+	for _, want := range []string{"00:00:01.000 --> 00:00:03.000 line:0\nAt the top", "A line in <i>italics</i>.", "00:00:08.000 --> 00:00:11.000\nSecond line."} {
 		if !strings.Contains(vtt, want) {
 			t.Errorf("WebVTT from the ASS without %q:\n%s", want, vtt)
 		}
@@ -109,10 +109,10 @@ func TestSubtitlesExtractedAtImport(t *testing.T) {
 	if srt := readText(t, path(1, "vtt")); !strings.Contains(srt, "00:04.000 --> 00:07.000\nFirst line.") {
 		t.Errorf("SRT:\n%s", srt)
 	}
-	if cp1252 := readText(t, path(4, "vtt")); !strings.Contains(cp1252, "Café !") {
+	if cp1252 := readText(t, path(4, "vtt")); !strings.Contains(cp1252, "Café!") {
 		t.Errorf("Windows-1252 SRT:\n%q", cp1252)
 	}
-	if bom := readText(t, path(5, "vtt")); !strings.Contains(bom, "Première réplique.") || strings.Contains(bom, "\ufeff") {
+	if bom := readText(t, path(5, "vtt")); !strings.Contains(bom, "First line, é à ç.") || strings.Contains(bom, "\ufeff") {
 		t.Errorf("SRT with a BOM:\n%q", bom)
 	}
 	if len(set.Fonts) != 1 || !slices.Contains(set.Fonts[0].Names, "go") {
@@ -143,7 +143,7 @@ func TestSubtitlesExtractedAtImport(t *testing.T) {
 	if _, err := a.SubtitleFile(ctx, info.SessionID, info.Token, 2, "vtt"); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("missing format: %v", err)
 	}
-	if _, err := a.SubtitleFile(ctx, info.SessionID, "mauvais-secret", 0, "ass"); !isKind(err, domain.ErrNotFound) {
+	if _, err := a.SubtitleFile(ctx, info.SessionID, "wrong-secret", 0, "ass"); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("wrong secret: %v", err)
 	}
 	// Reading again (a client that opened the playback before the extraction finished).
@@ -168,7 +168,7 @@ func TestSubtitlesExtractedAtImport(t *testing.T) {
 	if again, _, _ := a.store.Read().SubtitleSet(ctx, file.ID); !again.ExtractedAt.Equal(set.ExtractedAt) {
 		t.Error("extracted again without a change")
 	}
-	mustNil(t, os.WriteFile(filepath.Join(dir, "Polices (2022).ja.srt"), []byte("1\n00:00:02,000 --> 00:00:03,000\nこんにちは\n"), 0o600))
+	mustNil(t, os.WriteFile(filepath.Join(dir, "Fonts (2022).ja.srt"), []byte("1\n00:00:02,000 --> 00:00:03,000\nこんにちは\n"), 0o600))
 	scan()
 	added, _, _ := a.store.Read().SubtitleSet(ctx, file.ID)
 	if len(added.Subtitles) != 7 || added.Subtitles[6].Language != "jpn" || !strings.Contains(readText(t, path(6, "vtt")), "こんにちは") {
@@ -245,7 +245,7 @@ func TestPlaybackBurnsSubtitles(t *testing.T) {
 	}
 	mustNil(t, a.StopPlayback(ctx, p, info.SessionID, 0))
 
-	// No subtitle format at all: the ASS is burned in by libass ("Tout en haut", 1 to 3 s).
+	// No subtitle format at all: the ASS is burned in by libass ("At the top", 1 to 3 s).
 	none := browser
 	info, joined = burnFirstSegment(none, 0)
 	burned, w := grayFrame(t, joined, 2*time.Second)

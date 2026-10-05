@@ -19,7 +19,7 @@ func TestParseLevel(t *testing.T) {
 			t.Errorf("ParseLevel(%q) = %v, %v", in, got, err)
 		}
 	}
-	if _, err := ParseLevel("bavard"); err == nil {
+	if _, err := ParseLevel("chatty"); err == nil {
 		t.Error("unknown level accepted")
 	}
 }
@@ -58,7 +58,7 @@ func TestDailyFileRotatesAndPrunes(t *testing.T) {
 	day := time.Date(2026, 9, 26, 23, 0, 0, 0, time.UTC)
 	d.now = func() time.Time { return day }
 	for range 4 {
-		if _, err := d.Write([]byte("ligne\n")); err != nil {
+		if _, err := d.Write([]byte("line\n")); err != nil {
 			t.Fatal(err)
 		}
 		day = day.Add(24 * time.Hour)
@@ -85,8 +85,8 @@ func TestRing(t *testing.T) {
 	}
 	defer func() { _ = closer.Close() }()
 	log.Debug("too low")
-	log.Info("scan done", "library", "Films", slog.Group("stats", "added", 2))
-	log.With("job", 7).Warn("job failed", "err", "boum")
+	log.Info("scan done", "library", "Movies", slog.Group("stats", "added", 2))
+	log.With("job", 7).Warn("job failed", "err", "boom")
 	log.Info("one")
 	log.Info("two") // the ring only keeps the last three
 	all := ring.Entries(slog.LevelDebug, "", 10)
@@ -96,7 +96,7 @@ func TestRing(t *testing.T) {
 	if got := ring.Entries(slog.LevelWarn, "", 10); len(got) != 1 || len(got[0].Attrs) != 2 || got[0].Attrs[0] != (Attr{Key: "job", Value: "7"}) {
 		t.Errorf("warnings: %+v", got)
 	}
-	if got := ring.Entries(slog.LevelDebug, "BOUM", 10); len(got) != 1 {
+	if got := ring.Entries(slog.LevelDebug, "BOOM", 10); len(got) != 1 {
 		t.Errorf("search in attributes: %+v", got)
 	}
 	if got := ring.Entries(slog.LevelDebug, "", 1); len(got) != 1 || got[0].Message != "two" {

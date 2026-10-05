@@ -10,18 +10,18 @@ import (
 
 func TestExposition(t *testing.T) {
 	r := NewRegistry()
-	req := r.Counter("laterna_requests_total", "Requêtes reçues.", "route", "code")
+	req := r.Counter("laterna_requests_total", "Requests received.", "route", "code")
 	req.Inc("/images/{id}", "2xx")
 	req.Add(2, "/images/{id}", "2xx")
 	req.Inc(`a"b\c`+"\n", "5xx")
-	g := r.Gauge("laterna_temperature", "Une jauge\nsur deux lignes.")
+	g := r.Gauge("laterna_temperature", "A gauge\non two lines.")
 	g.Set(21.5)
 	g.Add(-1.5)
-	h := r.Histogram("laterna_duration_seconds", "Durées.", []float64{0.1, 1}, "route")
+	h := r.Histogram("laterna_duration_seconds", "Durations.", []float64{0.1, 1}, "route")
 	for _, v := range []float64{0.05, 0.1, 0.5, 3} {
 		h.Observe(v, "/x")
 	}
-	r.GaugeFunc("laterna_playbacks", "Lectures.", []string{"method"}, func(_ context.Context, emit func(float64, ...string)) {
+	r.GaugeFunc("laterna_playbacks", "Playbacks.", []string{"method"}, func(_ context.Context, emit func(float64, ...string)) {
 		emit(2, "remux")
 		emit(1, "direct")
 		emit(9) // wrong number of labels: ignored
@@ -30,22 +30,22 @@ func TestExposition(t *testing.T) {
 	if err := r.Write(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
-	want := `# HELP laterna_duration_seconds Durées.
+	want := `# HELP laterna_duration_seconds Durations.
 # TYPE laterna_duration_seconds histogram
 laterna_duration_seconds_bucket{route="/x",le="0.1"} 2
 laterna_duration_seconds_bucket{route="/x",le="1"} 3
 laterna_duration_seconds_bucket{route="/x",le="+Inf"} 4
 laterna_duration_seconds_sum{route="/x"} 3.65
 laterna_duration_seconds_count{route="/x"} 4
-# HELP laterna_playbacks Lectures.
+# HELP laterna_playbacks Playbacks.
 # TYPE laterna_playbacks gauge
 laterna_playbacks{method="direct"} 1
 laterna_playbacks{method="remux"} 2
-# HELP laterna_requests_total Requêtes reçues.
+# HELP laterna_requests_total Requests received.
 # TYPE laterna_requests_total counter
 laterna_requests_total{route="/images/{id}",code="2xx"} 3
 laterna_requests_total{route="a\"b\\c\n",code="5xx"} 1
-# HELP laterna_temperature Une jauge\nsur deux lignes.
+# HELP laterna_temperature A gauge\non two lines.
 # TYPE laterna_temperature gauge
 laterna_temperature 20
 `
@@ -65,11 +65,11 @@ func TestRegistration(t *testing.T) {
 		t.Errorf("shared family: %s", b.String())
 	}
 	for name, fn := range map[string]func(){
-		"autre forme":  func() { r.Gauge("x_total", "x", "k") },
+		"other shape":  func() { r.Gauge("x_total", "x", "k") },
 		"other label":  func() { r.Counter("x_total", "x", "j") },
-		"nom invalide": func() { r.Counter("x-y", "x") },
+		"invalid name": func() { r.Counter("x-y", "x") },
 		"le label":     func() { r.Histogram("h", "h", []float64{1}, "le") },
-		"bornes":       func() { r.Histogram("h2", "h", []float64{2, 1}) },
+		"bounds":       func() { r.Histogram("h2", "h", []float64{2, 1}) },
 		"decreasing":   func() { a.Add(-1, "v") },
 		"labels":       func() { a.Inc() },
 	} {

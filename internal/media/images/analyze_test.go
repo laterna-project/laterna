@@ -68,7 +68,7 @@ func TestAnalyze(t *testing.T) {
 
 func TestAnalyzeRejects(t *testing.T) {
 	dir := t.TempDir()
-	bad := filepath.Join(dir, "faux.jpg")
+	bad := filepath.Join(dir, "fake.jpg")
 	if err := os.WriteFile(bad, []byte("not an image"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestAnalyzeRejects(t *testing.T) {
 }
 
 func TestAnalyzeFixturePoster(t *testing.T) {
-	a, err := Analyze(testfixtures.Path(t, "Films/Big Test Movie (2020)/poster.jpg"))
+	a, err := Analyze(testfixtures.Path(t, "Movies/Big Test Movie (2020)/poster.jpg"))
 	if err != nil {
 		t.Fatal(err)
 	}

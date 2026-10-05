@@ -22,10 +22,10 @@ func TestImage(t *testing.T) {
 			return
 		}
 		switch r.URL.Path {
-		case "/affiche.jpg":
+		case "/poster-art.jpg":
 			w.Header().Set("Content-Type", "image/jpeg")
 			_, _ = w.Write([]byte("jpeg"))
-		case "/occupe.jpg":
+		case "/busy.jpg":
 			if busy.Add(1) == 1 {
 				w.Header().Set("Retry-After", "0")
 				w.WriteHeader(http.StatusTooManyRequests)
@@ -36,10 +36,10 @@ func TestImage(t *testing.T) {
 		case "/page.jpg":
 			w.Header().Set("Content-Type", "text/html")
 			_, _ = w.Write([]byte("<html>"))
-		case "/enorme.jpg":
+		case "/huge.jpg":
 			w.Header().Set("Content-Type", "image/jpeg")
 			_, _ = w.Write([]byte(strings.Repeat("x", MaxSize+1)))
-		case "/panne.jpg":
+		case "/outage.jpg":
 			w.WriteHeader(http.StatusBadGateway)
 		default:
 			http.NotFound(w, r)
@@ -50,18 +50,18 @@ func TestImage(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	dst := filepath.Join(dir, "a", "b", "affiche.jpg")
-	if err := c.Image(ctx, srv.URL+"/affiche.jpg", dst); err != nil {
+	dst := filepath.Join(dir, "a", "b", "poster-art.jpg")
+	if err := c.Image(ctx, srv.URL+"/poster-art.jpg", dst); err != nil {
 		t.Fatal(err)
 	}
 	if b, err := os.ReadFile(dst); err != nil || string(b) != "jpeg" {
 		t.Errorf("content: %q %v", b, err)
 	}
 	// A 429 makes us wait, then try again.
-	if err := c.Image(ctx, srv.URL+"/occupe.jpg", filepath.Join(dir, "occupe.png")); err != nil {
+	if err := c.Image(ctx, srv.URL+"/busy.jpg", filepath.Join(dir, "busy.png")); err != nil {
 		t.Errorf("after a 429: %v", err)
 	}
-	for _, name := range []string{"absente.jpg", "page.jpg", "enorme.jpg"} {
+	for _, name := range []string{"missing.jpg", "page.jpg", "huge.jpg"} {
 		err := c.Image(ctx, srv.URL+"/"+name, filepath.Join(dir, name))
 		if !errors.Is(err, ErrUnavailable) {
 			t.Errorf("%s: %v, want ErrUnavailable", name, err)
@@ -71,7 +71,7 @@ func TestImage(t *testing.T) {
 		}
 	}
 	// A site outage will be retried later; a non-HTTP URL never.
-	if err := c.Image(ctx, srv.URL+"/panne.jpg", filepath.Join(dir, "panne.jpg")); err == nil || errors.Is(err, ErrUnavailable) {
+	if err := c.Image(ctx, srv.URL+"/outage.jpg", filepath.Join(dir, "outage.jpg")); err == nil || errors.Is(err, ErrUnavailable) {
 		t.Errorf("outage: %v", err)
 	}
 	before := calls.Load()
@@ -80,7 +80,7 @@ func TestImage(t *testing.T) {
 	}
 	entries, _ := os.ReadDir(dir)
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".telechargement-") {
+		if strings.HasPrefix(e.Name(), ".download-") {
 			t.Errorf("temporary file left behind: %s", e.Name())
 		}
 	}

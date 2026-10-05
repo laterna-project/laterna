@@ -14,30 +14,30 @@ const fansub = "\ufeff[Script Info]\r\nScriptType: v4.00+\r\n\r\n" +
 	"[V4+ Styles]\r\n" +
 	"Format: Name, Fontname, Fontsize, PrimaryColour, Bold, Italic, Alignment, MarginV\r\n" +
 	"Style: Default,Go,48,&H00FFFFFF,0,0,2,20\r\n" +
-	"Style: Haut,Go,48,&H00FFFFFF,0,0,8,20\r\n" +
+	"Style: Top,Go,48,&H00FFFFFF,0,0,8,20\r\n" +
 	"Style: Sign,Go,30,&H00FFFFFF,0,0,5,20\r\n\r\n" +
 	"[Events]\r\n" +
 	"Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\r\n" +
-	"Comment: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,texte commenté\r\n" +
-	"Dialogue: 0,0:00:01.00,0:00:03.50,Default,,0,0,0,,Bonjour, {\\i1}toi{\\i0} !\\NÇa va & bien ?\r\n" +
-	"Dialogue: 0,0:00:03.50,0:00:05.00,Default,,0,0,0,,Bonjour, {\\i1}toi{\\i0} !\\NÇa va & bien ?\r\n" +
-	"Dialogue: 0,0:00:02.00,0:00:04.00,Haut,,0,0,0,,En haut<3\r\n" +
-	"Dialogue: 0,0:00:04.00,0:00:06.00,Default,,0,0,0,,{\\an8\\b1}Aussi en haut\r\n" +
+	"Comment: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,commented text\r\n" +
+	"Dialogue: 0,0:00:01.00,0:00:03.50,Default,,0,0,0,,Hello, {\\i1}you{\\i0}!\\NAll good & well?\r\n" +
+	"Dialogue: 0,0:00:03.50,0:00:05.00,Default,,0,0,0,,Hello, {\\i1}you{\\i0}!\\NAll good & well?\r\n" +
+	"Dialogue: 0,0:00:02.00,0:00:04.00,Top,,0,0,0,,On top<3\r\n" +
+	"Dialogue: 0,0:00:04.00,0:00:06.00,Default,,0,0,0,,{\\an8\\b1}Also on top\r\n" +
 	"Dialogue: 0,0:00:01.00,0:00:09.00,Sign,,0,0,0,,{\\pos(320,50)\\fnArial}RAMEN ICHIRAKU\r\n" +
 	"Dialogue: 1,0:00:07.00,0:00:07.20,Default,,0,0,0,fx,{\\move(10,10,20,20)\\k20}ka\r\n" +
 	"Dialogue: 0,0:00:07.00,0:00:08.00,Default,,0,0,0,,{\\p1}m 0 0 l 10 0 10 10\r\n" +
-	"Dialogue: 0,0:00:08.00,0:00:10.00,Default,,0,0,0,,{\\k50}Ka{\\k50}ra{\\k50}o{\\k50}ké\r\n" +
-	"Dialogue: 0,0:00:10.00,0:00:10.00,Default,,0,0,0,,durée nulle\r\n" +
-	"Dialogue: 0,1:02:03.45,1:02:04.00,Default,,0,0,0,,{ commentaire }Fin\\hdu film\r\n"
+	"Dialogue: 0,0:00:08.00,0:00:10.00,Default,,0,0,0,,{\\k50}Ka{\\k50}ra{\\k50}o{\\k50}ke\r\n" +
+	"Dialogue: 0,0:00:10.00,0:00:10.00,Default,,0,0,0,,zero duration\r\n" +
+	"Dialogue: 0,1:02:03.45,1:02:04.00,Default,,0,0,0,,{ comment }End\\hof film\r\n"
 
 func TestASSToVTT(t *testing.T) {
 	got := string(ASSToVTT([]byte(fansub)))
 	want := "WEBVTT\n" +
-		"\n00:00:01.000 --> 00:00:05.000\nBonjour, <i>toi</i> !\nÇa va &amp; bien ?\n" +
-		"\n00:00:02.000 --> 00:00:04.000 line:0\nEn haut&lt;3\n" +
-		"\n00:00:04.000 --> 00:00:06.000 line:0\n<b>Aussi en haut</b>\n" +
-		"\n00:00:08.000 --> 00:00:10.000\nKaraoké\n" +
-		"\n01:02:03.450 --> 01:02:04.000\nFin\u00a0du film\n"
+		"\n00:00:01.000 --> 00:00:05.000\nHello, <i>you</i>!\nAll good &amp; well?\n" +
+		"\n00:00:02.000 --> 00:00:04.000 line:0\nOn top&lt;3\n" +
+		"\n00:00:04.000 --> 00:00:06.000 line:0\n<b>Also on top</b>\n" +
+		"\n00:00:08.000 --> 00:00:10.000\nKaraoke\n" +
+		"\n01:02:03.450 --> 01:02:04.000\nEnd\u00a0of film\n"
 	if got != want {
 		t.Errorf("WebVTT:\n%s\nwant:\n%s", got, want)
 	}
@@ -45,9 +45,9 @@ func TestASSToVTT(t *testing.T) {
 
 // SSA (V4) aligns to the top with 5 to 7.
 func TestASSToVTTLegacyAlignment(t *testing.T) {
-	ssa := "[V4 Styles]\nFormat: Name, Alignment\nStyle: Haut,6\n\n[Events]\nFormat: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n" +
-		"Dialogue: Marked=0,0:00:01.00,0:00:02.00,Haut,,0,0,0,,Texte\n"
-	if got := string(ASSToVTT([]byte(ssa))); !strings.Contains(got, "00:00:01.000 --> 00:00:02.000 line:0\nTexte") {
+	ssa := "[V4 Styles]\nFormat: Name, Alignment\nStyle: Top,6\n\n[Events]\nFormat: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n" +
+		"Dialogue: Marked=0,0:00:01.00,0:00:02.00,Top,,0,0,0,,Text\n"
+	if got := string(ASSToVTT([]byte(ssa))); !strings.Contains(got, "00:00:01.000 --> 00:00:02.000 line:0\nText") {
 		t.Errorf("SSA: %q", got)
 	}
 }
@@ -79,7 +79,7 @@ func TestFontNames(t *testing.T) {
 			t.Errorf("false: %v", names)
 		}
 	}
-	if !IsFont("x.bin", "application/x-truetype-font") || !IsFont("Police.TTF", "unknown") || IsFont("Cover", "image/png") {
+	if !IsFont("x.bin", "application/x-truetype-font") || !IsFont("Font.TTF", "unknown") || IsFont("Cover", "image/png") {
 		t.Error("IsFont")
 	}
 	if FontExt("a.OTF") != ".otf" || FontExt("no-extension") != ".ttf" {

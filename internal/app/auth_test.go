@@ -78,7 +78,7 @@ func TestSetupOnlyOnce(t *testing.T) {
 	if required, _ := a.SetupRequired(ctx); !required {
 		t.Fatal("want setup required on an empty database")
 	}
-	if _, err := a.Setup(ctx, "admin", "court", dev("PC"), ""); !isKind(err, domain.ErrInvalid) {
+	if _, err := a.Setup(ctx, "admin", "short", dev("PC"), ""); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("password too short accepted: %v", err)
 	}
 	login, p := setupAdmin(t, a)
@@ -91,7 +91,7 @@ func TestSetupOnlyOnce(t *testing.T) {
 	if required, _ := a.SetupRequired(ctx); required {
 		t.Error("setup still required")
 	}
-	if _, err := a.Setup(ctx, "autre", "a-strong-password", dev("PC"), ""); !isKind(err, domain.ErrPrecondition) {
+	if _, err := a.Setup(ctx, "other", "a-strong-password", dev("PC"), ""); !isKind(err, domain.ErrPrecondition) {
 		t.Errorf("second setup: %v", err)
 	}
 }
@@ -104,11 +104,11 @@ func TestLoginAndRateLimit(t *testing.T) {
 	if _, err := a.Login(ctx, "CHLOÉ", "a-strong-password", dev("TV"), "10.0.0.2"); err != nil {
 		t.Fatalf("login (name in a different case): %v", err)
 	}
-	if _, err := a.Login(ctx, "inconnu", "a-strong-password", dev("TV"), "10.0.0.3"); !isKind(err, domain.ErrUnauthenticated) {
+	if _, err := a.Login(ctx, "unknown", "a-strong-password", dev("TV"), "10.0.0.3"); !isKind(err, domain.ErrUnauthenticated) {
 		t.Errorf("unknown account: %v", err)
 	}
 	for range 5 {
-		if _, err := a.Login(ctx, "chloé", "mauvais", dev("TV"), "10.0.0.2"); !isKind(err, domain.ErrUnauthenticated) {
+		if _, err := a.Login(ctx, "chloé", "wrong", dev("TV"), "10.0.0.2"); !isKind(err, domain.ErrUnauthenticated) {
 			t.Fatalf("wrong password: %v", err)
 		}
 	}
@@ -150,7 +150,7 @@ func TestSessionSlidingExpiryAndLogout(t *testing.T) {
 	if _, err := a.Authenticate(ctx, again.Token, ""); !isKind(err, domain.ErrUnauthenticated) {
 		t.Errorf("token still valid after logout: %v", err)
 	}
-	for _, bad := range []string{"", "lat_inconnu", "n'importe quoi"} {
+	for _, bad := range []string{"", "lat_unknown", "anything at all"} {
 		if _, err := a.Authenticate(ctx, bad, ""); !isKind(err, domain.ErrUnauthenticated) {
 			t.Errorf("token %q: %v", bad, err)
 		}
@@ -180,17 +180,17 @@ func TestSessionsRevokeAndChangePassword(t *testing.T) {
 
 	phone, err := a.Login(ctx, "chloé", "a-strong-password", dev("Phone"), "")
 	mustNil(t, err)
-	if err := a.ChangePassword(ctx, pc, "faux", "nouveau-mot-de-passe"); !isKind(err, domain.ErrUnauthenticated) {
+	if err := a.ChangePassword(ctx, pc, "wrong", "a-new-password"); !isKind(err, domain.ErrUnauthenticated) {
 		t.Errorf("wrong current password: %v", err)
 	}
-	mustNil(t, a.ChangePassword(ctx, pc, "a-strong-password", "nouveau-mot-de-passe"))
+	mustNil(t, a.ChangePassword(ctx, pc, "a-strong-password", "a-new-password"))
 	if _, err := a.Authenticate(ctx, phone.Token, ""); !isKind(err, domain.ErrUnauthenticated) {
 		t.Error("other devices must be signed out after a password change")
 	}
 	if _, err := a.Authenticate(ctx, "", ""); err == nil {
 		t.Error("empty token accepted")
 	}
-	if _, err := a.Login(ctx, "chloé", "nouveau-mot-de-passe", dev("PC"), ""); err != nil {
+	if _, err := a.Login(ctx, "chloé", "a-new-password", dev("PC"), ""); err != nil {
 		t.Errorf("login with the new password: %v", err)
 	}
 }
@@ -235,12 +235,12 @@ func TestProfilesRules(t *testing.T) {
 	}
 
 	// Changing a protected profile requires its PIN.
-	if _, err := a.UpdateProfile(ctx, adult, locked.ID, "", ProfileChanges{Name: new("Papa")}); !isKind(err, domain.ErrForbidden) {
+	if _, err := a.UpdateProfile(ctx, adult, locked.ID, "", ProfileChanges{Name: new("Dad")}); !isKind(err, domain.ErrForbidden) {
 		t.Errorf("change without the PIN: %v", err)
 	}
-	renamed, err := a.UpdateProfile(ctx, adult, locked.ID, "1234", ProfileChanges{Name: new("Papa"), PIN: new("")})
+	renamed, err := a.UpdateProfile(ctx, adult, locked.ID, "1234", ProfileChanges{Name: new("Dad"), PIN: new("")})
 	mustNil(t, err)
-	if renamed.Name != "Papa" || renamed.HasPIN {
+	if renamed.Name != "Dad" || renamed.HasPIN {
 		t.Errorf("changed profile: %+v", renamed)
 	}
 

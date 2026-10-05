@@ -13,10 +13,10 @@ import (
 func historyFixture(tb testing.TB, st *Store) (domain.Profile, domain.Item) {
 	tb.Helper()
 	ctx := context.Background()
-	acc := newAccount("famille", false)
+	acc := newAccount("family", false)
 	prof := domain.Profile{ID: domain.NewID(), AccountID: acc.ID, Name: "Parents", CreatedAt: t0, UpdatedAt: t0}
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
-	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "k", Title: "Film", SortTitle: "film", AddedAt: t0, UpdatedAt: t0}
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
+	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "k", Title: "Movie", SortTitle: "movie", AddedAt: t0, UpdatedAt: t0}
 	if err := st.Write(ctx, func(q Q) error {
 		return errors.Join(q.CreateAccount(ctx, acc, "h"), q.CreateProfile(ctx, prof, ""), q.CreateLibrary(ctx, lib), q.CreateItem(ctx, movie))
 	}); err != nil {
@@ -27,7 +27,7 @@ func historyFixture(tb testing.TB, st *Store) (domain.Profile, domain.Item) {
 
 func play(profile domain.ID, item domain.ID, at time.Time) domain.Play {
 	return domain.Play{
-		ID: domain.NewID(), ProfileID: profile, ItemID: &item, Kind: domain.ItemMovie, Title: "Film",
+		ID: domain.NewID(), ProfileID: profile, ItemID: &item, Kind: domain.ItemMovie, Title: "Movie",
 		StartedAt: at, EndedAt: at.Add(time.Hour), Watched: time.Hour, Duration: 2 * time.Hour, Device: "TV",
 	}
 }
@@ -85,7 +85,7 @@ func TestPlayHistory(t *testing.T) {
 		_, err := q.DeleteOrphanItems(ctx, movie.LibraryID) // the movie has no file: forgotten
 		return err
 	})
-	if all := collect(time.Time{}, time.Time{}); len(all) != 2 || all[0].ItemID != nil || all[0].Title != "Film" {
+	if all := collect(time.Time{}, time.Time{}); len(all) != 2 || all[0].ItemID != nil || all[0].Title != "Movie" {
 		t.Errorf("forgotten item: %+v", all)
 	}
 	mustWrite(t, st, func(q Q) error {

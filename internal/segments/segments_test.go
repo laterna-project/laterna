@@ -64,8 +64,8 @@ func TestFromChapters(t *testing.T) {
 			name: "nothing to skip",
 			chapters: []domain.Chapter{
 				{Start: 0, End: s(600), Title: "Chapter 1"},
-				{Start: s(600), End: s(1200), Title: "Opération tonnerre"},
-				{Start: s(1200), End: s(1300), Title: "Edition spéciale"},
+				{Start: s(600), End: s(1200), Title: "Operation Thunder"},
+				{Start: s(1200), End: s(1300), Title: "Edition Notes"},
 				{Start: s(1300), End: s(1300.5), Title: "Intro"},
 			},
 			duration: s(1400),

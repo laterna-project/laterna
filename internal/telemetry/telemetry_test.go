@@ -152,7 +152,7 @@ func TestSampling(t *testing.T) {
 	h := http.Header{}
 	h.Set("Traceparent", "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-00")
 	ctx, s := tr.Start(tr.Extract(context.Background(), h), "rejected", Server)
-	_, c := tr.Start(ctx, "enfant", Internal)
+	_, c := tr.Start(ctx, "child", Internal)
 	if s.TraceID() != "" {
 		t.Error("trace ID of an unsampled trace given to the logs")
 	}
@@ -167,7 +167,7 @@ func TestSampling(t *testing.T) {
 	off := Disabled()
 	ctx, span := off.Start(context.Background(), "x", Internal)
 	span.SetAttributes(String("a", "b"))
-	span.Fail("rien")
+	span.Fail("nothing")
 	span.End()
 	if span != nil || SpanFromContext(ctx) != nil || off.Transport(nil) != http.DefaultTransport {
 		t.Error("disabled tracer is enabled")
@@ -195,12 +195,12 @@ func TestFromEnv(t *testing.T) {
 	}{
 		"no collector": {env: map[string]string{}},
 		"disabled":     {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_SDK_DISABLED": "true"}},
-		"jamais":       {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_TRACES_SAMPLER": "always_off"}},
-		"actif":        {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_TRACES_SAMPLER": "parentbased_traceidratio", "OTEL_TRACES_SAMPLER_ARG": "0.1"}, enabled: true},
-		"adresse":      {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "c:4318"}, err: "invalid"},
+		"never":        {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_TRACES_SAMPLER": "always_off"}},
+		"active":       {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_TRACES_SAMPLER": "parentbased_traceidratio", "OTEL_TRACES_SAMPLER_ARG": "0.1"}, enabled: true},
+		"address":      {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "c:4318"}, err: "invalid"},
 		"part":         {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_TRACES_SAMPLER_ARG": "2"}, err: "ratio"},
 		"sampler":      {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_TRACES_SAMPLER": "jaeger_remote"}, err: "not supported"},
-		"headers":      {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_EXPORTER_OTLP_HEADERS": "sansvaleur"}, err: "key=value"},
+		"headers":      {env: map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_EXPORTER_OTLP_HEADERS": "novalue"}, err: "key=value"},
 	} {
 		tr, err := FromEnv(context.Background(), env(c.env), "", nil)
 		if c.err != "" {

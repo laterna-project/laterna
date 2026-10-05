@@ -34,7 +34,7 @@ func TestDownloadsOverHTTP(t *testing.T) {
 		SubtitleFormats: []string{"vtt"},
 	}
 	created, err := downloads.CreateDownloads(ctx, authed(&laternav1.CreateDownloadsRequest{
-		ItemIds: []string{ids["Big Test Movie"], ids["Deux Pistes"]}, Quality: laternav1.DownloadQuality_DOWNLOAD_QUALITY_HIGH, Device: device,
+		ItemIds: []string{ids["Big Test Movie"], ids["Dual Audio"]}, Quality: laternav1.DownloadQuality_DOWNLOAD_QUALITY_HIGH, Device: device,
 	}, token))
 	if err != nil || len(created.Msg.GetDownloads()) != 2 {
 		t.Fatalf("downloads: %v %v", created, err)
@@ -60,7 +60,7 @@ func TestDownloadsOverHTTP(t *testing.T) {
 			t.Fatalf("never ready: %v", remux)
 		}
 	}
-	if len(remux.GetSubtitles()) != 2 || remux.GetFileName() != "Deux Pistes (2019).mp4" {
+	if len(remux.GetSubtitles()) != 2 || remux.GetFileName() != "Dual Audio (2019).mp4" {
 		t.Errorf("ready: %v", remux)
 	}
 
@@ -83,7 +83,7 @@ func TestDownloadsOverHTTP(t *testing.T) {
 	resp := get(remux.GetUrl(), token, "Range", "bytes=0-99")
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusPartialContent || len(body) != 100 || resp.Header.Get("Content-Type") != "video/mp4" ||
-		!strings.Contains(resp.Header.Get("Content-Disposition"), "Deux Pistes (2019).mp4") {
+		!strings.Contains(resp.Header.Get("Content-Disposition"), "Dual Audio (2019).mp4") {
 		t.Errorf("file: %d %d %v", resp.StatusCode, len(body), resp.Header)
 	}
 	if resp := get(remux.GetSubtitles()[0].GetFiles()[0].GetUrl(), token); resp.StatusCode != http.StatusOK ||
@@ -97,7 +97,7 @@ func TestDownloadsOverHTTP(t *testing.T) {
 	auth := laternav1connect.NewAuthServiceClient(http.DefaultClient, base)
 	other, err := auth.Login(ctx, connect.NewRequest(&laternav1.LoginRequest{
 		Username: "admin", Password: "a-strong-password",
-		Device: &laternav1.Device{Name: "Tablette", Client: "Test", ClientVersion: "1", Platform: "Go"},
+		Device: &laternav1.Device{Name: "Tablet", Client: "Test", ClientVersion: "1", Platform: "Go"},
 	}))
 	if err != nil {
 		t.Fatal(err)

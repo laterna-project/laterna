@@ -21,12 +21,12 @@ import (
 func TestBrowseFolders(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
-	for _, d := range []string{"Médias/Films/Film (2020)", "Médias/Séries", "Médias/Laterna/cache", "Autre"} {
+	for _, d := range []string{"Media/Movies/Movie (2020)", "Media/Shows", "Media/Laterna/cache", "Other"} {
 		if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(d)), 0o750); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(root, "Médias", "Films", "Film (2020)", "Film (2020).mkv"), nil, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "Media", "Movies", "Movie (2020)", "Movie (2020).mkv"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	st, err := store.Open(ctx, filepath.Join(t.TempDir(), store.FileName))
@@ -34,7 +34,7 @@ func TestBrowseFolders(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	a, err := app.New(ctx, st, app.Options{ServerName: "Test", CacheDir: filepath.Join(root, "Médias", "Laterna", "cache")})
+	a, err := app.New(ctx, st, app.Options{ServerName: "Test", CacheDir: filepath.Join(root, "Media", "Laterna", "cache")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestBrowseFolders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	films, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{filepath.Join(root, "Médias", "Films")}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(root, "Media", "Movies")}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,37 +62,37 @@ func TestBrowseFolders(t *testing.T) {
 		t.Fatalf("starting points: %v %v", starts, err)
 	}
 
-	medias, err := browse(filepath.Join(root, "Médias"))
+	media, err := browse(filepath.Join(root, "Media"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if medias.GetParent() != root || len(medias.GetFolders()) != 3 {
-		t.Fatalf("Médias: %v", medias)
+	if media.GetParent() != root || len(media.GetFolders()) != 3 {
+		t.Fatalf("Media: %v", media)
 	}
-	if own, err := browse(filepath.Join(root, "Médias", "Laterna")); err != nil || len(own.GetFolders()) != 0 {
+	if own, err := browse(filepath.Join(root, "Media", "Laterna")); err != nil || len(own.GetFolders()) != 0 {
 		t.Errorf("Laterna's cache offered: %v %v", own, err)
 	}
 	byName := map[string]*laternav1.Folder{}
-	for _, f := range medias.GetFolders() {
+	for _, f := range media.GetFolders() {
 		byName[f.GetName()] = f
 	}
-	if f := byName["Films"]; f.GetLibrary().GetRelation() != laternav1.FolderRelation_FOLDER_RELATION_ROOT ||
+	if f := byName["Movies"]; f.GetLibrary().GetRelation() != laternav1.FolderRelation_FOLDER_RELATION_ROOT ||
 		f.GetLibrary().GetLibraryId() != films.ID.String() || !f.GetHasSubfolders() || !f.GetReadable() {
-		t.Errorf("Films: %v", f)
+		t.Errorf("Movies: %v", f)
 	}
-	if f := byName["Séries"]; f.GetLibrary() != nil {
-		t.Errorf("Séries: %v", f)
+	if f := byName["Shows"]; f.GetLibrary() != nil {
+		t.Errorf("Shows: %v", f)
 	}
-	if medias.GetLibrary().GetRelation() != laternav1.FolderRelation_FOLDER_RELATION_CONTAINS {
-		t.Errorf("Médias contains Films: %v", medias.GetLibrary())
+	if media.GetLibrary().GetRelation() != laternav1.FolderRelation_FOLDER_RELATION_CONTAINS {
+		t.Errorf("Media contains Movies: %v", media.GetLibrary())
 	}
-	inside, err := browse(filepath.Join(root, "Médias", "Films", "Film (2020)"))
+	inside, err := browse(filepath.Join(root, "Media", "Movies", "Movie (2020)"))
 	if err != nil || inside.GetLibrary().GetRelation() != laternav1.FolderRelation_FOLDER_RELATION_INSIDE || inside.GetMedia().GetVideos() != 1 {
-		t.Errorf("inside Films: %v %v", inside, err)
+		t.Errorf("inside Movies: %v %v", inside, err)
 	}
 
 	for path, code := range map[string]connect.Code{
-		"relatif":                     connect.CodeInvalidArgument,
+		"relative":                    connect.CodeInvalidArgument,
 		filepath.Join(root, "absent"): connect.CodeNotFound,
 	} {
 		if _, err := browse(path); connect.CodeOf(err) != code {

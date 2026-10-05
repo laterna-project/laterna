@@ -94,7 +94,7 @@ func (a *App) Setup(ctx context.Context, username, password string, dev domain.D
 
 // Login checks the credentials and opens a session for the device.
 func (a *App) Login(ctx context.Context, username, password string, dev domain.Device, ip string) (Login, error) {
-	keys := []string{"compte:" + store.NameKey(username), "ip:" + ip}
+	keys := []string{"account:" + store.NameKey(username), "ip:" + ip}
 	if wait, ok := a.limiter.Allow(keys...); !ok {
 		return Login{}, domain.TooManyAttempts("auth.too_many_attempts", "retry_after_seconds", roundUp(wait))
 	}
@@ -292,7 +292,7 @@ func (a *App) ChangePassword(ctx context.Context, p domain.Principal, current, n
 	if p.Restricted() {
 		return domain.Forbidden("auth.restricted_profile")
 	}
-	key := "compte:" + store.NameKey(p.Account.Username)
+	key := "account:" + store.NameKey(p.Account.Username)
 	if wait, ok := a.limiter.Allow(key); !ok {
 		return domain.TooManyAttempts("auth.too_many_attempts", "retry_after_seconds", roundUp(wait))
 	}
@@ -377,7 +377,7 @@ func cleanDevice(d domain.Device) domain.Device {
 	}
 	return domain.Device{
 		Name:          clean(d.Name, "Unknown device"),
-		Client:        clean(d.Client, "Inconnu"),
+		Client:        clean(d.Client, "Unknown"),
 		ClientVersion: clean(d.ClientVersion, ""),
 		Platform:      clean(d.Platform, ""),
 	}

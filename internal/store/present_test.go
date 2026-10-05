@@ -14,7 +14,7 @@ func TestPresentFollowsFiles(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
 	now := time.Now()
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
 	a := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "a", Title: "A", SortTitle: "a", AddedAt: now, UpdatedAt: now}
 	b := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "b", Title: "B", SortTitle: "b", AddedAt: now, UpdatedAt: now}
 	f := domain.MediaFile{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/a.mkv", Size: 1, ModTime: now, Fingerprint: "x"}

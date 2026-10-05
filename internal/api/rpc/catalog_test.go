@@ -24,12 +24,12 @@ type fixtureLibrary struct {
 	kind laternav1.LibraryKind
 }
 
-// mediaServer starts a full server (background work included) whose "Films" and "Séries" fixture
+// mediaServer starts a full server (background work included) whose "Movies" and "Shows" fixture
 // libraries are scanned, and returns an administrator token.
 func mediaServer(t *testing.T) (*testServer, laternav1connect.CatalogServiceClient, string) {
 	t.Helper()
-	return mediaServerWith(t, fixtureLibrary{"Films", laternav1.LibraryKind_LIBRARY_KIND_MOVIES},
-		fixtureLibrary{"Séries", laternav1.LibraryKind_LIBRARY_KIND_SHOWS})
+	return mediaServerWith(t, fixtureLibrary{"Movies", laternav1.LibraryKind_LIBRARY_KIND_MOVIES},
+		fixtureLibrary{"Shows", laternav1.LibraryKind_LIBRARY_KIND_SHOWS})
 }
 
 // mediaServerWith starts a full server whose given libraries are scanned.
@@ -155,7 +155,7 @@ func TestCatalogServiceOverHTTP(t *testing.T) {
 		t.Fatalf("episodes: %v %v", eps, err)
 	}
 	ep, err := catalog.GetEpisode(ctx, withToken(&laternav1.GetEpisodeRequest{EpisodeId: eps.Msg.GetEpisodes()[0].GetId()}, token))
-	if err != nil || ep.Msg.GetEpisode().GetSeriesTitle() != "Série Test" || len(ep.Msg.GetFiles()) != 1 {
+	if err != nil || ep.Msg.GetEpisode().GetSeriesTitle() != "Café Stories" || len(ep.Msg.GetFiles()) != 1 {
 		t.Fatalf("episode details: %v %v", ep, err)
 	}
 	// Similar titles: an episode stands for its series.
@@ -179,7 +179,7 @@ func TestCatalogServiceOverHTTP(t *testing.T) {
 		t.Errorf("favorites: %v %v", favs, err)
 	}
 
-	found, err := catalog.Search(ctx, withToken(&laternav1.SearchRequest{Query: "serie"}, token))
+	found, err := catalog.Search(ctx, withToken(&laternav1.SearchRequest{Query: "cafe"}, token))
 	if err != nil || len(found.Msg.GetResults()) == 0 || found.Msg.GetResults()[0].GetSeries().GetId() != seriesID {
 		t.Errorf("search: %v %v", found, err)
 	}

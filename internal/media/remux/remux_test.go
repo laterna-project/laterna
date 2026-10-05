@@ -29,7 +29,7 @@ func collect(t *testing.T, ffmpeg string, o Options) ([]byte, []fmp4.Fragment) {
 }
 
 func TestRunsAreReproducible(t *testing.T) {
-	path := testfixtures.Path(t, "Films/Deux Pistes (2019)/Deux Pistes (2019).mkv")
+	path := testfixtures.Path(t, "Movies/Dual Audio (2019)/Dual Audio (2019).mkv")
 	ffmpeg, ffprobe, _ := testfixtures.FFmpeg()
 	keys, err := keyframes.Read(context.Background(), ffprobe, path)
 	if err != nil {
@@ -67,8 +67,8 @@ func TestRunsAreReproducible(t *testing.T) {
 }
 
 func TestArgs(t *testing.T) {
-	args := strings.Join(Args(Options{Path: `C:\films\a.mkv`, Start: 6256 * time.Millisecond, Audio: 2, VideoTag: "hvc1"}), " ")
-	for _, want := range []string{"-ss 6.256000", `-i file:C:\films\a.mkv`, "-map 0:V:0 -map 0:2", "-tag:v hvc1", "-map_chapters -1", "negative_cts_offsets", "pipe:1"} {
+	args := strings.Join(Args(Options{Path: `C:\movies\a.mkv`, Start: 6256 * time.Millisecond, Audio: 2, VideoTag: "hvc1"}), " ")
+	for _, want := range []string{"-ss 6.256000", `-i file:C:\movies\a.mkv`, "-map 0:V:0 -map 0:2", "-tag:v hvc1", "-map_chapters -1", "negative_cts_offsets", "pipe:1"} {
 		if !strings.Contains(args, want) {
 			t.Errorf("arguments without %q: %s", want, args)
 		}

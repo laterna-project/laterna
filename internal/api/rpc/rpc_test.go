@@ -28,7 +28,7 @@ func TestErrorInterceptorHidesInternalErrors(t *testing.T) {
 	if err == nil || connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("code %v, want internal", connect.CodeOf(err))
 	}
-	if strings.Contains(err.Error(), "secret") || strings.Contains(err.Error(), "disque") {
+	if strings.Contains(err.Error(), "secret") || strings.Contains(err.Error(), "disk") {
 		t.Errorf("internal detail leaked to the client: %v", err)
 	}
 	if !strings.Contains(logs, "disk full") {
@@ -37,9 +37,9 @@ func TestErrorInterceptorHidesInternalErrors(t *testing.T) {
 }
 
 func TestErrorInterceptorKeepsTypedErrors(t *testing.T) {
-	typed := connect.NewError(connect.CodeNotFound, errors.New("film introuvable"))
+	typed := connect.NewError(connect.CodeNotFound, errors.New("movie not found"))
 	logs, err := callThrough(t, typed)
-	if err == nil || connect.CodeOf(err) != connect.CodeNotFound || !strings.Contains(err.Error(), "film introuvable") {
+	if err == nil || connect.CodeOf(err) != connect.CodeNotFound || !strings.Contains(err.Error(), "movie not found") {
 		t.Errorf("typed error altered: %v", err)
 	}
 	if logs != "" {

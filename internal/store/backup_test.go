@@ -42,7 +42,7 @@ func TestBackupAndRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := newLibrary("Films", domain.LibraryMovies, "/m")
+	before := newLibrary("Movies", domain.LibraryMovies, "/m")
 	mustWrite(t, st, func(q Q) error { return q.CreateLibrary(ctx, before) })
 	copyPath := filepath.Join(backups, "laterna-manual-20261004T030000Z.db")
 	if err := st.Backup(ctx, copyPath); err != nil {
@@ -54,7 +54,7 @@ func TestBackupAndRestore(t *testing.T) {
 	if v, err := Check(ctx, copyPath); err != nil || v != LatestVersion() || v < 23 {
 		t.Fatalf("backup check: %d %v", v, err)
 	}
-	after := newLibrary("Séries", domain.LibraryShows, "/s")
+	after := newLibrary("Shows", domain.LibraryShows, "/s")
 	mustWrite(t, st, func(q Q) error { return q.CreateLibrary(ctx, after) })
 
 	// Nothing to restore: nothing happens.
@@ -76,7 +76,7 @@ func TestBackupAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	libs, err := st.Read().Libraries(ctx)
-	if err != nil || len(libs) != 1 || libs[0].Name != "Films" {
+	if err != nil || len(libs) != 1 || libs[0].Name != "Movies" {
 		t.Errorf("restored database: %v %v", libs, err)
 	}
 	_ = st.Close()
@@ -98,7 +98,7 @@ func TestCheckRefuses(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	junk := filepath.Join(dir, "not-a-database.db")
-	if err := os.WriteFile(junk, []byte("bonjour"), 0o600); err != nil {
+	if err := os.WriteFile(junk, []byte("hello"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Check(ctx, junk); err == nil {
@@ -121,7 +121,7 @@ func TestCheckRefuses(t *testing.T) {
 	}
 	// A rejected restore is moved aside: the server starts on its own database.
 	data := t.TempDir()
-	if err := os.WriteFile(filepath.Join(data, RestoreName), []byte("bonjour"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(data, RestoreName), []byte("hello"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if restored, _, err := ApplyRestore(ctx, data, filepath.Join(data, "backups"), time.Now()); restored || err == nil {

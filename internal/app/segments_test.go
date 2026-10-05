@@ -11,13 +11,13 @@ import (
 	"github.com/laterna-project/laterna/internal/domain"
 )
 
-// Segments: the episodes of "Série Test" share a 3 s intro with no chapter, which only the audio
+// Segments: the episodes of "Café Stories" share a 3 s intro with no chapter, which only the audio
 // gives away; those of "Anime Test" have "Opening" and "Ending" chapters. An episode alone in its
 // season has nothing to compare with.
 func TestSegmentsEndToEnd(t *testing.T) {
 	a, _ := startMediaApp(t, func(o *Options) { o.SegmentMin = 2 * time.Second })
 	ctx := context.Background()
-	lib, err := a.CreateLibrary(ctx, "Séries", domain.LibraryShows, []string{testRoot("Séries"), testRoot("Animes")}, "")
+	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows"), testRoot("Anime")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	fileOf := func(it domain.Item) domain.MediaFile {
@@ -37,7 +37,7 @@ func TestSegmentsEndToEnd(t *testing.T) {
 		return nil
 	}
 
-	show := itemByKey(t, a, lib, "series:Série Test (2022)")
+	show := itemByKey(t, a, lib, "series:Café Stories (2022)")
 	for ep := 1; ep <= 3; ep++ {
 		f := fileOf(itemByKey(t, a, lib, fmt.Sprintf("episode:%s:1:%d", show.ID, ep)))
 		intro := segment(f, domain.SegmentIntro)

@@ -17,7 +17,7 @@ import (
 // The attached font is read without going through the file, and a file without attachments has
 // none.
 func TestAttachments(t *testing.T) {
-	f, err := Open(testfixtures.Path(t, "Sous-titres/Polices (2022)/Polices (2022).mkv"))
+	f, err := Open(testfixtures.Path(t, "Subtitles/Fonts (2022)/Fonts (2022).mkv"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestAttachments(t *testing.T) {
 	if times, err := f.Keyframes(); err != nil || len(times) == 0 {
 		t.Errorf("keyframes: %v %v", times, err)
 	}
-	plain, err := Open(testfixtures.Path(t, "Films/Deux Pistes (2019)/Deux Pistes (2019).mkv"))
+	plain, err := Open(testfixtures.Path(t, "Movies/Dual Audio (2019)/Dual Audio (2019).mkv"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestAttachments(t *testing.T) {
 }
 
 func TestRejectsGarbage(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "faux.mkv")
+	path := filepath.Join(t.TempDir(), "fake.mkv")
 	if err := os.WriteFile(path, []byte("not a matroska file at all"), 0o600); err != nil {
 		t.Fatal(err)
 	}

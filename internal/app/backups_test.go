@@ -31,7 +31,7 @@ func TestPruneBackups(t *testing.T) {
 	}
 	touch("laterna-manual-20260801T120000Z.db", 60)
 	touch("notes.txt", 90)
-	touch("laterna-auto-n-importe-quoi.db", 90)
+	touch("laterna-auto-anything.db", 90)
 	if err := a.pruneBackups(2); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestPruneBackups(t *testing.T) {
 		names = append(names, e.Name())
 	}
 	want := []string{
-		"laterna-auto-20260904T030000Z.db", "laterna-auto-20260905T030000Z.db", "laterna-auto-n-importe-quoi.db",
+		"laterna-auto-20260904T030000Z.db", "laterna-auto-20260905T030000Z.db", "laterna-auto-anything.db",
 		"laterna-manual-20260801T120000Z.db",
 		"laterna-migration-v22-20260903T030000Z.db", "laterna-migration-v23-20260904T030000Z.db", "laterna-migration-v24-20260905T030000Z.db",
 		"notes.txt",

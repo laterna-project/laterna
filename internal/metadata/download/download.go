@@ -95,7 +95,7 @@ func (c *Client) fetch(ctx context.Context, u, dst string) (retry time.Duration,
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return 0, err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(dst), ".telechargement-*")
+	tmp, err := os.CreateTemp(filepath.Dir(dst), ".download-*")
 	if err != nil {
 		return 0, err
 	}

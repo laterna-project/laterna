@@ -48,8 +48,8 @@ func playbackServer(t *testing.T) (string, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots := []string{filepath.Join(testfixtures.Root(), "Films"), filepath.Join(testfixtures.Root(), "Sous-titres")}
-	if _, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, roots, ""); err != nil {
+	roots := []string{filepath.Join(testfixtures.Root(), "Movies"), filepath.Join(testfixtures.Root(), "Subtitles")}
+	if _, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, roots, ""); err != nil {
 		t.Fatal(err)
 	}
 	for deadline := time.Now().Add(90 * time.Second); ; time.Sleep(20 * time.Millisecond) {
@@ -126,7 +126,7 @@ func TestPlaybackOverHTTP(t *testing.T) {
 	}
 
 	// HLS without re-encoding: playlist, init segment and segments, through all the middlewares.
-	hls, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: ids["Deux Pistes"], Device: device}, token))
+	hls, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: ids["Dual Audio"], Device: device}, token))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestPlaybackOverHTTP(t *testing.T) {
 	}
 	// Subtitles: served on the side, fonts included (URL without authentication, immutable).
 	device.SubtitleFormats = []string{"vtt", "ass"}
-	subs, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: ids["Polices"], Device: device}, token))
+	subs, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: ids["Fonts"], Device: device}, token))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,7 @@ func TestPlaybackOverHTTP(t *testing.T) {
 	}
 	// Image subtitle on a device that cannot render it: burned in.
 	two := int32(2)
-	burned, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: ids["Polices"], Device: device, SubtitleIndex: &two}, token))
+	burned, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: ids["Fonts"], Device: device, SubtitleIndex: &two}, token))
 	if err != nil || burned.Msg.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_HLS_TRANSCODE || burned.Msg.GetBurnedSubtitleIndex() != 2 || !burned.Msg.GetVideoTranscoded() {
 		t.Fatalf("burn-in: %v %v", burned, err)
 	}

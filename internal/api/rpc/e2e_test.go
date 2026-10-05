@@ -193,7 +193,7 @@ func TestAuthFlowOverHTTP(t *testing.T) {
 	if _, err := s.auth.GetSession(ctx, withToken(&laternav1.GetSessionRequest{}, "")); code(err) != connect.CodeUnauthenticated {
 		t.Errorf("without a token: %v", err)
 	}
-	if _, err := s.auth.GetSession(ctx, withToken(&laternav1.GetSessionRequest{}, "lat_faux")); code(err) != connect.CodeUnauthenticated {
+	if _, err := s.auth.GetSession(ctx, withToken(&laternav1.GetSessionRequest{}, "lat_wrong")); code(err) != connect.CodeUnauthenticated {
 		t.Errorf("unknown token: %v", err)
 	}
 
@@ -247,7 +247,7 @@ func TestAuthFlowOverHTTP(t *testing.T) {
 	}
 
 	// Wrong password: a clear code and message, with no internal detail.
-	_, err = s.auth.Login(ctx, connect.NewRequest(&laternav1.LoginRequest{Username: "chloé", Password: "faux"}))
+	_, err = s.auth.Login(ctx, connect.NewRequest(&laternav1.LoginRequest{Username: "chloé", Password: "wrong"}))
 	if code(err) != connect.CodeUnauthenticated || errorCode(err) != "auth.invalid_credentials" || !strings.Contains(err.Error(), "Incorrect username or password") {
 		t.Errorf("wrong password: %v", err)
 	}
@@ -316,18 +316,18 @@ func TestAdministrationOverHTTP(t *testing.T) {
 	if err != nil || status.Msg.GetStatus().GetVersion() == "" || status.Msg.GetStatus().GetOs() == "" {
 		t.Fatalf("status: %v %v", status, err)
 	}
-	name := "Grenier"
+	name := "Attic"
 	updated, err := system.UpdateSettings(ctx, withToken(&laternav1.UpdateSettingsRequest{
 		ServerName: &name, ScanInterval: durationpb.New(12 * time.Hour),
 	}, token))
-	if err != nil || updated.Msg.GetSettings().GetServerName() != "Grenier" || updated.Msg.GetSettings().GetScanInterval().AsDuration() != 12*time.Hour {
+	if err != nil || updated.Msg.GetSettings().GetServerName() != "Attic" || updated.Msg.GetSettings().GetScanInterval().AsDuration() != 12*time.Hour {
 		t.Fatalf("settings: %v %v", updated, err)
 	}
 	if _, err := system.UpdateSettings(ctx, withToken(&laternav1.UpdateSettingsRequest{ScanInterval: durationpb.New(time.Second)}, token)); code(err) != connect.CodeInvalidArgument {
 		t.Errorf("interval too short: %v", err)
 	}
 	info, err := s.server.GetServerInfo(ctx, connect.NewRequest(&laternav1.GetServerInfoRequest{}))
-	if err != nil || info.Msg.GetName() != "Grenier" {
+	if err != nil || info.Msg.GetName() != "Attic" {
 		t.Errorf("announced name: %v %v", info, err)
 	}
 	if _, err := system.RunTask(ctx, withToken(&laternav1.RunTaskRequest{Task: laternav1.SystemTask_SYSTEM_TASK_SCAN_LIBRARIES}, token)); err != nil {
@@ -368,7 +368,7 @@ func TestCollectionsAndPlaylistsOverHTTP(t *testing.T) {
 	collections := laternav1connect.NewCollectionServiceClient(http.DefaultClient, s.url)
 	playlists := laternav1connect.NewPlaylistServiceClient(http.DefaultClient, s.url)
 
-	created, err := collections.CreateCollection(ctx, withToken(&laternav1.CreateCollectionRequest{Name: "Sélection"}, token))
+	created, err := collections.CreateCollection(ctx, withToken(&laternav1.CreateCollectionRequest{Name: "Selection"}, token))
 	if err != nil || !created.Msg.GetCollection().GetManual() || created.Msg.GetCollection().GetItemCount() != 0 {
 		t.Fatalf("collection: %v %v", created, err)
 	}
@@ -383,20 +383,20 @@ func TestCollectionsAndPlaylistsOverHTTP(t *testing.T) {
 		t.Errorf("deletion: %v", err)
 	}
 
-	pl, err := playlists.CreatePlaylist(ctx, withToken(&laternav1.CreatePlaylistRequest{Name: "Soirée"}, token))
-	if err != nil || pl.Msg.GetPlaylist().GetName() != "Soirée" || pl.Msg.GetPlaylist().GetEntryCount() != 0 {
+	pl, err := playlists.CreatePlaylist(ctx, withToken(&laternav1.CreatePlaylistRequest{Name: "Movie night"}, token))
+	if err != nil || pl.Msg.GetPlaylist().GetName() != "Movie night" || pl.Msg.GetPlaylist().GetEntryCount() != 0 {
 		t.Fatalf("playlist: %v %v", pl, err)
 	}
 	id := pl.Msg.GetPlaylist().GetId()
 	if _, err := playlists.AddToPlaylist(ctx, withToken(&laternav1.AddToPlaylistRequest{PlaylistId: id, ItemIds: []string{domain.NewID().String()}}, token)); code(err) != connect.CodeNotFound {
 		t.Errorf("unknown item: %v", err)
 	}
-	renamed, err := playlists.RenamePlaylist(ctx, withToken(&laternav1.RenamePlaylistRequest{PlaylistId: id, Name: "Vendredi"}, token))
-	if err != nil || renamed.Msg.GetPlaylist().GetName() != "Vendredi" {
+	renamed, err := playlists.RenamePlaylist(ctx, withToken(&laternav1.RenamePlaylistRequest{PlaylistId: id, Name: "Friday"}, token))
+	if err != nil || renamed.Msg.GetPlaylist().GetName() != "Friday" {
 		t.Errorf("rename: %v %v", renamed, err)
 	}
 	got, err := playlists.GetPlaylist(ctx, withToken(&laternav1.GetPlaylistRequest{PlaylistId: id}, token))
-	if err != nil || got.Msg.GetPlaylist().GetName() != "Vendredi" || len(got.Msg.GetEntries()) != 0 {
+	if err != nil || got.Msg.GetPlaylist().GetName() != "Friday" || len(got.Msg.GetEntries()) != 0 {
 		t.Errorf("playlist read back: %v %v", got, err)
 	}
 	all, err := playlists.ListPlaylists(ctx, withToken(&laternav1.ListPlaylistsRequest{}, token))
@@ -420,7 +420,7 @@ func TestCollectionsAndPlaylistsOverHTTP(t *testing.T) {
 	if _, err := collections.ListCollections(ctx, withToken(&laternav1.ListCollectionsRequest{}, lea)); err != nil {
 		t.Errorf("reading collections: %v", err)
 	}
-	if _, err := collections.CreateCollection(ctx, withToken(&laternav1.CreateCollectionRequest{Name: "À moi"}, lea)); code(err) != connect.CodePermissionDenied {
+	if _, err := collections.CreateCollection(ctx, withToken(&laternav1.CreateCollectionRequest{Name: "Mine"}, lea)); code(err) != connect.CodePermissionDenied {
 		t.Errorf("creation by a non-administrator: %v", err)
 	}
 }

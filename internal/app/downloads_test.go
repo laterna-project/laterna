@@ -21,7 +21,7 @@ func TestDownloads(t *testing.T) {
 	for _, l := range []struct {
 		name string
 		kind domain.LibraryKind
-	}{{"Films", domain.LibraryMovies}, {"Musique", domain.LibraryMusic}} {
+	}{{"Movies", domain.LibraryMovies}, {"Music", domain.LibraryMusic}} {
 		_, err := a.CreateLibrary(ctx, l.name, l.kind, []string{testRoot(l.name)}, "")
 		mustNil(t, err)
 	}
@@ -64,7 +64,7 @@ func TestDownloads(t *testing.T) {
 	}
 
 	// Playable MKV: MP4 without re-encoding, subtitles as WebVTT.
-	remux := one(byTitle["Deux Pistes"], domain.DownloadHigh)
+	remux := one(byTitle["Dual Audio"], domain.DownloadHigh)
 	// 10-bit HDR HEVC: SDR H.264, 480p at most, stereo audio.
 	low := one(byTitle["HDR Test"], domain.DownloadLow)
 	if remux.Plan.Method != playback.Remux || low.Plan.Method != playback.Transcode || !low.Plan.ToneMap || low.Download.State != domain.DownloadQueued {
@@ -134,7 +134,7 @@ func TestDownloads(t *testing.T) {
 	}
 	tracks, err := a.CreateDownloads(ctx, p, DownloadRequest{ItemIDs: []domain.ID{albumID}, Quality: domain.DownloadLow, Audio: -1, Device: phone})
 	mustNil(t, err)
-	if len(tracks) != 2 || tracks[0].Plan.Method != playback.Convert || tracks[0].FileName != "01 - Piste Un.m4a" {
+	if len(tracks) != 2 || tracks[0].Plan.Method != playback.Convert || tracks[0].FileName != "01 - Track One.m4a" {
 		t.Fatalf("album: %+v", tracks)
 	}
 	waitIdle(t, a)
@@ -216,7 +216,7 @@ func TestAccountDenyDownloads(t *testing.T) {
 	if _, err := a.UpdateAccount(ctx, admin, admin.Account.ID, AccountChanges{DenyDownloads: &deny}); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("administrator without downloads: %v", err)
 	}
-	if _, err := a.CreateAccount(ctx, admin, NewAccount{Username: "Chef", Password: "a-password", IsAdmin: true, DenyDownloads: true}); !isKind(err, domain.ErrInvalid) {
+	if _, err := a.CreateAccount(ctx, admin, NewAccount{Username: "Boss", Password: "a-password", IsAdmin: true, DenyDownloads: true}); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("administrator created without downloads: %v", err)
 	}
 }

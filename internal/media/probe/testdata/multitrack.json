@@ -101,7 +101,7 @@
    },
    "tags": {
     "language": "fre",
-    "title": "Français",
+    "title": "French",
     "ENCODER": "Lavc63.1.102 aac",
     "DURATION": "00:00:12.021000000"
    }
@@ -193,7 +193,7 @@
    },
    "tags": {
     "language": "fre",
-    "title": "Français (ASS)",
+    "title": "French (ASS)",
     "DURATION": "00:00:11.000000000"
    }
   },
@@ -259,7 +259,7 @@
    "end": 9000000000,
    "end_time": "9.000000",
    "tags": {
-    "title": "Épisode"
+    "title": "Episode"
    }
   },
   {

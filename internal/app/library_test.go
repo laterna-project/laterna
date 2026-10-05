@@ -125,10 +125,10 @@ func counts(t *testing.T, a *App, lib domain.Library) map[domain.ItemKind]int {
 func TestMoviesLibraryEndToEnd(t *testing.T) {
 	a, c := startMediaApp(t)
 	ctx := context.Background()
-	root := filepath.Join(t.TempDir(), "Films")
-	copyTree(t, filepath.Join(testfixtures.Root(), "Films"), root)
+	root := filepath.Join(t.TempDir(), "Movies")
+	copyTree(t, filepath.Join(testfixtures.Root(), "Movies"), root)
 
-	lib, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestMoviesLibraryEndToEnd(t *testing.T) {
 		t.Errorf("metadata from the NFO: %+v", big)
 	}
 	details, err := a.store.Read().Details(ctx, big.ID)
-	if err != nil || len(details.Genres) != 1 || details.Genres[0] != "Aventure" {
+	if err != nil || len(details.Genres) != 1 || details.Genres[0] != "Adventure" {
 		t.Errorf("genres: %+v %v", details, err)
 	}
 	imgs, err := a.store.Read().ItemImages(ctx, big.ID)
@@ -159,7 +159,7 @@ func TestMoviesLibraryEndToEnd(t *testing.T) {
 	if len(versions) != 2 || versions[0].Version != "1080p" || versions[1].Version != "720p" {
 		t.Errorf("versions: %+v", versions)
 	}
-	multi, _ := a.store.Read().ItemFiles(ctx, itemByKey(t, a, lib, "movie:Deux Pistes (2019)/deuxpistes").ID)
+	multi, _ := a.store.Read().ItemFiles(ctx, itemByKey(t, a, lib, "movie:Dual Audio (2019)/dualaudio").ID)
 	if len(multi) != 1 || len(multi[0].File.Info.Streams) != 5 || len(multi[0].File.Info.Chapters) != 3 {
 		t.Errorf("analysis of the multi-track MKV: %+v", multi)
 	}
@@ -185,7 +185,7 @@ func TestMoviesLibraryEndToEnd(t *testing.T) {
 	}
 
 	// Deleted movie: kept during the grace period, then forgotten.
-	if err := os.RemoveAll(filepath.Join(root, "Sans Index (2018)")); err != nil {
+	if err := os.RemoveAll(filepath.Join(root, "Stream Dump (2018)")); err != nil {
 		t.Fatal(err)
 	}
 	if err := a.ScanLibrary(ctx, lib.ID); err != nil {
@@ -208,9 +208,9 @@ func TestMoviesLibraryEndToEnd(t *testing.T) {
 func TestOfflineRootKeepsEverything(t *testing.T) {
 	a, c := startMediaApp(t)
 	ctx := context.Background()
-	root := filepath.Join(t.TempDir(), "Films")
-	copyTree(t, filepath.Join(testfixtures.Root(), "Films", "Versions (2017)"), filepath.Join(root, "Versions (2017)"))
-	lib, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "fr-FR")
+	root := filepath.Join(t.TempDir(), "Movies")
+	copyTree(t, filepath.Join(testfixtures.Root(), "Movies", "Versions (2017)"), filepath.Join(root, "Versions (2017)"))
+	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "fr-FR")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestOfflineRootKeepsEverything(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitIdle(t, a)
-	check("racine absente")
+	check("missing root")
 
 	// Empty mount point (share not mounted): same caution.
 	if err := os.MkdirAll(root, 0o750); err != nil {
@@ -250,7 +250,7 @@ func TestOfflineRootKeepsEverything(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitIdle(t, a)
-	check("racine vide")
+	check("empty root")
 	if got := counts(t, a, lib); got[domain.ItemMovie] != 1 {
 		t.Errorf("movie lost: %v", got)
 	}
@@ -260,12 +260,12 @@ func TestShowsLibraryEndToEnd(t *testing.T) {
 	a, _ := startMediaApp(t)
 	ctx := context.Background()
 	base := t.TempDir()
-	series := filepath.Join(base, "Séries")
-	animes := filepath.Join(base, "Animes")
-	copyTree(t, filepath.Join(testfixtures.Root(), "Séries"), series)
-	copyTree(t, filepath.Join(testfixtures.Root(), "Animes"), animes)
+	series := filepath.Join(base, "Shows")
+	animeRoot := filepath.Join(base, "Anime")
+	copyTree(t, filepath.Join(testfixtures.Root(), "Shows"), series)
+	copyTree(t, filepath.Join(testfixtures.Root(), "Anime"), animeRoot)
 
-	lib, err := a.CreateLibrary(ctx, "Séries", domain.LibraryShows, []string{series, animes}, "")
+	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{series, animeRoot}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,15 +275,15 @@ func TestShowsLibraryEndToEnd(t *testing.T) {
 		t.Fatalf("catalog: %v", got)
 	}
 
-	show := itemByKey(t, a, lib, "series:Série Test (2022)")
-	if show.Title != "Série Test" || show.Year != 2022 || show.Overview == "" {
+	show := itemByKey(t, a, lib, "series:Café Stories (2022)")
+	if show.Title != "Café Stories" || show.Year != 2022 || show.Overview == "" {
 		t.Errorf("series (tvshow.nfo): %+v", show)
 	}
 	if imgs, _ := a.store.Read().ItemImages(ctx, show.ID); len(imgs) != 1 || imgs[0].Kind != domain.ImagePoster {
 		t.Errorf("series poster: %+v", imgs)
 	}
 	ep := itemByKey(t, a, lib, "episode:"+show.ID.String()+":1:2")
-	if ep.Title != "Épisode 2" || ep.Runtime == 0 {
+	if ep.Title != "Part 2" || ep.Runtime == 0 {
 		t.Errorf("episode (NFO): %+v", ep)
 	}
 	anime := itemByKey(t, a, lib, "series:Anime Test")
@@ -305,13 +305,13 @@ func TestLibraryValidation(t *testing.T) {
 		want  error
 	}{
 		{"", domain.LibraryMovies, []string{dir}, domain.ErrInvalid},
-		{"X", "musique", []string{dir}, domain.ErrInvalid},
+		{"X", "songs", []string{dir}, domain.ErrInvalid},
 		{"X", domain.LibraryMovies, nil, domain.ErrInvalid},
-		{"X", domain.LibraryMovies, []string{"relatif/films"}, domain.ErrInvalid},
+		{"X", domain.LibraryMovies, []string{"relative/movies"}, domain.ErrInvalid},
 		{"X", domain.LibraryMovies, []string{filepath.Join(dir, "absent")}, domain.ErrInvalid},
-		{"X", domain.LibraryMovies, []string{dir, filepath.Join(dir, "sous")}, domain.ErrInvalid},
+		{"X", domain.LibraryMovies, []string{dir, filepath.Join(dir, "sub")}, domain.ErrInvalid},
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "sous"), 0o750); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range cases {
@@ -319,13 +319,13 @@ func TestLibraryValidation(t *testing.T) {
 			t.Errorf("%q %v %v: %v", tc.name, tc.kind, tc.paths, err)
 		}
 	}
-	if _, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{dir}, "fr-FR"); err != nil {
+	if _, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{dir}, "fr-FR"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.CreateLibrary(ctx, "Autre", domain.LibraryShows, []string{filepath.Join(dir, "sous")}, ""); !errors.Is(err, domain.ErrConflict) {
+	if _, err := a.CreateLibrary(ctx, "Other", domain.LibraryShows, []string{filepath.Join(dir, "sub")}, ""); !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("folder in another library: %v", err)
 	}
-	if _, err := a.CreateLibrary(ctx, "films", domain.LibraryShows, []string{t.TempDir()}, ""); !errors.Is(err, domain.ErrConflict) {
+	if _, err := a.CreateLibrary(ctx, "movies", domain.LibraryShows, []string{t.TempDir()}, ""); !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("duplicate name: %v", err)
 	}
 }

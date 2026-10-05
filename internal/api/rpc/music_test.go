@@ -13,7 +13,7 @@ import (
 )
 
 func TestMusicServiceOverHTTP(t *testing.T) {
-	s, catalog, token := mediaServerWith(t, fixtureLibrary{"Musique", laternav1.LibraryKind_LIBRARY_KIND_MUSIC})
+	s, catalog, token := mediaServerWith(t, fixtureLibrary{"Music", laternav1.LibraryKind_LIBRARY_KIND_MUSIC})
 	ctx := context.Background()
 	c := http.DefaultClient
 	music := laternav1connect.NewMusicServiceClient(c, s.url)
@@ -40,7 +40,7 @@ func TestMusicServiceOverHTTP(t *testing.T) {
 	}
 	artist := artists.Msg.GetArtists()[0]
 	full, err := music.GetArtist(ctx, withToken(&laternav1.GetArtistRequest{ArtistId: artist.GetId()}, token))
-	if err != nil || full.Msg.GetArtist().GetName() != "Artiste Test" || len(full.Msg.GetAlbums()) != 2 ||
+	if err != nil || full.Msg.GetArtist().GetName() != "Artist Test" || len(full.Msg.GetAlbums()) != 2 ||
 		full.Msg.GetArtist().GetOverview() == "" || len(full.Msg.GetArtist().GetImages()) == 0 {
 		t.Fatalf("artist: %v %v", full, err)
 	}
@@ -50,12 +50,12 @@ func TestMusicServiceOverHTTP(t *testing.T) {
 	}
 	second := full.Msg.GetAlbums()[0]
 	album, err := music.GetAlbum(ctx, withToken(&laternav1.GetAlbumRequest{AlbumId: second.GetId()}, token))
-	if err != nil || len(album.Msg.GetTracks()) != 2 || album.Msg.GetAlbum().GetArtistName() != "Artiste Test" ||
+	if err != nil || len(album.Msg.GetTracks()) != 2 || album.Msg.GetAlbum().GetArtistName() != "Artist Test" ||
 		album.Msg.GetAlbum().GetPremiereDate() != "2022-05-13" {
 		t.Fatalf("album: %v %v", album, err)
 	}
 	track := album.Msg.GetTracks()[1]
-	if track.GetDisc() != 2 || track.GetArtists() != "Artiste Test feat. Invité" || track.GetReplayGain().GetTrackGain() != -4.1 ||
+	if track.GetDisc() != 2 || track.GetArtists() != "Artist Test feat. Guest" || track.GetReplayGain().GetTrackGain() != -4.1 ||
 		track.GetReplayGain().AlbumGain != nil || len(track.GetImages()) == 0 || track.GetAlbumId() != second.GetId() {
 		t.Errorf("track: %v", track)
 	}

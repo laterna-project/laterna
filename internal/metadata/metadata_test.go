@@ -13,31 +13,31 @@ import (
 
 const movieNFO = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <movie>
-  <title>Le Fabuleux Destin d'Amélie Poulain</title>
+  <title>Amélie</title>
   <originaltitle>Le Fabuleux Destin d'Amélie Poulain</originaltitle>
-  <sorttitle>Fabuleux Destin</sorttitle>
+  <sorttitle>Amelie</sorttitle>
   <ratings>
     <rating name="imdb" max="10"><value>7.8</value></rating>
     <rating name="themoviedb" max="10" default="true"><value>7.9</value></rating>
   </ratings>
-  <plot>Amélie, une jeune serveuse…</plot>
-  <tagline>Elle va changer votre vie.</tagline>
+  <plot>Amélie, a young waitress…</plot>
+  <tagline>She'll change your life.</tagline>
   <runtime>122</runtime>
-  <mpaa>Tous publics</mpaa>
+  <mpaa>R</mpaa>
   <uniqueid type="imdb">tt0211915</uniqueid>
   <uniqueid type="tmdb" default="true">194</uniqueid>
-  <genre>Comédie / Romance</genre>
-  <genre>Comédie</genre>
+  <genre>Comedy / Romance</genre>
+  <genre>Comedy</genre>
   <studio>UGC</studio>
   <director>Jean-Pierre Jeunet</director>
   <credits>Guillaume Laurant</credits>
   <premiered>2001-04-25</premiered>
-  <thumb aspect="poster" preview="https://image.tmdb.org/t/p/w185/affiche.jpg">https://image.tmdb.org/t/p/original/affiche.jpg</thumb>
-  <thumb aspect="poster">https://image.tmdb.org/t/p/original/autre.jpg</thumb>
+  <thumb aspect="poster" preview="https://image.tmdb.org/t/p/w185/poster-art.jpg">https://image.tmdb.org/t/p/original/poster-art.jpg</thumb>
+  <thumb aspect="poster">https://image.tmdb.org/t/p/original/other.jpg</thumb>
   <thumb aspect="clearlogo">https://assets.fanart.tv/logo.png</thumb>
-  <thumb aspect="discart">https://assets.fanart.tv/disque.png</thumb>
+  <thumb aspect="discart">https://assets.fanart.tv/disc.png</thumb>
   <thumb aspect="banner">banner.jpg</thumb>
-  <fanart url="https://image.tmdb.org/t/p/original"><thumb>/fond.jpg</thumb></fanart>
+  <fanart url="https://image.tmdb.org/t/p/original"><thumb>/backdrop.jpg</thumb></fanart>
   <actor><name>Audrey Tautou</name><role>Amélie</role><order>0</order><thumb>https://image.tmdb.org/t/p/original/audrey.jpg</thumb></actor>
   <actor><name>Mathieu Kassovitz</name><role>Nino</role><order>1</order><thumb>smb://nas/photos/mathieu.jpg</thumb></actor>
 </movie>
@@ -48,13 +48,13 @@ func TestParseMovieNFO(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n.Kind != "movie" || n.Title != "Le Fabuleux Destin d'Amélie Poulain" || n.SortTitle != "Fabuleux Destin" {
+	if n.Kind != "movie" || n.Title != "Amélie" || n.SortTitle != "Amelie" {
 		t.Errorf("titles: %+v", n)
 	}
-	if n.Year != 2001 || n.Premiered != "2001-04-25" || n.RuntimeMins != 122 || n.Rating != 7.9 || n.MPAA != "Tous publics" {
+	if n.Year != 2001 || n.Premiered != "2001-04-25" || n.RuntimeMins != 122 || n.Rating != 7.9 || n.MPAA != "R" {
 		t.Errorf("values: %+v", n)
 	}
-	if !slices.Equal(n.Genres, []string{"Comédie", "Romance"}) {
+	if !slices.Equal(n.Genres, []string{"Comedy", "Romance"}) {
 		t.Errorf("genres (\"/\" list and duplicates): %v", n.Genres)
 	}
 	if n.IDs["imdb"] != "tt0211915" || n.IDs["tmdb"] != "194" {
@@ -69,9 +69,9 @@ func TestParseMovieNFO(t *testing.T) {
 	}
 	// Images: the first of each known kind. A relative backdrop gets the base URL prepended.
 	want := map[domain.ImageKind]string{
-		domain.ImagePoster:   "https://image.tmdb.org/t/p/original/affiche.jpg",
+		domain.ImagePoster:   "https://image.tmdb.org/t/p/original/poster-art.jpg",
 		domain.ImageLogo:     "https://assets.fanart.tv/logo.png",
-		domain.ImageBackdrop: "https://image.tmdb.org/t/p/original/fond.jpg",
+		domain.ImageBackdrop: "https://image.tmdb.org/t/p/original/backdrop.jpg",
 	}
 	if !maps.Equal(n.Images, want) {
 		t.Errorf("images: %v", n.Images)
@@ -83,7 +83,7 @@ func TestParseMovieNFO(t *testing.T) {
 
 func TestParseEpisodeAndShowNFO(t *testing.T) {
 	// As Sonarr writes it: air date, thumb without an aspect.
-	ep, err := ParseNFO(strings.NewReader(`<episodedetails><title>Épisode 2</title><season>1</season><episode>2</episode><aired>2022-03-01</aired>
+	ep, err := ParseNFO(strings.NewReader(`<episodedetails><title>Part 2</title><season>1</season><episode>2</episode><aired>2022-03-01</aired>
 <thumb>https://artworks.thetvdb.com/banners/v4/episode/1/screencap/a.jpg</thumb></episodedetails>`))
 	if err != nil || ep.Kind != "episodedetails" || ep.Season != 1 || ep.Episode != 2 || ep.Premiered != "2022-03-01" || ep.Year != 2022 {
 		t.Errorf("episode: %+v %v", ep, err)
@@ -91,8 +91,8 @@ func TestParseEpisodeAndShowNFO(t *testing.T) {
 	if ep.Images[domain.ImageThumb] != "https://artworks.thetvdb.com/banners/v4/episode/1/screencap/a.jpg" || len(ep.Images) != 1 {
 		t.Errorf("episode thumb: %v", ep.Images)
 	}
-	show, err := ParseNFO(strings.NewReader(`<tvshow><title>Série</title><tvdbid>81189</tvdbid><rating>8.5</rating><mpaa>TV-PG</mpaa>
-<thumb aspect="poster" type="season" season="1">https://x.test/saison1.jpg</thumb>
+	show, err := ParseNFO(strings.NewReader(`<tvshow><title>Show</title><tvdbid>81189</tvdbid><rating>8.5</rating><mpaa>TV-PG</mpaa>
+<thumb aspect="poster" type="season" season="1">https://x.test/season1.jpg</thumb>
 <actor><name>Yusuke Kobayashi</name><role>Senkuu Ishigami </role><thumb>https://artworks.thetvdb.com/banners/person/459168/a.jpg</thumb></actor></tvshow>`))
 	if err != nil || show.Kind != "tvshow" || show.IDs["tvdb"] != "81189" || show.Rating != 8.5 || show.MPAA != "TV-PG" {
 		t.Errorf("series: %+v %v", show, err)
@@ -107,12 +107,12 @@ func TestParseLinkOnlyAndLatin1NFO(t *testing.T) {
 	if err != nil || n.IDs["imdb"] != "tt0133093" {
 		t.Errorf("NFO that is just a link: %+v %v", n, err)
 	}
-	latin1 := "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><movie><title>L'\xc9t\xe9 meurtrier</title></movie>"
+	latin1 := "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><movie><title>Caf\xe9 Society</title></movie>"
 	n, err = ParseNFO(strings.NewReader(latin1))
-	if err != nil || n.Title != "L'Été meurtrier" {
+	if err != nil || n.Title != "Café Society" {
 		t.Errorf("Latin-1 NFO: %q %v", n.Title, err)
 	}
-	if _, err := ParseNFO(strings.NewReader("rien d'utile")); err == nil {
+	if _, err := ParseNFO(strings.NewReader("nothing useful")); err == nil {
 		t.Error("random content accepted")
 	}
 }
@@ -138,15 +138,15 @@ func kinds(arts []Artwork) map[domain.ImageKind]string {
 }
 
 func TestMovieArtwork(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "Film (2020)")
-	touch(t, dir, "Film (2020).mkv", "Folder.JPG", "Film (2020)-fanart.png", "fanart.jpg", "clearlogo.png", "notes.txt")
-	arts, err := MovieArtwork(dir, "Film (2020)", true)
+	dir := filepath.Join(t.TempDir(), "Movie (2020)")
+	touch(t, dir, "Movie (2020).mkv", "Folder.JPG", "Movie (2020)-fanart.png", "fanart.jpg", "clearlogo.png", "notes.txt")
+	arts, err := MovieArtwork(dir, "Movie (2020)", true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := map[domain.ImageKind]string{
 		domain.ImagePoster:   "Folder.JPG",
-		domain.ImageBackdrop: "Film (2020)-fanart.png", // the file's own name comes before the generic one
+		domain.ImageBackdrop: "Movie (2020)-fanart.png", // the file's own name comes before the generic one
 		domain.ImageLogo:     "clearlogo.png",
 	}
 	if got := kinds(arts); !mapsEqual(got, want) {
@@ -163,10 +163,10 @@ func TestMovieArtwork(t *testing.T) {
 }
 
 func TestSeriesSeasonEpisodeArtwork(t *testing.T) {
-	series := filepath.Join(t.TempDir(), "Série")
-	season := filepath.Join(series, "Saison 01")
+	series := filepath.Join(t.TempDir(), "Show")
+	season := filepath.Join(series, "Season 01")
 	touch(t, series, "poster.jpg", "fanart.jpg", "season01-poster.jpg", "season-specials-poster.jpg")
-	touch(t, season, "folder.jpg", "fanart.jpg", "Série S01E01.mkv", "Série S01E01-thumb.jpg")
+	touch(t, season, "folder.jpg", "fanart.jpg", "Show S01E01.mkv", "Show S01E01-thumb.jpg")
 
 	arts, _ := SeriesArtwork(series)
 	if got := kinds(arts); got[domain.ImagePoster] != "poster.jpg" || got[domain.ImageBackdrop] != "fanart.jpg" {
@@ -180,8 +180,8 @@ func TestSeriesSeasonEpisodeArtwork(t *testing.T) {
 	if got := kinds(arts); got[domain.ImagePoster] != "season-specials-poster.jpg" {
 		t.Errorf("specials: %v", got)
 	}
-	arts, _ = EpisodeArtwork(season, "Série S01E01")
-	if got := kinds(arts); got[domain.ImageThumb] != "Série S01E01-thumb.jpg" {
+	arts, _ = EpisodeArtwork(season, "Show S01E01")
+	if got := kinds(arts); got[domain.ImageThumb] != "Show S01E01-thumb.jpg" {
 		t.Errorf("episode: %v", got)
 	}
 	if _, err := SeriesArtwork(filepath.Join(series, "absent")); err == nil {
@@ -192,7 +192,7 @@ func TestSeriesSeasonEpisodeArtwork(t *testing.T) {
 func TestNFOPath(t *testing.T) {
 	dir := t.TempDir()
 	touch(t, dir, "movie.nfo")
-	if got := NFOPath(filepath.Join(dir, "Film.nfo"), filepath.Join(dir, "movie.nfo")); filepath.Base(got) != "movie.nfo" {
+	if got := NFOPath(filepath.Join(dir, "Heat (1995).nfo"), filepath.Join(dir, "movie.nfo")); filepath.Base(got) != "movie.nfo" {
 		t.Errorf("NFOPath: %q", got)
 	}
 	if got := NFOPath(filepath.Join(dir, "absent.nfo")); got != "" {
@@ -226,7 +226,7 @@ func TestParseSet(t *testing.T) {
 	if err != nil || n.Collection == nil || n.Collection.Name != "Alien - La saga" || n.Collection.TMDbID != "" {
 		t.Errorf("old form: %+v %v", n.Collection, err)
 	}
-	if n, _ := ParseNFO(strings.NewReader(`<movie><title>Seul</title><set><name> </name></set></movie>`)); n.Collection != nil {
+	if n, _ := ParseNFO(strings.NewReader(`<movie><title>Alone</title><set><name> </name></set></movie>`)); n.Collection != nil {
 		t.Errorf("unnamed collection: %+v", n.Collection)
 	}
 }

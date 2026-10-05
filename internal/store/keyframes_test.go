@@ -12,8 +12,8 @@ import (
 func TestKeyframes(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
-	file := domain.MediaFile{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/a.mkv", Size: 1, ModTime: t0, Fingerprint: "empreinte"}
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
+	file := domain.MediaFile{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/a.mkv", Size: 1, ModTime: t0, Fingerprint: "fingerprint"}
 	mustWrite(t, st, func(q Q) error {
 		if err := q.CreateLibrary(ctx, lib); err != nil {
 			return err
@@ -28,7 +28,7 @@ func TestKeyframes(t *testing.T) {
 		t.Fatalf("read back: %v %v %v", got, ok, err)
 	}
 	// Changed file (another fingerprint): the index no longer applies.
-	if _, ok, err := st.Read().Keyframes(ctx, file.ID, "autre"); ok || err != nil {
+	if _, ok, err := st.Read().Keyframes(ctx, file.ID, "other"); ok || err != nil {
 		t.Errorf("different fingerprint: %v %v", ok, err)
 	}
 	if enc := encodeTimes(times); len(enc) > 24 { // 4 times, one of them 25 min after the previous

@@ -97,9 +97,9 @@ func EPUB(opf string, cover []byte) []byte {
   <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
 </container>`)},
 		{Name: "OEBPS/content.opf", Data: []byte(opf)},
-		{Name: "OEBPS/text/chapitre1.xhtml", Data: []byte(`<?xml version="1.0" encoding="utf-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapitre 1</title></head>
-<body><h1>Chapitre 1</h1><p>Il était une fois un livre de test.</p></body></html>`)},
+		{Name: "OEBPS/text/chapter1.xhtml", Data: []byte(`<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 1</title></head>
+<body><h1>Chapter 1</h1><p>Once upon a time there was a test book.</p></body></html>`)},
 	}
 	if cover != nil {
 		entries = append(entries, ZipEntry{Name: "OEBPS/Images/cover.jpg", Data: cover})
@@ -259,58 +259,58 @@ func (p *pdfWriter) stream(num int, dict string, data []byte) {
 
 // books writes the book library.
 func (g *generator) books(context.Context) error {
-	root := filepath.Join(g.root, "Livres")
+	root := filepath.Join(g.root, "Books")
 	cover := JPEG(PageImage(300, 450, 1))
 
 	// Novel prepared by Calibre: series, author, HTML description, date at midnight Paris time.
 	novel := EPUB(`<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="uuid_id">
   <metadata xmlns:opf="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:calibre="http://calibre.kovidgoyal.net/2009/metadata">
-    <dc:title>Le Voyage, tome 2 : La Traversée</dc:title>
-    <dc:creator opf:role="aut" opf:file-as="Test, Autrice">Autrice Test</dc:creator>
+    <dc:title>The Voyage, Book 2: The Crossing</dc:title>
+    <dc:creator opf:role="aut" opf:file-as="Test, Author">Author Test</dc:creator>
     <dc:contributor opf:role="bkp">calibre (6.9.0)</dc:contributor>
-    <dc:description>&lt;p&gt;Un roman de &lt;b&gt;test&lt;/b&gt;.&lt;/p&gt;&lt;p&gt;Deuxième paragraphe.&lt;/p&gt;</dc:description>
-    <dc:publisher>Éditions Test</dc:publisher>
+    <dc:description>&lt;p&gt;A &lt;b&gt;test&lt;/b&gt; novel.&lt;/p&gt;&lt;p&gt;Second paragraph.&lt;/p&gt;</dc:description>
+    <dc:publisher>Test Press</dc:publisher>
     <dc:date>2023-11-30T23:00:00+00:00</dc:date>
-    <dc:language>fr</dc:language>
+    <dc:language>en</dc:language>
     <dc:identifier opf:scheme="ISBN">978-2-1234-5680-3</dc:identifier>
-    <dc:subject>Aventure</dc:subject>
-    <dc:subject>Jeunesse</dc:subject>
-    <meta name="calibre:series" content="Le Voyage"/>
+    <dc:subject>Adventure</dc:subject>
+    <dc:subject>Young Adult</dc:subject>
+    <meta name="calibre:series" content="The Voyage"/>
     <meta name="calibre:series_index" content="2.0"/>
-    <meta name="calibre:title_sort" content="Voyage, tome 2, Le"/>
+    <meta name="calibre:title_sort" content="Voyage, Book 2, The"/>
     <meta name="cover" content="cover"/>
   </metadata>
   <manifest>
     <item id="cover" href="Images/cover.jpg" media-type="image/jpeg"/>
-    <item id="c1" href="text/chapitre1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="c1" href="text/chapter1.xhtml" media-type="application/xhtml+xml"/>
   </manifest>
   <spine><itemref idref="c1"/></spine>
 </package>`, cover)
-	if err := g.bytes(filepath.Join(root, "Romans", "Le Voyage T2 - Autrice Test.epub"), novel); err != nil {
+	if err := g.bytes(filepath.Join(root, "Novels", "The Voyage V2 - Author Test.epub"), novel); err != nil {
 		return err
 	}
 
 	// Calibre library: the book alone in its folder, with metadata.opf and cover.jpg next to it.
 	// The EPUB itself says next to nothing.
-	calibre := filepath.Join(root, "Calibre", "Autrice Test", "Roman Seul (12)")
+	calibre := filepath.Join(root, "Calibre", "Author Test", "Solo Novel (12)")
 	bare := EPUB(`<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Sans titre</dc:title></metadata>
-  <manifest><item id="c1" href="text/chapitre1.xhtml" media-type="application/xhtml+xml"/></manifest>
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Untitled</dc:title></metadata>
+  <manifest><item id="c1" href="text/chapter1.xhtml" media-type="application/xhtml+xml"/></manifest>
   <spine><itemref idref="c1"/></spine>
 </package>`, nil)
-	if err := g.bytes(filepath.Join(calibre, "Roman Seul - Autrice Test.epub"), bare); err != nil {
+	if err := g.bytes(filepath.Join(calibre, "Solo Novel - Author Test.epub"), bare); err != nil {
 		return err
 	}
 	if err := g.text(filepath.Join(calibre, "metadata.opf"), `<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="2.0">
   <metadata xmlns:opf="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:title>Roman Seul</dc:title>
-    <dc:creator opf:role="aut">Autrice Test</dc:creator>
-    <dc:description>Un roman rangé par Calibre.</dc:description>
+    <dc:title>Solo Novel</dc:title>
+    <dc:creator opf:role="aut">Author Test</dc:creator>
+    <dc:description>A novel filed by Calibre.</dc:description>
     <dc:date>2021-03-04</dc:date>
-    <dc:language>fr</dc:language>
+    <dc:language>en</dc:language>
   </metadata>
 </package>`); err != nil {
 		return err
@@ -320,24 +320,24 @@ func (g *generator) books(context.Context) error {
 	}
 
 	// Manga with ComicInfo.xml: right to left, a double page, cover named explicitly.
-	manga := filepath.Join(root, "Mangas", "Manga Test")
+	manga := filepath.Join(root, "Manga", "Manga Test")
 	ci := `<?xml version="1.0" encoding="utf-8"?>
 <ComicInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Title>Le Commencement</Title><Series>Manga Test</Series><Number>1</Number>
-  <Summary>Un manga de test.</Summary><Year>2020</Year><Month>5</Month><Day>12</Day>
-  <Writer>Scénariste Test</Writer><Penciller>Dessinateur Test</Penciller>
-  <Publisher>Éditions Test</Publisher><Genre>Action, Aventure</Genre><LanguageISO>fr</LanguageISO>
+  <Title>The Beginning</Title><Series>Manga Test</Series><Number>1</Number>
+  <Summary>A test manga.</Summary><Year>2020</Year><Month>5</Month><Day>12</Day>
+  <Writer>Writer Test</Writer><Penciller>Penciller Test</Penciller>
+  <Publisher>Test Press</Publisher><Genre>Action, Adventure</Genre><LanguageISO>en</LanguageISO>
   <Manga>YesAndRightToLeft</Manga>
   <Pages><Page Image="1" Type="FrontCover"/></Pages>
 </ComicInfo>`
-	tome1 := Zip([]ZipEntry{
+	volume1 := Zip([]ZipEntry{
 		{Name: "ComicInfo.xml", Data: []byte(ci)},
 		{Name: "page-00.png", Data: pngBytes(PageImage(400, 600, 10))}, // flyleaf
 		{Name: "page-01.png", Data: pngBytes(PageImage(400, 600, 11))}, // cover
 		{Name: "page-02.png", Data: pngBytes(PageImage(800, 600, 12))}, // double page
 		{Name: "__MACOSX/._page-01.png", Data: []byte("x")},
 	})
-	if err := g.bytes(filepath.Join(manga, "Manga Test - Tome #01 - [V1].cbz"), tome1); err != nil {
+	if err := g.bytes(filepath.Join(manga, "Manga Test - Volume #01 - [V1].cbz"), volume1); err != nil {
 		return err
 	}
 	// No ComicInfo, release-style name, pages sorted by chapter (natural order).
@@ -345,7 +345,7 @@ func (g *generator) books(context.Context) error {
 	for _, name := range []string{"Ch 10/10.jpg", "Ch 10/2.jpg", "Ch 9/1.jpg"} {
 		pages = append(pages, ZipEntry{Name: name, Data: JPEG(PageImage(400, 600, len(pages)+20))})
 	}
-	if err := g.bytes(filepath.Join(manga, "Manga.Test.T02.FR.[CBZ]-TEAM.cbz"), Zip(pages)); err != nil {
+	if err := g.bytes(filepath.Join(manga, "Manga.Test.V02.EN.[CBZ]-TEAM.cbz"), Zip(pages)); err != nil {
 		return err
 	}
 
@@ -354,12 +354,12 @@ func (g *generator) books(context.Context) error {
 	for i := range 3 {
 		scans = append(scans, PDFPage{JPEG: JPEG(PageImage(400, 560, 30+i)), Width: 400, Height: 560})
 	}
-	if err := g.bytes(filepath.Join(root, "BD.Numerisee.Livre.1.2019.FR.[PDF]-NOTAG.pdf"), ScannedPDF(scans, map[string]string{"Producer": "Test"})); err != nil {
+	if err := g.bytes(filepath.Join(root, "Big.Comic.Book.1.2019.EN.[PDF]-NOTAG.pdf"), ScannedPDF(scans, map[string]string{"Producer": "Test"})); err != nil {
 		return err
 	}
 	// Text PDF document, rendered by the client.
-	return g.bytes(filepath.Join(root, "Guide pratique.pdf"), TextPDF("Bonjour", map[string]string{
-		"Title": "Guide pratique de l'essai", "Author": "Autrice Test", "CreationDate": "D:20220115093000+01'00'",
+	return g.bytes(filepath.Join(root, "Field Guide.pdf"), TextPDF("Hello", map[string]string{
+		"Title": "Guide to Testing", "Author": "Author Test", "CreationDate": "D:20220115093000+01'00'",
 	}))
 }
 

@@ -19,13 +19,13 @@ func TestMain(m *testing.M) {
 	case "server":
 		// Server: binds to its children, starts one, prints its PID, waits to be killed.
 		if err := Bind(); err != nil {
-			fmt.Println("erreur", err)
+			fmt.Println("error", err)
 			os.Exit(2)
 		}
 		cmd := Command(context.Background(), os.Args[0], "-test.run=^$")
 		cmd.Env = append(os.Environ(), "LATERNA_PROC_ROLE=child")
 		if err := cmd.Start(); err != nil {
-			fmt.Println("erreur", err)
+			fmt.Println("error", err)
 			os.Exit(2)
 		}
 		fmt.Println(cmd.Process.Pid)

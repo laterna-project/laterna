@@ -83,7 +83,7 @@ func TestReadPNGAndWebP(t *testing.T) {
 	}
 
 	// No EXIF.
-	if _, err := ReadFile(write(t, "nue.jpg", testfixtures.JPEG(testfixtures.PageImage(8, 8, 1)))); !errors.Is(err, ErrNone) {
+	if _, err := ReadFile(write(t, "bare.jpg", testfixtures.JPEG(testfixtures.PageImage(8, 8, 1)))); !errors.Is(err, ErrNone) {
 		t.Errorf("JPEG without EXIF: %v", err)
 	}
 }

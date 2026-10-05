@@ -18,21 +18,21 @@ func TestCollectionsFromNFOAndByHand(t *testing.T) {
 	ctx := context.Background()
 	_, admin := setupAdmin(t, a)
 	root := t.TempDir()
-	saga := `<set tmdbcolid="42"><name>Saga Test</name><overview>Deux films.</overview></set>`
+	saga := `<set tmdbcolid="42"><name>Saga Test</name><overview>Two movies.</overview></set>`
 	for name, set := range map[string]string{"Big Test Movie (2020)": saga, "Versions (2017)": saga} {
 		dir := filepath.Join(root, name)
-		copyTree(t, filepath.Join(testfixtures.Root(), "Films", name), dir)
+		copyTree(t, filepath.Join(testfixtures.Root(), "Movies", name), dir)
 		writeText(t, filepath.Join(dir, "movie.nfo"), "<movie><title>"+name[:len(name)-7]+"</title>"+set+"</movie>")
 	}
-	films, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 	mustNil(t, err)
-	_, err = a.CreateLibrary(ctx, "Séries", domain.LibraryShows, []string{testRoot("Séries")}, "")
+	_, err = a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 
 	list, err := a.Collections(ctx, admin, nil)
 	mustNil(t, err)
-	if len(list) != 1 || list[0].Name != "Saga Test" || list[0].Manual || list[0].ItemCount != 2 || list[0].Overview != "Deux films." {
+	if len(list) != 1 || list[0].Name != "Saga Test" || list[0].Manual || list[0].ItemCount != 2 || list[0].Overview != "Two movies." {
 		t.Fatalf("collections: %+v", list)
 	}
 	c, items, err := a.Collection(ctx, admin, list[0].ID)
@@ -50,7 +50,7 @@ func TestCollectionsFromNFOAndByHand(t *testing.T) {
 		t.Errorf("details: %+v", d.Collections)
 	}
 	// NFO-based collection: cannot be edited by hand.
-	name := "Autre"
+	name := "Other"
 	if _, err := a.UpdateCollection(ctx, c.ID, CollectionChanges{Name: &name}); !isKind(err, domain.ErrPrecondition) {
 		t.Errorf("editing an NFO-based collection: %v", err)
 	}
@@ -68,9 +68,9 @@ func TestCollectionsFromNFOAndByHand(t *testing.T) {
 	// Manual collection: a movie and a series, then a removal, then deletion.
 	series, err := a.ListSeries(ctx, admin, ListQuery{})
 	mustNil(t, err)
-	mine, err := a.CreateCollection(ctx, "Sélection de Chloé", "", []domain.ID{movie.ID, series.Items[0].Item.ID})
+	mine, err := a.CreateCollection(ctx, "Chloé's picks", "", []domain.ID{movie.ID, series.Items[0].Item.ID})
 	mustNil(t, err)
-	if _, err := a.CreateCollection(ctx, "Invalide", "", []domain.ID{domain.NewID()}); !isKind(err, domain.ErrInvalid) {
+	if _, err := a.CreateCollection(ctx, "Invalid", "", []domain.ID{domain.NewID()}); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("unknown item: %v", err)
 	}
 	_, items, err = a.Collection(ctx, admin, mine.ID)
@@ -78,10 +78,10 @@ func TestCollectionsFromNFOAndByHand(t *testing.T) {
 	if len(items) != 2 {
 		t.Errorf("selection: %v", titles(items))
 	}
-	renamed := "Sélection"
+	renamed := "Selection"
 	_, err = a.UpdateCollection(ctx, mine.ID, CollectionChanges{Name: &renamed, Remove: []domain.ID{movie.ID}})
 	mustNil(t, err)
-	if c, items, _ := a.Collection(ctx, admin, mine.ID); c.Name != "Sélection" || len(items) != 1 {
+	if c, items, _ := a.Collection(ctx, admin, mine.ID); c.Name != "Selection" || len(items) != 1 {
 		t.Errorf("after the update: %q %v", c.Name, titles(items))
 	}
 	// A kid profile (unrated hidden) sees none of these collections.
@@ -107,15 +107,15 @@ func TestPlaylistsOfAProfile(t *testing.T) {
 	}
 	a, _, p, movies := moviesByTitle(t)
 	ctx := context.Background()
-	_, err := a.CreateLibrary(ctx, "Séries", domain.LibraryShows, []string{testRoot("Séries")}, "")
+	_, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	series, err := a.ListSeries(ctx, p, ListQuery{})
 	mustNil(t, err)
-	serie := series.Items[0].Item.ID
+	show := series.Items[0].Item.ID
 
 	// A whole series: its episodes, in order.
-	pl, err := a.CreatePlaylist(ctx, p, "Marathon", []domain.ID{serie})
+	pl, err := a.CreatePlaylist(ctx, p, "Marathon", []domain.ID{show})
 	mustNil(t, err)
 	if pl.EntryCount != 4 || pl.Duration == 0 || len(pl.Images) == 0 {
 		t.Errorf("playlist created: %+v", pl)
@@ -148,9 +148,9 @@ func TestPlaylistsOfAProfile(t *testing.T) {
 	if _, err := a.RemoveFromPlaylist(ctx, p, pl.ID, []domain.ID{domain.NewID()}); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("unknown entry: %v", err)
 	}
-	renamed, err := a.RenamePlaylist(ctx, p, pl.ID, "Tout voir")
+	renamed, err := a.RenamePlaylist(ctx, p, pl.ID, "Watch all")
 	mustNil(t, err)
-	if renamed.Name != "Tout voir" || renamed.EntryCount != 5 {
+	if renamed.Name != "Watch all" || renamed.EntryCount != 5 {
 		t.Errorf("renamed: %+v", renamed)
 	}
 	if _, err := a.RenamePlaylist(ctx, p, pl.ID, " "); !isKind(err, domain.ErrInvalid) {
@@ -158,7 +158,7 @@ func TestPlaylistsOfAProfile(t *testing.T) {
 	}
 
 	// Playlists belong to the profile: another profile does not see them.
-	other, err := a.CreateProfile(ctx, p, "Autre", "", false, nil, "")
+	other, err := a.CreateProfile(ctx, p, "Other", "", false, nil, "")
 	mustNil(t, err)
 	onOther := p
 	onOther.Profile = &other

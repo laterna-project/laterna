@@ -34,7 +34,7 @@ func TestOIDCLoginOverHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	a, err := app.New(ctx, st, app.Options{ServerName: "Salon"})
+	a, err := app.New(ctx, st, app.Options{ServerName: "Living room"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,14 +116,14 @@ func TestOIDCLoginOverHTTP(t *testing.T) {
 		t.Fatalf("first login: %v\n%s", first, page)
 	}
 	// Found by her identity, even if the provider changes the display name.
-	idp.Username = "lea-renommee"
+	idp.Username = "lea-renamed"
 	again, _ := login("approve")
 	if again.GetState() != laternav1.OidcLoginState_OIDC_LOGIN_STATE_APPROVED || again.GetSession().GetAccount().GetId() != first.GetSession().GetAccount().GetId() {
 		t.Errorf("second login: %v", again)
 	}
 
 	// Refusal in the browser: nothing is opened or created.
-	idp.Subject, idp.Username = "nouvelle", "zoe"
+	idp.Subject, idp.Username = "new-subject", "zoe"
 	if denied, page := login("deny"); denied.GetState() != laternav1.OidcLoginState_OIDC_LOGIN_STATE_DENIED || !strings.Contains(page, "Sign-in refused from the browser.") || denied.GetMessageText().GetKey() != "oidc.denied_in_browser" {
 		t.Errorf("refusal in the browser: %v\n%s", denied, page)
 	}
@@ -144,10 +144,10 @@ func TestOIDCLoginOverHTTP(t *testing.T) {
 	if _, err := system.SetOidcProvider(ctx, authed(&laternav1.SetOidcProviderRequest{Issuer: idp.URL, ClientId: "laterna", Name: "Authelia"}, token)); err != nil {
 		t.Fatal(err) // secret kept
 	}
-	idp.Subject, idp.Username = "autre", "inconnu"
+	idp.Subject, idp.Username = "other-subject", "unknown"
 	unknown, _ := login("")
-	if unknown.GetState() != laternav1.OidcLoginState_OIDC_LOGIN_STATE_DENIED || unknown.GetMessageText().GetKey() != "error.oidc.no_account" || unknown.GetMessageText().GetParams()["username"] != "inconnu" ||
-		!strings.Contains(unknown.GetMessage(), "No Laterna account for \"inconnu\"") {
+	if unknown.GetState() != laternav1.OidcLoginState_OIDC_LOGIN_STATE_DENIED || unknown.GetMessageText().GetKey() != "error.oidc.no_account" || unknown.GetMessageText().GetParams()["username"] != "unknown" ||
+		!strings.Contains(unknown.GetMessage(), "No Laterna account for \"unknown\"") {
 		t.Errorf("unknown account: %v", unknown)
 	}
 	// A username that is already known is linked to its account.

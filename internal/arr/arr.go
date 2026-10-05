@@ -379,7 +379,7 @@ func (c *Client) Command(ctx context.Context, id int) (done bool, failed string,
 // Folder is a tracked series or movie, with the folder the instance keeps it in.
 type Folder struct {
 	Title string
-	// Path is the folder as the instance sees it ("/tv/Animes/Dr. STONE").
+	// Path is the folder as the instance sees it ("/tv/Anime/Dr. STONE").
 	Path string
 	// File is the file of a movie, relative to its folder ("" if there is none). Empty for a
 	// series.

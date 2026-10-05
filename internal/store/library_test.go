@@ -91,22 +91,22 @@ func newLibrary(name string, kind domain.LibraryKind, paths ...string) domain.Li
 func TestLibrariesAndPaths(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	films := newLibrary("Films", domain.LibraryMovies, "/media/films", "/media/films2")
+	films := newLibrary("Movies", domain.LibraryMovies, "/media/movies", "/media/movies2")
 	mustWrite(t, st, func(q Q) error { return q.CreateLibrary(ctx, films) })
 
-	dup := newLibrary("Autre", domain.LibraryShows, "/media/films")
+	dup := newLibrary("Other", domain.LibraryShows, "/media/movies")
 	if err := st.Write(ctx, func(q Q) error { return q.CreateLibrary(ctx, dup) }); !errors.Is(err, ErrDuplicate) {
 		t.Errorf("folder already in use: %v", err)
 	}
 	got, err := st.Read().Library(ctx, films.ID)
-	if err != nil || got.Kind != domain.LibraryMovies || !slices.Equal(got.Paths, []string{"/media/films", "/media/films2"}) {
+	if err != nil || got.Kind != domain.LibraryMovies || !slices.Equal(got.Paths, []string{"/media/movies", "/media/movies2"}) {
 		t.Fatalf("library: %+v %v", got, err)
 	}
 	films.Paths = []string{"/media/cinema"}
-	films.Name = "Cinéma"
+	films.Name = "Cinema"
 	mustWrite(t, st, func(q Q) error { return q.UpdateLibrary(ctx, films) })
 	all, _ := st.Read().Libraries(ctx)
-	if len(all) != 1 || all[0].Name != "Cinéma" || !slices.Equal(all[0].Paths, []string{"/media/cinema"}) {
+	if len(all) != 1 || all[0].Name != "Cinema" || !slices.Equal(all[0].Paths, []string{"/media/cinema"}) {
 		t.Errorf("after the update: %+v", all)
 	}
 }
@@ -115,15 +115,15 @@ func TestLibrariesAndPaths(t *testing.T) {
 func TestItemsFilesAndOrphans(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	lib := newLibrary("Tout", domain.LibraryShows, "/m")
-	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "Film/film", Title: "Film", SortTitle: "film", AddedAt: t0, UpdatedAt: t0}
-	series := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemSeries, GroupKey: "series:Série", Title: "Série", SortTitle: "serie", AddedAt: t0, UpdatedAt: t0}
-	season := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemSeason, ParentID: &series.ID, GroupKey: "season:1", Title: "Saison 1", SortTitle: "0001", AddedAt: t0, UpdatedAt: t0}
-	episode := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemEpisode, ParentID: &season.ID, GroupKey: "episode:1:1", Title: "Épisode 1", SortTitle: "0001", AddedAt: t0, UpdatedAt: t0}
+	lib := newLibrary("All", domain.LibraryShows, "/m")
+	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "Movie/movie", Title: "Movie", SortTitle: "movie", AddedAt: t0, UpdatedAt: t0}
+	series := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemSeries, GroupKey: "series:Show", Title: "Show", SortTitle: "show", AddedAt: t0, UpdatedAt: t0}
+	season := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemSeason, ParentID: &series.ID, GroupKey: "season:1", Title: "Season 1", SortTitle: "0001", AddedAt: t0, UpdatedAt: t0}
+	episode := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemEpisode, ParentID: &season.ID, GroupKey: "episode:1:1", Title: "Episode 1", SortTitle: "0001", AddedAt: t0, UpdatedAt: t0}
 	files := []domain.MediaFile{
-		{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/Film/a.mkv", Size: 1, ModTime: t0, Fingerprint: "fa"},
-		{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/Film/b.mkv", Size: 1, ModTime: t0, Fingerprint: "fb"},
-		{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/Série/e1.mkv", Size: 1, ModTime: t0, Fingerprint: "fe"},
+		{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/Movie/a.mkv", Size: 1, ModTime: t0, Fingerprint: "fa"},
+		{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/Movie/b.mkv", Size: 1, ModTime: t0, Fingerprint: "fb"},
+		{ID: domain.NewID(), LibraryID: lib.ID, Path: "/m/Show/e1.mkv", Size: 1, ModTime: t0, Fingerprint: "fe"},
 	}
 	mustWrite(t, st, func(q Q) error {
 		steps := []error{q.CreateLibrary(ctx, lib)}
@@ -182,13 +182,13 @@ func TestItemsFilesAndOrphans(t *testing.T) {
 func TestMetadataAndImages(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
 	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "k", Title: "x", SortTitle: "x", AddedAt: t0, UpdatedAt: t0}
 	mustWrite(t, st, func(q Q) error { return errors.Join(q.CreateLibrary(ctx, lib), q.CreateItem(ctx, movie)) })
 
 	meta := domain.Metadata{
 		Title: "Amélie", SortTitle: "amelie", Year: 2001, Overview: "…", CommunityRating: 7.9, Runtime: 122 * time.Minute,
-		Genres: []string{"Romance", "Comédie"}, ProviderIDs: map[string]string{"tmdb": "194"},
+		Genres: []string{"Romance", "Comedy"}, ProviderIDs: map[string]string{"tmdb": "194"},
 		Credits: []domain.Credit{{Name: "Audrey Tautou", Role: domain.RoleActor, Character: "Amélie"}, {Name: "Jean-Pierre Jeunet", Role: domain.RoleDirector}},
 	}
 	var people []domain.ID
@@ -208,7 +208,7 @@ func TestMetadataAndImages(t *testing.T) {
 		t.Errorf("item: %+v", it)
 	}
 	d, err := st.Read().Details(ctx, movie.ID)
-	if err != nil || !slices.Equal(d.Genres, []string{"Comédie", "Romance"}) || d.ProviderIDs["tmdb"] != "194" || len(d.Credits) != 2 {
+	if err != nil || !slices.Equal(d.Genres, []string{"Comedy", "Romance"}) || d.ProviderIDs["tmdb"] != "194" || len(d.Credits) != 2 {
 		t.Errorf("details: %+v %v", d, err)
 	}
 
@@ -284,7 +284,7 @@ func TestMetadataAndImages(t *testing.T) {
 func TestMetadataDirs(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
 	mustWrite(t, st, func(q Q) error {
 		return errors.Join(q.CreateLibrary(ctx, lib), q.SetMetadataDir(ctx, lib.ID, "/m/a", "1"), q.SetMetadataDir(ctx, lib.ID, "/m/b", "2"))
 	})
@@ -321,16 +321,16 @@ func TestLibraryOrder(t *testing.T) {
 		mustWrite(t, st, func(q Q) error { return q.CreateLibrary(ctx, l) })
 	}
 	create("Photos", domain.LibraryPhotos)
-	create("Animes", domain.LibraryShows)
-	create("Musique", domain.LibraryMusic)
-	create("Films", domain.LibraryMovies)
-	create("Livres", domain.LibraryBooks)
-	create("Dessins animés", domain.LibraryMovies)
-	if got := names(); !slices.Equal(got, []string{"Dessins animés", "Films", "Animes", "Musique", "Livres", "Photos"}) {
+	create("Anime", domain.LibraryShows)
+	create("Music", domain.LibraryMusic)
+	create("Movies", domain.LibraryMovies)
+	create("Books", domain.LibraryBooks)
+	create("Cartoons", domain.LibraryMovies)
+	if got := names(); !slices.Equal(got, []string{"Cartoons", "Movies", "Anime", "Music", "Books", "Photos"}) {
 		t.Fatalf("default order: %v", got)
 	}
 
-	order := []string{"Animes", "Films", "Dessins animés", "Photos", "Musique", "Livres"}
+	order := []string{"Anime", "Movies", "Cartoons", "Photos", "Music", "Books"}
 	mustWrite(t, st, func(q Q) error {
 		ids := make([]domain.ID, len(order))
 		for i, name := range order {
@@ -350,9 +350,9 @@ func TestLibraryOrder(t *testing.T) {
 	}
 
 	// Created afterwards: after the ranked ones, by kind then by name.
-	create("Séries", domain.LibraryShows)
+	create("Shows", domain.LibraryShows)
 	create("Concerts", domain.LibraryMovies)
-	if got := names(); !slices.Equal(got, append(slices.Clone(order), "Concerts", "Séries")) {
+	if got := names(); !slices.Equal(got, append(slices.Clone(order), "Concerts", "Shows")) {
 		t.Errorf("after two more libraries: %v", got)
 	}
 }

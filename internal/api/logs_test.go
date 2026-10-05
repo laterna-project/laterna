@@ -29,7 +29,7 @@ func TestLogFilesRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	a, err := app.New(ctx, st, app.Options{ServerName: "Salon", LogDir: logDir})
+	a, err := app.New(ctx, st, app.Options{ServerName: "Living room", LogDir: logDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestLogFilesRoute(t *testing.T) {
 		want        int
 	}{
 		{"laterna_20260930.log", "", http.StatusUnauthorized},
-		{"laterna_20260930.log", "lat_faux", http.StatusUnauthorized},
+		{"laterna_20260930.log", "lat_wrong", http.StatusUnauthorized},
 		{"laterna_20260930.log", lea.Msg.GetToken(), http.StatusForbidden},
 		{"laterna_20260101.log", admin.Msg.GetToken(), http.StatusNotFound},
 		{"..%2Flaterna.db", admin.Msg.GetToken(), http.StatusNotFound},

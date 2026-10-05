@@ -110,9 +110,9 @@ func TestDecideAudio(t *testing.T) {
 	}{
 		{"FLAC with a cover in a browser", file("flac", flac, cover), web, Direct},
 		{"FLAC on a device that cannot play it: converted", file("flac", flac, cover), phone, Convert},
-		{"WMA : converti", file("asf", wma), web, Convert},
+		{"WMA: converted", file("asf", wma), web, Convert},
 		{"no AAC: nothing we can do", file("asf", wma), DeviceProfile{Containers: []string{"mp4"}, AudioCodecs: []string{"mp3"}}, Unplayable},
-		{"ni image ni son", file("flac", cover), web, Unplayable},
+		{"neither picture nor sound", file("flac", cover), web, Unplayable},
 	}
 	for _, tt := range tests {
 		p := Decide(tt.info, tt.dev, -1, nil)
