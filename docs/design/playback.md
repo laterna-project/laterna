@@ -103,6 +103,9 @@ differences:
   GPL builds, as the last resort. A missing card or driver just means the next one takes over.
   `ffmpeg.encoder` / `LATERNA_FFMPEG_ENCODER` forces one (an unknown name is refused at startup;
   one that does not work on the machine falls back to the best, with a warning).
+- A trial lasts 20 to 30 s at most. One that cannot even be killed is left behind and counts as
+  failed, so detection always ends: a hardware encoder stuck in the kernel was seen to hang
+  FFmpeg for good in a virtual machine.
 - Video is scaled to 1080 lines at most and converted to 8 bits. Quality targets roughly x264
   CRF 21 to 23.
 - **Fixed 6 s segments.** A transcoded stream chooses its own keyframes, so an IDR is forced at

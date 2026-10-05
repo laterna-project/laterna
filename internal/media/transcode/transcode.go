@@ -5,7 +5,6 @@
 package transcode
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -131,18 +130,13 @@ func Detect(ctx context.Context, ffmpeg string) (Caps, error) {
 
 // try encodes one second of a test pattern with e, the way playback would (same filter chain).
 func try(ctx context.Context, ffmpeg string, e Encoder) error {
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
 	args := append([]string{"-hide_banner", "-v", "error", "-nostdin"}, e.device...)
 	args = append(args, "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=1",
 		"-vf", videoFilter(e, 0, nil))
 	args = append(args, e.encode()...)
 	args = append(args, "-f", "null", "-")
-	cmd := proc.Command(ctx, ffmpeg, args...)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%s: %w: %s", e.Name, err, strings.TrimSpace(stderr.String()))
+	if err := trial(ctx, 20*time.Second, ffmpeg, args); err != nil {
+		return fmt.Errorf("%s: %w", e.Name, err)
 	}
 	return nil
 }

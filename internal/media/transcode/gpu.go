@@ -1,16 +1,11 @@
 package transcode
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
-
-	"github.com/laterna-project/laterna/internal/proc"
 )
 
 // The "on the card" chain: Vulkan decoding, scaling and HDR to SDR conversion by libplacebo on
@@ -62,13 +57,5 @@ func DetectGPU(ctx context.Context, ffmpeg string, e Encoder) bool {
 }
 
 func runQuiet(ctx context.Context, ffmpeg string, args []string) error {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	cmd := proc.Command(ctx, ffmpeg, args...)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
-	}
-	return nil
+	return trial(ctx, 30*time.Second, ffmpeg, args)
 }
