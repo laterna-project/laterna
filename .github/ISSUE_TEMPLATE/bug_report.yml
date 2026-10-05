@@ -1,0 +1,44 @@
+name: Bug report
+description: Something does not work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Laterna version
+      description: The output of `laterna version`, or the Docker image tag.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options:
+        - Docker
+        - deb or rpm package
+        - Archive with FFmpeg
+        - Archive without FFmpeg
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: Operating system and architecture, and the GPU if the problem is about transcoding.
+      placeholder: Debian 13, amd64, Intel N100
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >-
+        The relevant lines of the server log (`log.level = "debug"` helps). For a playback
+        problem, add the client and the playback info it shows. Remove anything private.
+      render: text

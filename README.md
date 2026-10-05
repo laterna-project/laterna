@@ -10,7 +10,8 @@ in [`proto/`](proto/laterna/v1). A small development console is included to try 
 without a client.
 
 > The project is young. The server covers the scope below and is well tested, but it has only
-> run on a handful of machines, and the API may still change before a first tagged release.
+> run on a handful of machines. Until version 1.0, a minor version may change the configuration
+> or what the API offers; the release notes say how to upgrade.
 
 ## What it does
 
@@ -45,12 +46,18 @@ without a client.
 docker run -d --name laterna -p 8096:8096 \
   -v laterna-config:/config -v laterna-cache:/cache \
   -v /path/to/media:/media:ro \
-  ghcr.io/laterna-project/laterna:edge
+  ghcr.io/laterna-project/laterna:latest
 ```
 
 The image includes a pinned FFmpeg build. Media folders can be mounted read-only: Laterna never
 writes into them. To let TVs and apps find the server on the local network, run the container
-with `--network host` (multicast does not cross Docker's bridge network).
+with `--network host` (multicast does not cross Docker's bridge network). `latest` is the last
+release; `edge` follows the development branch.
+
+### Packages and archives
+
+Releases come as `.deb` and `.rpm` packages with a systemd service, and as archives for Linux,
+Windows, macOS and FreeBSD, with or without FFmpeg included. See [docs/install.md](docs/install.md).
 
 ### From source
 
@@ -134,9 +141,11 @@ in English or French.
 
 ## Documentation
 
+- [`docs/install.md`](docs/install.md): Docker, packages, archives, reverse proxy, upgrades.
 - [`docs/design/`](docs/design/README.md): how the server is built and why.
 - [`proto/laterna/v1/`](proto/laterna/v1): the API contract, with comments on every message.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): development setup and the rules of the code base.
+- [`docs/releasing.md`](docs/releasing.md): branches, versions and how a release is cut.
 
 ## Development
 
@@ -149,4 +158,6 @@ task perf       # performance budgets on a synthetic catalog
 
 ## License
 
-Laterna is free software, released under the [GNU General Public License, version 3](LICENSE).
+Laterna is free software: you can redistribute it and modify it under the terms of the
+[GNU General Public License](LICENSE) as published by the Free Software Foundation, either
+version 3 of the License or, at your option, any later version. It comes with no warranty.

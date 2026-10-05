@@ -1,0 +1,25 @@
+# Laterna startup configuration, installed as /etc/laterna/laterna.toml.
+# Only what the server needs before it opens its database lives here. Everything else (server
+# name, scans, public address...) is a setting changed from a client's administration screens.
+
+[server]
+address = ":8096"
+# Reverse proxies whose X-Forwarded-For header is trusted (addresses or CIDR ranges).
+# trusted_proxies = ["127.0.0.1"]
+# Announce the server on the local network (mDNS).
+# discovery = true
+
+[paths]
+data = "/var/lib/laterna/data"
+metadata = "/var/lib/laterna/metadata"
+cache = "/var/cache/laterna"
+# Database backups. Another disk protects against losing the first one; the service then needs
+# write access to it (see the comments in laterna.service).
+# backups = "/mnt/backups/laterna"
+
+[ffmpeg]
+# The FFmpeg build shipped with the package. Remove these two lines to use the one in PATH.
+ffmpeg = "/usr/lib/laterna/ffmpeg"
+ffprobe = "/usr/lib/laterna/ffprobe"
+# Force the H.264 encoder instead of the best one detected at startup.
+# encoder = "libx264"

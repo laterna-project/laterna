@@ -1,0 +1,16 @@
+name: Feature request
+description: Something Laterna should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you are trying to do
+      description: The situation and what gets in the way today. A concrete case beats a general idea.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: How you imagine it working, if you have something in mind.

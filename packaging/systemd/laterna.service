@@ -1,0 +1,38 @@
+[Unit]
+Description=Laterna media server
+Documentation=https://github.com/laterna-project/laterna
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=laterna
+Group=laterna
+ExecStart=/usr/bin/laterna serve -config /etc/laterna/laterna.toml
+Restart=on-failure
+RestartSec=5
+
+# /var/lib/laterna (database, logs, metadata, backups) and /var/cache/laterna.
+StateDirectory=laterna
+CacheDirectory=laterna
+
+# The rest of the system is read-only for the server. Media folders only need to be readable
+# by the laterna user. To write backups elsewhere, or to give access to a GPU, add a drop-in
+# (systemctl edit laterna):
+#   [Service]
+#   ReadWritePaths=/mnt/backups/laterna
+#   SupplementaryGroups=render video
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
-    tags: ["v*"]
+    branches: [main, develop]
   pull_request:
   workflow_dispatch:
 
@@ -16,42 +15,34 @@ concurrency:
 
 env:
   CGO_ENABLED: "0"
-  # Same FFmpeg as the Docker image (docker/Dockerfile).
-  FFMPEG_RELEASE: autobuild-2026-09-28-13-06
-  FFMPEG_FILE: ffmpeg-n9.0.2-14-gebafaee10a-linux64-gpl-9.0.tar.xz
-  FFMPEG_SHA256: 58e27dab85141ff1e08f43488b7700cc4443e17571bbee809edd6486d9dfd9b2
 
 jobs:
-  check:
-    name: Checks (task check)
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2 # the previous commit is the reference for buf breaking
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache-dependency-path: |
             go.sum
             tools/go.sum
-      - uses: go-task/setup-task@v2
+      - uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: FFmpeg
-        run: |
-          curl -fsSL -o /tmp/ffmpeg.tar.xz "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_RELEASE}/${FFMPEG_FILE}"
-          echo "${FFMPEG_SHA256}  /tmp/ffmpeg.tar.xz" | sha256sum -c -
-          mkdir -p "$RUNNER_TEMP/ffmpeg"
-          tar -xJf /tmp/ffmpeg.tar.xz -C "$RUNNER_TEMP/ffmpeg" --strip-components=1
-          echo "$RUNNER_TEMP/ffmpeg/bin" >> "$GITHUB_PATH"
       - name: Reference for contract comparison
         id: against
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch --depth=1 origin "${{ github.base_ref }}"
-            echo "ref=origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = "pull_request" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            echo "ref=origin/$BASE_REF" >> "$GITHUB_OUTPUT"
           else
             echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
           fi
@@ -59,57 +50,114 @@ jobs:
       - run: task lint
       - run: task breaking AGAINST_REF=${{ steps.against.outputs.ref }}
       - run: task nilaway
-      - run: task test:race
       - run: task vuln
+      - name: Shell scripts
+        run: shellcheck -x packaging/*.sh packaging/scripts/*.sh docker/*.sh
+      - name: Workflows
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color
+
+  test:
+    name: Tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: FFmpeg
+        run: |
+          sh packaging/fetch-ffmpeg.sh linux amd64 "$RUNNER_TEMP/ffmpeg"
+          echo "$RUNNER_TEMP/ffmpeg" >> "$GITHUB_PATH"
+      - run: task test:race
       - name: Fixtures (full generation)
         run: task fixtures
 
-  windows:
-    name: Windows tests
-    runs-on: windows-latest
+  platforms:
+    name: Tests (${{ matrix.name }})
+    # macOS and arm64 runners are only free for public repositories. While the repository is
+    # private these jobs run on demand (workflow_dispatch).
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux arm64
+            os: ubuntu-24.04-arm
+            ffmpeg: linux arm64
+          - name: Windows
+            os: windows-latest
+            ffmpeg: windows amd64
+          # Homebrew's ffmpeg has neither libass nor zimg, so the tests that burn subtitles in or
+          # convert HDR are skipped here. (The ffmpeg-full formula has both, but its VideoToolbox
+          # trial hangs on hosted runners.)
+          - name: macOS
+            os: macos-latest
+            ffmpeg: ""
+            skip: TestToneMappers|TestPlaybackDecisions|TestPlaybackOverHTTP|TestDownloads|TestPlaybackBurnsSubtitles
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+      - name: FFmpeg (pinned build)
+        if: matrix.ffmpeg != ''
+        run: |
+          sh packaging/fetch-ffmpeg.sh ${{ matrix.ffmpeg }} "$RUNNER_TEMP/ffmpeg"
+          echo "$RUNNER_TEMP/ffmpeg" >> "$GITHUB_PATH"
+      - name: FFmpeg (Homebrew)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
       - run: go build ./...
-      - run: go test ./...
+      - name: Tests
+        env:
+          SKIP: ${{ matrix.skip }}
+        run: go test ${SKIP:+-skip "$SKIP"} ./...
 
-  docker:
-    name: Docker image
-    needs: [check, windows]
-    if: github.event_name == 'push'
+  build:
+    name: Cross-build
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # A cache of its own, shared with the release workflow: the other jobs only build for
+          # the runner.
+          cache-dependency-path: |
+            go.sum
+            .goreleaser.yaml
+      - name: Build every release target
+        run: |
+          for target in linux/amd64 linux/arm64 linux/arm windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 freebsd/amd64; do
+            echo "::group::build $target"
+            GOOS=${target%/*} GOARCH=${target#*/} GOARM=7 go build ./...
+            echo "::endgroup::"
+          done
+      - name: Vet the tests of each system
+        run: |
+          for target in windows/amd64 darwin/arm64 freebsd/amd64; do
+            echo "::group::vet $target"
+            GOOS=${target%/*} GOARCH=${target#*/} GOARM=7 go vet ./...
+            echo "::endgroup::"
+          done
+
+  image:
+    name: Image
+    needs: [lint, test]
     permissions:
       contents: read
       packages: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/laterna
-          tags: |
-            type=edge,branch=main
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-      - uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-            COMMIT=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+    uses: ./.github/workflows/image.yml
+    with:
+      # "edge" follows develop. Versioned images are pushed by the release workflow.
+      push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}

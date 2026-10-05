@@ -5,3 +5,4 @@ dist
 testdata/library
 .env
 *.exe
+packaging/ffmpeg

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -124,6 +125,35 @@ func TestDirsOverride(t *testing.T) {
 	got := cfg.Dirs(defaults)
 	if got != (platform.Dirs{Data: "d", Cache: "autre", Metadata: "m"}) {
 		t.Errorf("got %+v", got)
+	}
+}
+
+func TestFFmpegNextTo(t *testing.T) {
+	dir := t.TempDir()
+	name := func(tool string) string {
+		if runtime.GOOS == "windows" {
+			tool += ".exe"
+		}
+		return filepath.Join(dir, tool)
+	}
+	if err := os.WriteFile(name("ffmpeg"), []byte("x"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Only ffmpeg is shipped: ffprobe is left to PATH.
+	if got := (FFmpeg{}).NextTo(dir); got.FFmpeg != name("ffmpeg") || got.FFprobe != "" {
+		t.Errorf("next to the binary: %+v", got)
+	}
+	// What is configured wins.
+	set := FFmpeg{FFmpeg: "/opt/ffmpeg", FFprobe: "/opt/ffprobe", Encoder: "libx264"}
+	if got := set.NextTo(dir); got != set {
+		t.Errorf("configured: %+v", got)
+	}
+	// Nothing there, or no folder known: PATH.
+	if got := (FFmpeg{}).NextTo(t.TempDir()); got != (FFmpeg{}) {
+		t.Errorf("empty folder: %+v", got)
+	}
+	if got := (FFmpeg{}).NextTo(""); got != (FFmpeg{}) {
+		t.Errorf("unknown folder: %+v", got)
 	}
 }
 

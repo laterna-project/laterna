@@ -1,0 +1,10 @@
+# The FFmpeg build Laterna is tested with and ships: a static GPL build from
+# https://github.com/BtbN/FFmpeg-Builds, pinned by release and checked by SHA-256.
+# Read by packaging/fetch-ffmpeg.sh, which the Docker image, CI and the release bundles all use.
+FFMPEG_RELEASE=autobuild-2026-09-28-13-06
+FFMPEG_NAME=ffmpeg-n9.0.2-14-gebafaee10a
+FFMPEG_VARIANT=gpl-9.0
+FFMPEG_SHA256_LINUX64=58e27dab85141ff1e08f43488b7700cc4443e17571bbee809edd6486d9dfd9b2
+FFMPEG_SHA256_LINUXARM64=ef90df8e233d3ad1d18a802fc3d9e3a256f7f14cc7efad3d20cd035318c73512
+FFMPEG_SHA256_WIN64=09170e52cb657f184ba4da2f42567cf2841b661cd9bb5f46ffe4481eb8e6d841
+FFMPEG_SHA256_WINARM64=5e26b9f49f7c7c53adf0f16162bff7bc887a93e1b8ad6aef9a5bb01e7acfb891

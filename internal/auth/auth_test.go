@@ -43,7 +43,14 @@ func TestVerifyFlagsWeakParameters(t *testing.T) {
 }
 
 func TestVerifyRejectsMalformed(t *testing.T) {
-	for _, bad := range []string{"", "plain", "$argon2i$v=19$m=1,t=1,p=1$c2Fs$aGFzaA", "$argon2id$v=18$m=1,t=1,p=1$c2Fs$aGFzaA", "$argon2id$v=19$m=x$c2Fs$aGFzaA", "$argon2id$v=19$m=1,t=1,p=1$!!$aGFzaA"} {
+	malformed := []string{
+		"", "plain", "$argon2i$v=19$m=1,t=1,p=1$c2Fs$aGFzaA", "$argon2id$v=18$m=1,t=1,p=1$c2Fs$aGFzaA",
+		"$argon2id$v=19$m=x$c2Fs$aGFzaA", "$argon2id$v=19$m=1,t=1,p=1$!!$aGFzaA",
+		// Costs argon2 panics on, or that no hash of ours asks for.
+		"$argon2id$v=19$m=8,t=0,p=1$c2Fs$aGFzaA", "$argon2id$v=19$m=8,t=1,p=0$c2Fs$aGFzaA",
+		"$argon2id$v=19$m=4194304,t=1,p=1$c2Fs$aGFzaA", "$argon2id$v=19$m=8,t=1000,p=1$c2Fs$aGFzaA",
+	}
+	for _, bad := range malformed {
 		if _, _, err := VerifyPassword(bad, "x"); err == nil {
 			t.Errorf("hash %q accepted", bad)
 		}
@@ -52,11 +59,13 @@ func TestVerifyRejectsMalformed(t *testing.T) {
 
 func FuzzVerifyPassword(f *testing.F) {
 	f.Add("$argon2id$v=19$m=19456,t=2,p=1$c2Fs$aGFzaA", "x")
+	f.Add("$argon2id$v=19$m=8,t=0,p=1$c2Fs$aGFzaA", "x")
+	f.Add("$argon2id$v=19$m=8,t=1,p=0$c2Fs$aGFzaA", "x")
 	f.Fuzz(func(_ *testing.T, encoded, secret string) {
 		// Must never panic, whatever the stored hash is. The requested cost is capped to keep
 		// fuzzing fast.
 		p, _, _, err := decode(encoded)
-		if err != nil || p.memory > 64 || p.time > 2 || p.threads == 0 {
+		if err != nil || p.memory > 64 || p.time > 2 {
 			return
 		}
 		_, _, _ = VerifyPassword(encoded, secret)
