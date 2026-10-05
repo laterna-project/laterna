@@ -31,6 +31,7 @@ On Windows: `winget install GoLang.Go Task.Task Gyan.FFmpeg`.
 | `task fixtures` | Generate synthetic test media in `testdata/library` (about 20 MB, not committed). |
 | `task perf` | Measure the performance budgets on a synthetic catalog. Run it before touching a list query, the home screen or startup. |
 | `task docker:build` | Build the local image `laterna:dev`. |
+| `sh docker/smoke-test.sh laterna:dev` | Start that image and check the server and FFmpeg answer. |
 
 Development tools:
 
@@ -83,13 +84,30 @@ notes.
 **Style.** Comments explain why, in plain English. Doc comments start with the name of what they
 document. Match the code around you.
 
+## Branches
+
+The project follows git-flow. For a contribution, only two branches matter:
+
+- **`develop`** is the default branch and the one to start from. It holds the next release.
+- **`main`** only holds released versions. Do not open pull requests against it.
+
+Name your branch after what it does: `feature/…`, `fix/…`, `docs/…`, `ci/…`. Maintainers handle
+`release/*` and `hotfix/*`; the whole model, versions and the release steps are in
+[docs/releasing.md](docs/releasing.md).
+
 ## Submitting a change
 
 1. Open an issue first for anything that changes the contract or the design.
-2. Keep a change focused, and update the design note it contradicts or extends.
+2. Branch from `develop`, keep the change focused, and update the design note it contradicts or
+   extends.
 3. Run `task check`.
-4. Write the commit subject in English, in the imperative, with a
-   [gitmoji](https://gitmoji.dev/) in front (`✨ Add …`, `🐛 Fix …`, `♻️ Refactor …`).
+4. Open a pull request against `develop`. It is squashed when merged, and its title becomes the
+   commit subject: write it in English, in the imperative, with a
+   [gitmoji](https://gitmoji.dev/) in front (`✨ Add …`, `🐛 Fix …`, `♻️ Refactor …`). Release notes
+   are built from these subjects.
+
+CI runs the checks on Linux for every pull request, cross-compiles every release target, runs the
+tests on Windows, macOS and Linux arm64, and builds and starts the Docker image.
 
 By contributing you agree that your work is released under the project's license, the GNU General
 Public License version 3.

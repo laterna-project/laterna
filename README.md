@@ -50,7 +50,13 @@ docker run -d --name laterna -p 8096:8096 \
 
 The image includes a pinned FFmpeg build. Media folders can be mounted read-only: Laterna never
 writes into them. To let TVs and apps find the server on the local network, run the container
-with `--network host` (multicast does not cross Docker's bridge network).
+with `--network host` (multicast does not cross Docker's bridge network). `edge` follows the
+development branch; releases are tagged `latest` and `X.Y.Z`.
+
+### Packages and archives
+
+Releases come as `.deb` and `.rpm` packages with a systemd service, and as archives for Linux,
+Windows, macOS and FreeBSD, with or without FFmpeg included. See [docs/install.md](docs/install.md).
 
 ### From source
 
@@ -134,9 +140,11 @@ in English or French.
 
 ## Documentation
 
+- [`docs/install.md`](docs/install.md): Docker, packages, archives, reverse proxy, upgrades.
 - [`docs/design/`](docs/design/README.md): how the server is built and why.
 - [`proto/laterna/v1/`](proto/laterna/v1): the API contract, with comments on every message.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): development setup and the rules of the code base.
+- [`docs/releasing.md`](docs/releasing.md): branches, versions and how a release is cut.
 
 ## Development
 

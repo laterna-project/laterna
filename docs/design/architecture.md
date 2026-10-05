@@ -107,7 +107,7 @@ the same SQLite database (`internal/jobs`), written for exactly these needs.
 
 - generated code matches its sources and is committed;
 - `golangci-lint` (architecture rules included), `buf lint`, `.proto` formatting, `sqlc vet`;
-- `buf breaking` against `main`;
+- `buf breaking` against the branch the change targets;
 - `nilaway`;
 - `go test -race`;
 - `govulncheck`.
