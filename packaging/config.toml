@@ -16,6 +16,9 @@ cache = "/var/cache/laterna"
 # Database backups. Another disk protects against losing the first one; the service then needs
 # write access to it (see the comments in laterna.service).
 # backups = "/mnt/backups/laterna"
+# A web client to serve next to the API: an unpacked release of
+# https://github.com/laterna-project/laterna-web (see docs/install.md).
+# web = "/opt/laterna-web"
 
 [ffmpeg]
 # The FFmpeg build shipped with the package. Remove these two lines to use the one in PATH.

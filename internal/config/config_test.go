@@ -185,3 +185,18 @@ func TestDiscovery(t *testing.T) {
 		t.Fatal("a value that is not a boolean must be rejected")
 	}
 }
+
+func TestWebDir(t *testing.T) {
+	cfg, err := Load("", envMap(nil))
+	if err != nil || cfg.Paths.Web != "" {
+		t.Fatalf("no web client by default: %q, %v", cfg.Paths.Web, err)
+	}
+	cfg, err = Load(writeFile(t, "[paths]\nweb = \"/srv/web\"\n"), envMap(nil))
+	if err != nil || cfg.Paths.Web != "/srv/web" {
+		t.Fatalf("from the file: %q, %v", cfg.Paths.Web, err)
+	}
+	cfg, err = Load(writeFile(t, "[paths]\nweb = \"/srv/web\"\n"), envMap(map[string]string{"LATERNA_WEB_DIR": " /opt/web "}))
+	if err != nil || cfg.Paths.Web != "/opt/web" {
+		t.Fatalf("the environment wins: %q, %v", cfg.Paths.Web, err)
+	}
+}

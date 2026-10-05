@@ -65,6 +65,9 @@ volumes:
   `--network host`). Multicast does not cross Docker's bridge network.
 - The image ships no VAAPI or QSV drivers yet: Intel and AMD GPUs are not used, and the server
   falls back to `libx264`.
+- The image serves the web client (from version 0.2.0): open http://localhost:8096 to set the
+  server up. The version it carries is pinned in
+  [`packaging/web.lock`](../packaging/web.lock).
 
 ## Debian, Ubuntu, Fedora and other systemd distributions
 
@@ -185,6 +188,26 @@ git clone https://github.com/laterna-project/laterna.git
 cd laterna
 task build        # bin/laterna
 ```
+
+## The web client
+
+[Laterna Web](https://github.com/laterna-project/laterna-web) is the browser app. The Docker image
+includes it. Elsewhere, download a release archive of the client (`laterna-web-X.Y.Z.tar.gz`, with
+its checksum and provenance), unpack it, and point the server at the folder:
+
+```toml
+[paths]
+web = "/opt/laterna-web"
+```
+
+or `LATERNA_WEB_DIR=/opt/laterna-web`. The server then serves it next to the API: a file of the
+folder when the path names one, the client's page for any other page the browser opens (the client
+routes its own addresses), and a 404 for everything else. The server's own routes always come
+first. Without the setting, no web client is served.
+
+The client can also be served from somewhere else (another origin, or its own path behind the
+proxy); its README explains how. The device login page that TVs point to is `/device` under the
+`web_url` setting, or under `public_url` when the client is served by the server itself.
 
 ## Behind a reverse proxy
 

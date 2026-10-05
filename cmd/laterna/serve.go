@@ -115,6 +115,11 @@ func migrateCommand(ctx context.Context, args []string, stdout, stderr io.Writer
 // connections, requests in progress finished, database closed. ring (optional) keeps the latest log
 // messages for the admin API; ready (optional) receives the actual listen address.
 func serve(ctx context.Context, cfg config.Config, dirs platform.Dirs, log *slog.Logger, ring *logging.Ring, ready func(addr string)) error {
+	if web := cfg.Paths.Web; web != "" {
+		if info, err := os.Stat(filepath.Join(web, "index.html")); err != nil || !info.Mode().IsRegular() {
+			return fmt.Errorf("paths.web: %s does not hold a web client (no index.html)", web)
+		}
+	}
 	// Prepared restore (laterna restore, or SystemService.RestoreBackup): applied before the
 	// database is opened. If it is rejected it is moved aside and the server starts on its own
 	// database.
@@ -183,6 +188,7 @@ func serve(ctx context.Context, cfg config.Config, dirs platform.Dirs, log *slog
 		Handler: api.NewHandler(a, api.Options{
 			CORSOrigins:    cfg.Server.CORSOrigins,
 			TrustedProxies: cfg.Server.Proxies(),
+			WebDir:         cfg.Paths.Web,
 			Logger:         log,
 		}),
 		Protocols:         &protocols,
@@ -200,6 +206,9 @@ func serve(ctx context.Context, cfg config.Config, dirs platform.Dirs, log *slog
 	log.Info("Laterna started",
 		"address", ln.Addr().String(), "version", buildinfo.Version, "server_id", a.Server().ID.String(),
 		"server_name", a.Server().Name, "data", dirs.Data, "cache", dirs.Cache)
+	if cfg.Paths.Web != "" {
+		log.Info("serving the web client", "dir", cfg.Paths.Web)
+	}
 	if ready != nil {
 		ready(ln.Addr().String())
 	}

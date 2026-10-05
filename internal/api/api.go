@@ -1,6 +1,7 @@
 // Package api puts the server's HTTP surfaces together behind the shared middlewares: the health
 // probe, the Connect services of the contract, the byte routes (images, playback streams,
-// subtitles, fonts, logs) and the Sonarr and Radarr webhooks.
+// subtitles, fonts, logs), the Sonarr and Radarr webhooks and, when one is configured, a web
+// client.
 package api
 
 import (
@@ -27,7 +28,9 @@ type Options struct {
 	CORSOrigins []string
 	// TrustedProxies are the reverse proxies we trust.
 	TrustedProxies []netip.Prefix
-	Logger         *slog.Logger
+	// WebDir is a folder holding a built web client, served behind every other route. Empty: none.
+	WebDir string
+	Logger *slog.Logger
 }
 
 // NewHandler returns the server's root handler.
@@ -54,6 +57,9 @@ func NewHandler(a *app.App, opts Options) http.Handler {
 	mux.Handle("GET /downloads/{id}/subtitles/{file}", downloadSubtitle(a, log))
 	mux.Handle("GET "+rpc.MetricsPath, metricsHandler(a))
 	rpc.Mount(mux, a, log)
+	if opts.WebDir != "" {
+		mux.Handle("/", webClient(opts.WebDir))
+	}
 	return httpx.Chain(mux,
 		httpx.Recover(log),
 		httpx.ClientIP(opts.TrustedProxies),
