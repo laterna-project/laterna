@@ -1,0 +1,170 @@
+# Release build, run by .github/workflows/release.yml on a version tag.
+# Try it without publishing anything: goreleaser release --snapshot --clean
+version: 2
+project_name: laterna
+
+builds:
+  # Every platform the server compiles for.
+  - id: laterna
+    main: ./cmd/laterna
+    binary: laterna
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/laterna-project/laterna/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/laterna-project/laterna/internal/buildinfo.commit={{ .FullCommit }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos: [linux, windows, darwin, freebsd]
+    goarch: [amd64, arm64, arm]
+    goarm: ["7"]
+    ignore:
+      - goos: windows
+        goarch: arm
+      - goos: darwin
+        goarch: arm
+      - goos: freebsd
+        goarch: arm
+      - goos: freebsd
+        goarch: arm64
+
+  # The same binary for the platforms a pinned FFmpeg build exists for (packaging/ffmpeg.lock).
+  # These go into the "_ffmpeg" archives and the deb and rpm packages.
+  - id: laterna-ffmpeg
+    main: ./cmd/laterna
+    binary: laterna
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/laterna-project/laterna/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/laterna-project/laterna/internal/buildinfo.commit={{ .FullCommit }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos: [linux, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  # The server alone: FFmpeg 7.1 or later must be installed separately.
+  - id: default
+    ids: [laterna]
+    name_template: "laterna_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    wrap_in_directory: true
+    files:
+      - LICENSE
+      - README.md
+      - src: packaging/config.toml
+        dst: laterna.example.toml
+      - src: packaging/systemd/laterna.service
+        dst: laterna.service
+
+  # The server with ffmpeg and ffprobe next to it: nothing else to install.
+  - id: ffmpeg
+    ids: [laterna-ffmpeg]
+    name_template: "laterna_{{ .Version }}_{{ .Os }}_{{ .Arch }}_ffmpeg"
+    formats: [tar.xz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    wrap_in_directory: true
+    files:
+      - LICENSE
+      - README.md
+      - src: packaging/FFMPEG.md
+        dst: FFMPEG.md
+      - src: packaging/config.toml
+        dst: laterna.example.toml
+      - src: packaging/systemd/laterna.service
+        dst: laterna.service
+      - src: "packaging/ffmpeg/{{ .Os }}_{{ .Arch }}/*"
+        strip_parent: true
+
+nfpms:
+  - id: packages
+    ids: [laterna-ffmpeg]
+    package_name: laterna
+    # laterna_1.2.3_amd64.deb, laterna-1.2.3-1.x86_64.rpm
+    file_name_template: "{{ .ConventionalFileName }}"
+    formats: [deb, rpm]
+    vendor: The Laterna authors
+    maintainer: The Laterna authors <337788684+laterna-media@users.noreply.github.com>
+    homepage: https://github.com/laterna-project/laterna
+    description: |-
+      Self-hosted media server
+      Laterna serves movies, series, music, books and photos to its own clients.
+      This package includes the FFmpeg build the server is tested with.
+    license: GPL-3.0-only
+    section: video
+    bindir: /usr/bin
+    contents:
+      - src: "packaging/ffmpeg/{{ .Os }}_{{ .Arch }}/ffmpeg"
+        dst: /usr/lib/laterna/ffmpeg
+        file_info:
+          mode: 0755
+      - src: "packaging/ffmpeg/{{ .Os }}_{{ .Arch }}/ffprobe"
+        dst: /usr/lib/laterna/ffprobe
+        file_info:
+          mode: 0755
+      - src: packaging/FFMPEG.md
+        dst: /usr/share/doc/laterna/FFMPEG.md
+      - src: LICENSE
+        dst: /usr/share/doc/laterna/LICENSE
+      - src: packaging/systemd/laterna.service
+        dst: /usr/lib/systemd/system/laterna.service
+      - src: packaging/sysusers.conf
+        dst: /usr/lib/sysusers.d/laterna.conf
+      - src: packaging/config.toml
+        dst: /etc/laterna/laterna.toml
+        type: config|noreplace
+    scripts:
+      postinstall: packaging/scripts/postinstall.sh
+      preremove: packaging/scripts/preremove.sh
+      postremove: packaging/scripts/postremove.sh
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
+changelog:
+  # Commit subjects start with a gitmoji: group on it.
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?✨.*$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?(🐛|🩹|🚑).*$'
+      order: 1
+    - title: Security
+      regexp: '^.*?🔒.*$'
+      order: 2
+    - title: Performance
+      regexp: '^.*?⚡.*$'
+      order: 3
+    - title: Other changes
+      order: 999
+  filters:
+    exclude:
+      - '^Merge '
+      - '^.*?(👷|✅|🔨).*$'
+
+release:
+  prerelease: auto
+  footer: |
+    ## Installing
+
+    See [docs/install.md](https://github.com/laterna-project/laterna/blob/{{ .Tag }}/docs/install.md).
+    The `_ffmpeg` archives and the `.deb` and `.rpm` packages include FFmpeg; the other archives
+    need FFmpeg 7.1 or later on the machine. `checksums.txt` lists the SHA-256 of every file.
+
+    Docker: `ghcr.io/laterna-project/laterna:{{ .Version }}`

@@ -13,33 +13,20 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
       -ldflags "-s -w -X github.com/laterna-project/laterna/internal/buildinfo.Version=${VERSION} -X github.com/laterna-project/laterna/internal/buildinfo.commit=${COMMIT}" \
       -o /out/laterna ./cmd/laterna
 
-# Stock FFmpeg: the static GPL build from BtbN, pinned and checksummed.
+# Stock FFmpeg: the static GPL build from BtbN, pinned and checksummed in packaging/ffmpeg.lock.
 FROM --platform=$BUILDPLATFORM debian:trixie-slim AS ffmpeg
 ARG TARGETARCH
-ARG FFMPEG_RELEASE=autobuild-2026-09-28-13-06
-ARG FFMPEG_NAME=ffmpeg-n9.0.2-14-gebafaee10a
-ARG FFMPEG_SHA256_AMD64=58e27dab85141ff1e08f43488b7700cc4443e17571bbee809edd6486d9dfd9b2
-ARG FFMPEG_SHA256_ARM64=ef90df8e233d3ad1d18a802fc3d9e3a256f7f14cc7efad3d20cd035318c73512
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
-    && rm -rf /var/lib/apt/lists/*
-RUN set -eu; \
-    case "$TARGETARCH" in \
-      amd64) arch=linux64; sum="$FFMPEG_SHA256_AMD64" ;; \
-      arm64) arch=linuxarm64; sum="$FFMPEG_SHA256_ARM64" ;; \
-      *) echo "unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
-    esac; \
-    file="${FFMPEG_NAME}-${arch}-gpl-9.0.tar.xz"; \
-    curl -fsSL -o /tmp/ffmpeg.tar.xz "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_RELEASE}/${file}"; \
-    echo "${sum}  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
-    mkdir -p /opt/ffmpeg; \
-    tar -xJf /tmp/ffmpeg.tar.xz -C /opt/ffmpeg --strip-components=1; \
-    rm /tmp/ffmpeg.tar.xz
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl xz-utils && rm -rf /var/lib/apt/lists/*
+COPY packaging/ffmpeg.lock packaging/fetch-ffmpeg.sh /packaging/
+RUN sh /packaging/fetch-ffmpeg.sh linux "$TARGETARCH" /opt/ffmpeg/bin
 
-# Final image.
-FROM debian:trixie-slim
+# Final image. CI never takes this stage from the build cache, so every image that is pushed has
+# the security updates of the day it was built.
+FROM debian:trixie-slim AS runtime
 # Hardware acceleration drivers (VAAPI/QSV) are not installed yet: they need to be validated
 # on real hardware first.
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata \
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends ca-certificates tzdata \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /config /cache && chown 1000:1000 /config /cache
 COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
