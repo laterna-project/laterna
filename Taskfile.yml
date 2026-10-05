@@ -66,8 +66,8 @@ tasks:
   breaking:
     desc: Reject any contract change that breaks existing clients
     vars:
-      # Git ref to compare against: main locally, the previous commit in CI.
-      AGAINST_REF: '{{.AGAINST_REF | default "main"}}'
+      # Git ref to compare against: develop locally, the target branch or the previous commit in CI.
+      AGAINST_REF: '{{.AGAINST_REF | default "develop"}}'
     cmds:
       - cmd: |
           if git rev-parse --verify -q "{{.AGAINST_REF}}" >/dev/null; then

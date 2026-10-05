@@ -3,6 +3,10 @@
 // of lists through the API (p50, p95, p99).
 //
 //	go run ./devtools/perfcheck [-bin laterna.exe] [-n 200] [-keep]
+//	go run ./devtools/perfcheck -max-startup 1s -max-idle-mb 60 -max-p95 30ms
+//
+// Without the -max flags the figures are only printed. With them, a figure over its budget makes
+// the command fail.
 //
 // The catalog is written straight into the database (movies, series, seasons, episodes, artists,
 // albums, tracks, with genres, credits, analyzed images, user data). Its files do not exist: the
@@ -61,14 +65,48 @@ func main() {
 	n := flag.Int("n", 200, "calls measured per list")
 	keep := flag.Bool("keep", false, "keep the data folder")
 	rest := flag.Duration("rest", 70*time.Second, "wait before measuring idle memory")
+	var b budgets
+	flag.DurationVar(&b.startup, "max-startup", 0, "fail if startup takes longer (0: no check)")
+	flag.IntVar(&b.idleMB, "max-idle-mb", 0, "fail if idle resident memory is above this many MB (0: no check)")
+	flag.DurationVar(&b.p95, "max-p95", 0, "fail if the worst p95 is above (0: no check)")
 	flag.Parse()
 	log.SetFlags(0)
-	if err := run(context.Background(), *bin, *n, *keep, *rest); err != nil {
+	if err := run(context.Background(), *bin, *n, *keep, *rest, b); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(ctx context.Context, bin string, n int, keep bool, rest time.Duration) error {
+// budgets are the limits to enforce; a zero value is not checked.
+type budgets struct {
+	startup time.Duration
+	idleMB  int
+	p95     time.Duration
+}
+
+// check lists what went over budget.
+func (b budgets) check(startup time.Duration, idle usage, worst time.Duration) error {
+	var over []string
+	if b.startup > 0 && startup > b.startup {
+		over = append(over, fmt.Sprintf("startup %s (budget %s)", startup.Round(time.Millisecond), b.startup))
+	}
+	if b.idleMB > 0 {
+		switch {
+		case idle.resident == 0:
+			over = append(over, "idle memory could not be measured")
+		case idle.resident > int64(b.idleMB)*1e6:
+			over = append(over, fmt.Sprintf("idle memory %.1f MB (budget %d MB)", float64(idle.resident)/1e6, b.idleMB))
+		}
+	}
+	if b.p95 > 0 && worst > b.p95 {
+		over = append(over, fmt.Sprintf("worst p95 %s (budget %s)", ms(worst), ms(b.p95)))
+	}
+	if len(over) > 0 {
+		return errors.New("over budget: " + strings.Join(over, "; "))
+	}
+	return nil
+}
+
+func run(ctx context.Context, bin string, n int, keep bool, rest time.Duration, b budgets) error {
 	dir, err := os.MkdirTemp("", "laterna-perf-")
 	if err != nil {
 		return err
@@ -255,7 +293,7 @@ func run(ctx context.Context, bin string, n int, keep bool, rest time.Duration) 
 	if keep {
 		fmt.Printf("\nData kept in %s\n", dir)
 	}
-	return nil
+	return b.check(startup, idle, worst)
 }
 
 func ms(d time.Duration) string {
@@ -285,26 +323,34 @@ func freeAddr(ctx context.Context) (string, error) {
 	return l.Addr().String(), nil
 }
 
+// usage is the memory of the server process: resident bytes (0 if unknown) and the line to print.
+type usage struct {
+	resident int64
+	text     string
+}
+
+func (u usage) String() string { return u.text }
+
 // memory returns the memory of the process: resident memory (working set on Windows) and private
 // memory.
-func memory(pid int) string {
+func memory(pid int) usage {
 	if runtime.GOOS == "windows" {
 		out, err := exec.Command("powershell", "-NoProfile", "-Command", //nolint:gosec,noctx // one-off measurement, integer pid
 			fmt.Sprintf("$p = Get-Process -Id %d; \"$($p.WorkingSet64) $($p.PrivateMemorySize64)\"", pid)).Output()
 		if err != nil {
-			return "inconnue (" + err.Error() + ")"
+			return usage{text: "unknown (" + err.Error() + ")"}
 		}
 		f := strings.Fields(string(out))
 		if len(f) != 2 {
-			return "inconnue"
+			return usage{text: "unknown"}
 		}
 		ws, _ := strconv.ParseInt(f[0], 10, 64)
 		priv, _ := strconv.ParseInt(f[1], 10, 64)
-		return fmt.Sprintf("%.1f MB resident, %.1f MB private", float64(ws)/1e6, float64(priv)/1e6)
+		return usage{resident: ws, text: fmt.Sprintf("%.1f MB resident, %.1f MB private", float64(ws)/1e6, float64(priv)/1e6)}
 	}
 	raw, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
 	if err != nil {
-		return "inconnue (" + err.Error() + ")"
+		return usage{text: "unknown (" + err.Error() + ")"}
 	}
 	var rss, anon string
 	for line := range bytes.Lines(raw) {
@@ -316,7 +362,9 @@ func memory(pid int) string {
 			anon = strings.TrimSpace(v)
 		}
 	}
-	return rss + " resident, of which " + anon + " anonymous"
+	// "36540 kB"
+	kb, _ := strconv.ParseInt(strings.TrimSuffix(rss, " kB"), 10, 64)
+	return usage{resident: kb * 1024, text: rss + " resident, of which " + anon + " anonymous"}
 }
 
 type sampleIDs struct {
