@@ -105,6 +105,17 @@ ordinary routes.
 On these routes an error carries its code in the `Laterna-Error` header and the fallback text in
 the body.
 
+### The web client
+
+When `paths.web` names a folder (an unpacked release of the web client), the server serves it
+behind every other route, so the app and the API share one origin and need no CORS or second
+host. A path that names a file of the folder gets it; files under `assets/` are named after their
+content and cached as immutable, the rest is revalidated on each load. Any other `GET` that a
+browser makes to navigate (`Accept` includes `text/html`) gets the client's `index.html`, because
+the client routes its own addresses. Everything else stays a 404: an unknown API call or a missing
+script never receives a page of HTML. The folder is read-only for the server, and the router cleans
+paths before they reach it, so nothing outside it is ever served.
+
 ### Images
 
 `GET /images/{id}/{hash}[?w=width]` needs no authentication, because an `<img>` tag sends no

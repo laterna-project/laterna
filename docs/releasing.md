@@ -104,6 +104,20 @@ the release name, the file name and the SHA-256 of each platform's archive, all 
 release bundles read it through `packaging/fetch-ffmpeg.sh`. Change the pin in its own pull
 request: the whole test suite then runs against the new build.
 
+## Updating the web client
+
+The Docker image serves a release of [Laterna Web](https://github.com/laterna-project/laterna-web),
+pinned in [`packaging/web.lock`](../packaging/web.lock) by version and SHA-256. Move the pin in its
+own pull request:
+
+```sh
+sh packaging/update-web.sh 0.2.0
+```
+
+The script takes the SHA-256 from the release's `checksums.txt`. CI then builds the image with that
+client and its smoke test checks that the page and its script load. The weekly workflow says when
+a newer client is released.
+
 ## Repository settings
 
 Branch and tag rules are kept in [`.github/rulesets/`](../.github/rulesets) and applied with:
