@@ -10,12 +10,13 @@ Laterna follows git-flow.
 | Branch | Holds | Receives |
 |---|---|---|
 | `main` | released code; every commit on it is a release, tagged `vX.Y.Z` | `release/*` and `hotfix/*`, as merge commits |
-| `develop` | the next release; the default branch | pull requests, squashed |
+| `develop` | the next release; the default branch | pull requests, squashed; `main` after each release |
 | `feature/*`, `fix/*`, `docs/*`, `ci/*` | one change | branched from `develop`, merged back by pull request |
 | `release/X.Y.Z` | a release being stabilized | fixes only |
 | `hotfix/X.Y.Z` | an urgent fix to the latest release | branched from `main` |
 
-`develop` stays linear: one squashed commit per pull request, its subject starting with a gitmoji.
+On `develop`, a pull request is one squashed commit whose subject starts with a gitmoji. The only
+merge commits there are the ones that bring a release back from `main`.
 `main` only moves when a version is released.
 
 The Docker image `edge` is built from `develop`. `latest` and the version tags come from release
@@ -67,8 +68,8 @@ gh pr merge --merge
 ```
 
 The back-merge in step 4 is the one pull request into `develop` that is not squashed: the merge
-commit is what tells git that `develop` contains the release. It needs the administrator bypass
-of the `develop` ruleset.
+commit is what tells git that `develop` contains the release, so that `git describe` there counts
+from the new tag.
 
 Pushing the tag starts the [release workflow](../.github/workflows/release.yml), which:
 
@@ -114,7 +115,8 @@ done
 ```
 
 - `develop` and `main`: no direct push, no force push, pull request with green checks required.
-  `develop` only accepts squash merges, `main` only merge commits.
+  `main` only accepts merge commits. `develop` accepts squash merges, and merge commits for the
+  back-merge of a release.
 - `v*` tags: created by administrators only, never moved or deleted.
 - Squash and merge commits are allowed, rebase merges are not, and merged branches are deleted.
 - Workflows get a read-only token by default; each job asks for what it needs.

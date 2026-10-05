@@ -138,6 +138,8 @@ changelog:
   # Commit subjects start with a gitmoji: group on it.
   use: github
   sort: asc
+  abbrev: 7
+  format: "{{ .Message }} ({{ .SHA }})"
   groups:
     - title: Features
       regexp: '^.*?✨.*$'
@@ -156,7 +158,7 @@ changelog:
   filters:
     exclude:
       - '^Merge '
-      - '^.*?(👷|✅|🔨).*$'
+      - '^.*?(👷|✅|🔨|🔖|🔀).*$'
 
 release:
   prerelease: auto
