@@ -100,7 +100,7 @@ nfpms:
       Self-hosted media server
       Laterna serves movies, series, music, books and photos to its own clients.
       This package includes the FFmpeg build the server is tested with.
-    license: GPL-3.0-only
+    license: GPL-3.0-or-later
     section: video
     bindir: /usr/bin
     contents:

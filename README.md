@@ -157,4 +157,6 @@ task perf       # performance budgets on a synthetic catalog
 
 ## License
 
-Laterna is free software, released under the [GNU General Public License, version 3](LICENSE).
+Laterna is free software: you can redistribute it and modify it under the terms of the
+[GNU General Public License](LICENSE) as published by the Free Software Foundation, either
+version 3 of the License or, at your option, any later version. It comes with no warranty.

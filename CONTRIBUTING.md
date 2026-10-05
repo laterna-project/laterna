@@ -109,5 +109,7 @@ Name your branch after what it does: `feature/…`, `fix/…`, `docs/…`, `ci/�
 CI runs the checks on Linux for every pull request, cross-compiles every release target, runs the
 tests on Windows, macOS and Linux arm64, and builds and starts the Docker image.
 
+Everyone taking part is expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
+
 By contributing you agree that your work is released under the project's license, the GNU General
-Public License version 3.
+Public License, version 3 or any later version.
