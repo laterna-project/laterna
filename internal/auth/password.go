@@ -29,6 +29,12 @@ var current = params{memory: 19 * 1024, time: 2, threads: 1, keyLen: 32, saltLen
 
 var b64 = base64.RawStdEncoding
 
+// Largest cost accepted from a stored hash: 1 GiB (in KiB) and 64 rounds.
+const (
+	maxMemory = 1 << 20
+	maxTime   = 64
+)
+
 // ErrMalformedHash is returned for a stored hash that cannot be read.
 var ErrMalformedHash = errors.New("unreadable password hash")
 
@@ -78,6 +84,11 @@ func decode(encoded string) (params, []byte, []byte, error) {
 	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &p.memory, &p.time, &p.threads); err != nil {
 		return params{}, nil, nil, ErrMalformedHash
 	}
+	// argon2 panics on zero rounds or zero threads, and a hash that asks for gigabytes or hundreds
+	// of rounds is not one of ours: computing it would only tie the server up.
+	if p.time == 0 || p.threads == 0 || p.time > maxTime || p.memory > maxMemory {
+		return params{}, nil, nil, ErrMalformedHash
+	}
 	salt, err := b64.DecodeString(parts[4])
 	if err != nil {
 		return params{}, nil, nil, ErrMalformedHash
@@ -112,7 +123,7 @@ var argonSlots = make(chan struct{}, 2)
 // time does not leak whether an account exists. It is computed on the first login for an unknown
 // account rather than at startup: one argon2id run costs 20 ms and 19 MiB.
 var dummyHash = sync.OnceValue(func() string {
-	h, err := HashPassword("laterna-compte-inexistant")
+	h, err := HashPassword("laterna-no-such-account")
 	if err != nil {
 		panic(err)
 	}
