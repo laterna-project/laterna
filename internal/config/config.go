@@ -81,6 +81,10 @@ type Paths struct {
 	// Backups is the folder for database backups (default: "backups" under data). Put it on another
 	// disk to survive the loss of the first one.
 	Backups string `toml:"backups"`
+	// Web is a folder holding a built web client (an unpacked laterna-web release). The server then
+	// serves it next to the API, so the app and the API share one origin. Empty (the default): no
+	// web client.
+	Web string `toml:"web"`
 }
 
 // Log configures logging.
@@ -185,6 +189,7 @@ func applyEnv(cfg *Config, getenv func(string) (string, bool)) error {
 	str("LATERNA_CACHE_DIR", &cfg.Paths.Cache)
 	str("LATERNA_METADATA_DIR", &cfg.Paths.Metadata)
 	str("LATERNA_BACKUP_DIR", &cfg.Paths.Backups)
+	str("LATERNA_WEB_DIR", &cfg.Paths.Web)
 	str("LATERNA_LOG_LEVEL", &cfg.Log.Level)
 	str("LATERNA_LOG_FORMAT", &cfg.Log.Format)
 	str("LATERNA_FFMPEG", &cfg.FFmpeg.FFmpeg)

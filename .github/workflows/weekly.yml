@@ -1,7 +1,7 @@
 name: Weekly
 
 # Checks that do not belong on every push: new advisories against unchanged code, fuzzing,
-# performance budgets, and vulnerabilities in the published image.
+# performance budgets, vulnerabilities in the published image, and a newer web client to pin.
 on:
   schedule:
     - cron: "23 4 * * 1"
@@ -30,6 +30,21 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: task vuln
+
+  web:
+    name: Web client release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Newer release than the pinned one
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          . packaging/web.lock
+          latest=$(gh release view --repo laterna-project/laterna-web --json tagName --jq .tagName)
+          if [ "$latest" != "v$WEB_VERSION" ]; then
+            echo "::notice::Laterna Web $latest is out; the image serves v$WEB_VERSION (packaging/update-web.sh)."
+          fi
 
   fuzz:
     name: Fuzzing

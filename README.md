@@ -6,8 +6,9 @@ from scratch in Go, ships as a single static binary, and stores everything in on
 This repository is the **server**. It exposes its own API, defined as a Protobuf contract and
 served with [ConnectRPC](https://connectrpc.com/). Laterna is **not compatible with the Jellyfin,
 Emby or Plex APIs**, so their apps do not work with it: clients are written against the contract
-in [`proto/`](proto/laterna/v1). A small development console is included to try the server
-without a client.
+in [`proto/`](proto/laterna/v1). The web client, [Laterna Web](https://github.com/laterna-project/laterna-web),
+is one of them, and the Docker image serves it. A small development console is included to try the
+server without a client.
 
 > The project is young. The server covers the scope below and is well tested, but it has only
 > run on a handful of machines. Until version 1.0, a minor version may change the configuration
@@ -49,7 +50,8 @@ docker run -d --name laterna -p 8096:8096 \
   ghcr.io/laterna-project/laterna:latest
 ```
 
-The image includes a pinned FFmpeg build. Media folders can be mounted read-only: Laterna never
+The image includes a pinned FFmpeg build and, from version 0.2.0, the web client: open
+http://localhost:8096 to set the server up. Media folders can be mounted read-only: Laterna never
 writes into them. To let TVs and apps find the server on the local network, run the container
 with `--network host` (multicast does not cross Docker's bridge network). `latest` is the last
 release; `edge` follows the development branch.
@@ -83,7 +85,7 @@ curl -X POST -H "Content-Type: application/json" \
 ```
 
 `Setup` returns a session token. With a client, the rest (libraries, accounts, settings) is done
-from its administration screens. Without one, every call works the same way with
+from its administration screens; the web client does all of it, setup included. Without one, every call works the same way with
 `-H "Authorization: Bearer <token>"`; the services are listed in
 [`proto/laterna/v1`](proto/laterna/v1).
 
@@ -110,6 +112,7 @@ the API.
 | `LATERNA_METADATA_DIR` | `paths.metadata` | per OS | Downloaded images, extracted subtitles, thumbnails |
 | `LATERNA_CACHE_DIR` | `paths.cache` | per OS | Safe to delete |
 | `LATERNA_BACKUP_DIR` | `paths.backups` | `<data>/backups` | Database backups; put it on another disk |
+| `LATERNA_WEB_DIR` | `paths.web` | none (the image: its web client) | An unpacked [web client release](https://github.com/laterna-project/laterna-web/releases), served next to the API |
 | `LATERNA_LOG_LEVEL` | `log.level` | `info` | `debug`, `info`, `warn`, `error` |
 | `LATERNA_LOG_FORMAT` | `log.format` | `text` | `text` or `json` on standard output |
 | `LATERNA_FFMPEG`, `LATERNA_FFPROBE` | `ffmpeg.ffmpeg`, `ffmpeg.ffprobe` | from `PATH` | FFmpeg executables |
@@ -141,7 +144,9 @@ in English or French.
 
 ## Documentation
 
-- [`docs/install.md`](docs/install.md): Docker, packages, archives, reverse proxy, upgrades.
+- [`docs/install.md`](docs/install.md): Docker, packages, archives, the web client, reverse proxy,
+  upgrades.
+- [Laterna Web](https://github.com/laterna-project/laterna-web): the web client.
 - [`docs/design/`](docs/design/README.md): how the server is built and why.
 - [`proto/laterna/v1/`](proto/laterna/v1): the API contract, with comments on every message.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): development setup and the rules of the code base.
