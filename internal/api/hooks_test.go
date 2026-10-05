@@ -28,7 +28,7 @@ func TestSonarrWebhookOverHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	a, err := app.New(ctx, st, app.Options{ServerName: "Salon", HTTPClient: fake.Client()})
+	a, err := app.New(ctx, st, app.Options{ServerName: "Living room", HTTPClient: fake.Client()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestSonarrWebhookOverHTTP(t *testing.T) {
 		want             int
 	}{
 		{"/hooks/sonarr", secret, `{"eventType":"Test"}`, http.StatusNoContent},
-		{"/hooks/sonarr", "faux", `{"eventType":"Test"}`, http.StatusUnauthorized},
+		{"/hooks/sonarr", "wrong", `{"eventType":"Test"}`, http.StatusUnauthorized},
 		{"/hooks/sonarr", "", `{"eventType":"Test"}`, http.StatusUnauthorized},
 		{"/hooks/sonarr", secret, "not json", http.StatusBadRequest},
 		{"/hooks/plex", secret, `{"eventType":"Test"}`, http.StatusNotFound},

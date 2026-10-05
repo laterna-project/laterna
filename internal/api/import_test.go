@@ -62,11 +62,11 @@ func TestJellyfinImport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	films, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Films")}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Movies")}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.CreateLibrary(ctx, "Séries", domain.LibraryShows, []string{filepath.Join(testfixtures.Root(), "Séries")}, ""); err != nil {
+	if _, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{filepath.Join(testfixtures.Root(), "Shows")}, ""); err != nil {
 		t.Fatal(err)
 	}
 	for deadline := time.Now().Add(120 * time.Second); ; time.Sleep(20 * time.Millisecond) {
@@ -87,18 +87,18 @@ func TestJellyfinImport(t *testing.T) {
 	dir := t.TempDir()
 	err = jellyfintest.Write(dir, jellyfintest.Server{
 		Users: []jellyfintest.User{
-			{ID: chloe, Name: "chloé", Password: jellyfinHash(t, "autre-mot-de-passe"), Admin: true, AllLibraries: true},
-			{ID: lea, Name: "Léa", Password: jellyfinHash(t, "secret-de-lea"), Libraries: []string{jfFilms}, MaxScore: &twelve},
+			{ID: chloe, Name: "chloé", Password: jellyfinHash(t, "another-password"), Admin: true, AllLibraries: true},
+			{ID: lea, Name: "Léa", Password: jellyfinHash(t, "leas-secret"), Libraries: []string{jfFilms}, MaxScore: &twelve},
 			{ID: zoe, Name: "Zoé", AllLibraries: true},
 		},
-		Libraries: []jellyfintest.Library{{ID: jfFilms, Name: "Films"}, {ID: jfSeries, Name: "Séries"}},
+		Libraries: []jellyfintest.Library{{ID: jfFilms, Name: "Movies"}, {ID: jfSeries, Name: "Shows"}},
 		Items: []jellyfintest.Item{
 			{ID: big, Type: "Movie", Path: "/media/movies/Big Test Movie (2020)/Big Test Movie (2020).mp4", Name: "Big Test Movie", Runtime: 100 * time.Minute, Libraries: []string{jfFilms}},
 			{ID: absent, Type: "Movie", Path: "/media/movies/Absent (1999)/Absent (1999).mkv", Name: "Absent", Runtime: 90 * time.Minute, Libraries: []string{jfFilms}},
-			{ID: series, Type: "Series", Path: "/media/tv/Série Test (2022)", Name: "Série Test", Libraries: []string{jfSeries}},
+			{ID: series, Type: "Series", Path: "/media/tv/Café Stories (2022)", Name: "Café Stories", Libraries: []string{jfSeries}},
 			{
-				ID: s1e1, Type: "Episode", Path: "/media/tv/Série Test (2022)/Saison 01/Série Test (2022) S01E01.mkv", Name: "Pilote",
-				SeriesName: "Série Test", Series: series, Runtime: 24 * time.Minute, Libraries: []string{jfSeries},
+				ID: s1e1, Type: "Episode", Path: "/media/tv/Café Stories (2022)/Season 01/Café Stories (2022) S01E01.mkv", Name: "Pilot",
+				SeriesName: "Café Stories", Series: series, Runtime: 24 * time.Minute, Libraries: []string{jfSeries},
 			},
 		},
 		UserData: []jellyfintest.UserData{
@@ -123,7 +123,7 @@ func TestJellyfinImport(t *testing.T) {
 
 	imports := laternav1connect.NewImportServiceClient(srv.Client(), srv.URL)
 	token := admin.Token
-	if _, err := imports.PreviewJellyfinImport(ctx, authed(&laternav1.PreviewJellyfinImportRequest{Path: filepath.Join(dir, "nulle-part")}, token)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := imports.PreviewJellyfinImport(ctx, authed(&laternav1.PreviewJellyfinImportRequest{Path: filepath.Join(dir, "nowhere")}, token)); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("missing folder: %v", err)
 	}
 	preview, err := imports.PreviewJellyfinImport(ctx, authed(&laternav1.PreviewJellyfinImportRequest{Path: dir}, token))
@@ -226,7 +226,7 @@ func TestJellyfinImport(t *testing.T) {
 	// Léa: her Jellyfin password still works, then becomes an argon2id hash; movies only, age 12 at
 	// most.
 	auth := laternav1connect.NewAuthServiceClient(srv.Client(), srv.URL)
-	if _, err := auth.Login(ctx, connect.NewRequest(&laternav1.LoginRequest{Username: "Léa", Password: "secret-de-lea", Device: &laternav1.Device{Name: "TV", Client: "Test", ClientVersion: "1", Platform: "Go"}})); err != nil {
+	if _, err := auth.Login(ctx, connect.NewRequest(&laternav1.LoginRequest{Username: "Léa", Password: "leas-secret", Device: &laternav1.Device{Name: "TV", Client: "Test", ClientVersion: "1", Platform: "Go"}})); err != nil {
 		t.Fatalf("Léa's login: %v", err)
 	}
 	leaID, err := domain.ParseID(done["Léa"].GetAccountId())

@@ -66,7 +66,7 @@ func (p *Provider) discovery(w http.ResponseWriter, _ *http.Request) {
 
 func (p *Provider) jwks(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, map[string]any{"keys": []map[string]string{{
-		"kty": "RSA", "kid": "cle-1", "use": "sig", "alg": "RS256",
+		"kty": "RSA", "kid": "key-1", "use": "sig", "alg": "RS256",
 		"n": b64.EncodeToString(p.key.N.Bytes()), "e": b64.EncodeToString(big.NewInt(int64(p.key.E)).Bytes()),
 	}}})
 }
@@ -121,7 +121,7 @@ func (p *Provider) token(w http.ResponseWriter, r *http.Request) {
 
 // Sign signs claims as an RS256 token with the provider's key.
 func (p *Provider) Sign(claims map[string]any) string {
-	header, _ := json.Marshal(map[string]string{"alg": "RS256", "kid": "cle-1", "typ": "JWT"})
+	header, _ := json.Marshal(map[string]string{"alg": "RS256", "kid": "key-1", "typ": "JWT"})
 	payload, _ := json.Marshal(claims)
 	signed := b64.EncodeToString(header) + "." + b64.EncodeToString(payload)
 	sum := sha256.Sum256([]byte(signed))

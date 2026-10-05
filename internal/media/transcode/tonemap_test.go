@@ -27,7 +27,7 @@ func TestToneMappers(t *testing.T) {
 		t.Fatalf("zscale missing or not last: %v", names)
 	}
 	_, ffprobe, _ := testfixtures.FFmpeg()
-	src := testfixtures.Path(t, "Films/HDR Test (2021)/HDR Test (2021).mkv")
+	src := testfixtures.Path(t, "Movies/HDR Test (2021)/HDR Test (2021).mkv")
 	for _, tm := range tms {
 		t.Run(tm.Name, func(t *testing.T) {
 			args := Args(Options{Path: src, Start: 6 * time.Second, Audio: -1, Encoder: enc, MaxHeight: 1080, Segment: 6 * time.Second, ToneMap: &tm})
@@ -65,7 +65,7 @@ func TestArgsToneMap(t *testing.T) {
 			t.Errorf("without %q:\n%s", want, args)
 		}
 	}
-	if _, ok := ToneMapperByName("inconnu"); ok {
+	if _, ok := ToneMapperByName("unknown"); ok {
 		t.Error("unknown conversion accepted")
 	}
 }

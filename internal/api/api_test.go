@@ -26,7 +26,7 @@ func newHandler(t *testing.T) (http.Handler, *store.Store) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	a, err := app.New(ctx, st, app.Options{ServerName: "Salon"})
+	a, err := app.New(ctx, st, app.Options{ServerName: "Living room"})
 	if err != nil {
 		t.Fatal(err)
 	}

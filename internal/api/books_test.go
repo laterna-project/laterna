@@ -79,7 +79,7 @@ func get(t *testing.T, url string, header ...string) *http.Response {
 // Books over HTTP: BookService, resized or original pages, the whole file in ranges, a URL with the
 // wrong key.
 func TestBooksOverHTTP(t *testing.T) {
-	base, token := libraryServer(t, domain.LibraryBooks, "Livres")
+	base, token := libraryServer(t, domain.LibraryBooks, "Books")
 	ctx := t.Context()
 	books := laternav1connect.NewBookServiceClient(http.DefaultClient, base)
 
@@ -92,13 +92,13 @@ func TestBooksOverHTTP(t *testing.T) {
 	if err != nil || len(got.Msg.GetBooks()) != 2 || got.Msg.GetBooks()[1].GetNumber() != 2 || len(manga.GetImages()) == 0 {
 		t.Fatalf("series: %v %v", got, err)
 	}
-	tome := got.Msg.GetBooks()[0]
-	full, err := books.GetBook(ctx, authed(&laternav1.GetBookRequest{BookId: tome.GetId()}, token))
+	volume := got.Msg.GetBooks()[0]
+	full, err := books.GetBook(ctx, authed(&laternav1.GetBookRequest{BookId: volume.GetId()}, token))
 	if err != nil || len(full.Msg.GetBook().GetCredits()) != 2 || len(full.Msg.GetFiles()) != 1 ||
 		full.Msg.GetFiles()[0].GetBook().GetLayout() != laternav1.BookLayout_BOOK_LAYOUT_IMAGES {
 		t.Fatalf("details: %v %v", full, err)
 	}
-	open, err := books.OpenBook(ctx, authed(&laternav1.OpenBookRequest{BookId: tome.GetId()}, token))
+	open, err := books.OpenBook(ctx, authed(&laternav1.OpenBookRequest{BookId: volume.GetId()}, token))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,10 +139,10 @@ func TestBooksOverHTTP(t *testing.T) {
 	}
 
 	// Progress.
-	if _, err := books.SaveReadingProgress(ctx, authed(&laternav1.SaveReadingProgressRequest{BookId: tome.GetId(), Page: 1, Progression: 0.4}, token)); err != nil {
+	if _, err := books.SaveReadingProgress(ctx, authed(&laternav1.SaveReadingProgressRequest{BookId: volume.GetId(), Page: 1, Progression: 0.4}, token)); err != nil {
 		t.Fatal(err)
 	}
-	open, err = books.OpenBook(ctx, authed(&laternav1.OpenBookRequest{BookId: tome.GetId()}, token))
+	open, err = books.OpenBook(ctx, authed(&laternav1.OpenBookRequest{BookId: volume.GetId()}, token))
 	if err != nil || open.Msg.GetProgress().GetPage() != 1 || open.Msg.GetProgress().GetProgression() != 0.4 {
 		t.Errorf("progress: %v %v", open, err)
 	}

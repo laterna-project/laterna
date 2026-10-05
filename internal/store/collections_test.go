@@ -57,7 +57,7 @@ func TestCollections(t *testing.T) {
 	}
 
 	// Manual collection: filtered by age; when empty, only shown to administrators.
-	manual := domain.Collection{ID: domain.NewID(), Name: "Favoris de Chloé", CreatedAt: t0, UpdatedAt: t0}
+	manual := domain.Collection{ID: domain.NewID(), Name: "Chloé's favorites", CreatedAt: t0, UpdatedAt: t0}
 	ten, twelve := 10, 12
 	mustWrite(t, f.st, func(q Q) error {
 		_, err := q.SetMetadata(ctx, amelie.ID, domain.Metadata{Title: amelie.Title, SortTitle: amelie.SortTitle, AgeRating: &twelve}, t0)
@@ -89,7 +89,7 @@ func TestPlaylists(t *testing.T) {
 	ctx := context.Background()
 	read := f.st.Read()
 	amelie, ep := f.movies["Amélie"], f.eps[0]
-	p := domain.Playlist{ID: domain.NewID(), ProfileID: f.profile, Name: "Soirée", CreatedAt: t0, UpdatedAt: t0}
+	p := domain.Playlist{ID: domain.NewID(), ProfileID: f.profile, Name: "Movie night", CreatedAt: t0, UpdatedAt: t0}
 	refs := []PlaylistEntryRef{{ID: domain.NewID(), ItemID: amelie.ID}, {ID: domain.NewID(), ItemID: ep.ID}, {ID: domain.NewID(), ItemID: amelie.ID}}
 	mustWrite(t, f.st, func(q Q) error {
 		_, err := q.SetMetadata(ctx, amelie.ID, domain.Metadata{Title: amelie.Title, SortTitle: amelie.SortTitle, Runtime: 2 * time.Hour}, t0)

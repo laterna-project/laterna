@@ -46,10 +46,10 @@ func TestThemeProblems(t *testing.T) {
 	}{
 		"gray text on gray": {func(t *ThemeTokens) { t.Dark.Text = "#3a3f48" }, "theme.problem.low_contrast (background=background, foreground=text, min=4.5, palette=dark"},
 		"accent invisible":  {func(t *ThemeTokens) { t.Light.Accent = "#181b21" }, "theme.problem.low_contrast (background=background, foreground=accent, min=3.0, palette=light"},
-		"couleur illisible": {func(t *ThemeTokens) { t.Dark.Outline = "bleu" }, "theme.problem.invalid_color (color=bleu, palette=dark, role=outline)"},
-		"arrondi":           {func(t *ThemeTokens) { t.Radius = 40 }, "theme.problem.radius (max=24, radius=40)"},
+		"unreadable color":  {func(t *ThemeTokens) { t.Dark.Outline = "blue-ish" }, "theme.problem.invalid_color (color=blue-ish, palette=dark, role=outline)"},
+		"radius":            {func(t *ThemeTokens) { t.Radius = 40 }, "theme.problem.radius (max=24, radius=40)"},
 		"density":           {func(t *ThemeTokens) { t.Density = "" }, "theme.problem.density (density=)"},
-		"police":            {func(t *ThemeTokens) { t.Font = "comic" }, "theme.problem.font (font=comic)"},
+		"font":              {func(t *ThemeTokens) { t.Font = "comic" }, "theme.problem.font (font=comic)"},
 	} {
 		tt := tokens
 		c.change(&tt)

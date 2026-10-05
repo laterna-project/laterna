@@ -15,7 +15,7 @@ func TestFileArgs(t *testing.T) {
 	root := testfixtures.Library(t)
 	ffmpeg, ffprobe, _ := testfixtures.FFmpeg()
 	x264, _ := ByName("libx264")
-	source := filepath.Join(root, "Films", "Deux Pistes (2019)", "Deux Pistes (2019).mkv")
+	source := filepath.Join(root, "Movies", "Dual Audio (2019)", "Dual Audio (2019).mkv")
 	streams := func(path string) string {
 		t.Helper()
 		b, err := exec.Command(ffprobe, "-v", "error", "-show_entries", "stream=codec_name,height,bit_rate",
@@ -36,7 +36,7 @@ func TestFileArgs(t *testing.T) {
 		t.Errorf("remux: %s", got)
 	}
 
-	small := filepath.Join(t.TempDir(), "petit.mp4")
+	small := filepath.Join(t.TempDir(), "small.mp4")
 	if b, err := exec.Command(ffmpeg, FileArgs(FileOptions{
 		Path: source, Output: small, Audio: 1, Encoder: x264, MaxHeight: 240, VideoRate: 400, Channels: 2, AudioRate: 96,
 	})...).CombinedOutput(); err != nil {

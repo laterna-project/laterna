@@ -10,18 +10,18 @@ import (
 )
 
 // Recommendations on the fixture movies, with extra metadata: "HDR Test" shares its franchise,
-// director and genres with "Big Test Movie"; "Sans Index" shares a genre and an actor; "Versions"
-// and "Deux Pistes" share a genre. A movie already played is never recommended.
+// director and genres with "Big Test Movie"; "Stream Dump" shares a genre and an actor; "Versions"
+// and "Dual Audio" share a genre. A movie already played is never recommended.
 func TestRecommendations(t *testing.T) {
 	a, _, p, movies := moviesByTitle(t)
 	ctx := context.Background()
 	credit := func(name string, role domain.PersonRole) domain.Credit { return domain.Credit{Name: name, Role: role} }
 	meta := map[string]domain.Metadata{
-		"Big Test Movie": {Genres: []string{"Action", "Science-fiction"}, Credits: []domain.Credit{credit("Réal A", domain.RoleDirector), credit("Acteur X", domain.RoleActor)}},
-		"HDR Test":       {Genres: []string{"Science-fiction", "Action"}, Credits: []domain.Credit{credit("Réal A", domain.RoleDirector)}},
-		"Sans Index":     {Genres: []string{"Action"}, Credits: []domain.Credit{credit("Acteur X", domain.RoleActor)}},
+		"Big Test Movie": {Genres: []string{"Action", "Science Fiction"}, Credits: []domain.Credit{credit("Director A", domain.RoleDirector), credit("Actor X", domain.RoleActor)}},
+		"HDR Test":       {Genres: []string{"Science Fiction", "Action"}, Credits: []domain.Credit{credit("Director A", domain.RoleDirector)}},
+		"Stream Dump":    {Genres: []string{"Action"}, Credits: []domain.Credit{credit("Actor X", domain.RoleActor)}},
 		"Versions":       {Genres: []string{"Action"}},
-		"Deux Pistes":    {Genres: []string{"Action"}},
+		"Dual Audio":     {Genres: []string{"Action"}},
 	}
 	mustNil(t, a.store.Write(ctx, func(q store.Q) error {
 		for title, m := range meta {
@@ -48,7 +48,7 @@ func TestRecommendations(t *testing.T) {
 	}
 	similar, err := a.Similar(ctx, p, movies["Big Test Movie"].ID, 0)
 	mustNil(t, err)
-	if got := titles(similar); len(got) != 4 || got[0] != "HDR Test" || got[1] != "Sans Index" {
+	if got := titles(similar); len(got) != 4 || got[0] != "HDR Test" || got[1] != "Stream Dump" {
 		t.Errorf("close titles: %v", got)
 	}
 
@@ -79,7 +79,7 @@ func TestRecommendations(t *testing.T) {
 		t.Fatalf("because: %+v", because)
 	}
 	if i := slices.IndexFunc(rows, func(r HomeRow) bool { return r.Kind == RowRecommended }); rec == nil || len(rec.Items) == 0 ||
-		titles(rec.Items)[0] != "Sans Index" || i+1 >= len(rows) || rows[i+1].Kind != RowBecauseYouWatched {
+		titles(rec.Items)[0] != "Stream Dump" || i+1 >= len(rows) || rows[i+1].Kind != RowBecauseYouWatched {
 		t.Errorf("recommended: %+v", rec)
 	}
 	for _, r := range rows {

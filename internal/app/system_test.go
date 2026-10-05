@@ -20,15 +20,15 @@ func TestSettings(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), store.FileName)
 	st := openStore(t, path)
-	a, err := New(ctx, st, Options{ServerName: "Salon"})
+	a, err := New(ctx, st, Options{ServerName: "Living room"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, admin := setupAdmin(t, a)
-	if s := a.Settings(); s.ServerName != "Salon" || !s.DownloadImages || s.ScanInterval != 6*time.Hour || s.MissingGrace != 72*time.Hour || !s.Trickplay || !s.DetectSegments {
+	if s := a.Settings(); s.ServerName != "Living room" || !s.DownloadImages || s.ScanInterval != 6*time.Hour || s.MissingGrace != 72*time.Hour || !s.Trickplay || !s.DetectSegments {
 		t.Errorf("defaults: %+v", s)
 	}
-	name, off, never, week := "  Grenier  ", false, time.Duration(0), 7*24*time.Hour
+	name, off, never, week := "  Attic  ", false, time.Duration(0), 7*24*time.Hour
 	public, rpID := "https://media.example.org/laterna/", "Example.org"
 	origins := []string{"https://app.example.org/", "android:apk-key-hash:abc"}
 	s, err := a.UpdateSettings(ctx, admin, SettingsChanges{
@@ -36,7 +36,7 @@ func TestSettings(t *testing.T) {
 		PublicURL: &public, PasskeyRPID: &rpID, PasskeyOrigins: &origins,
 	})
 	mustNil(t, err)
-	if s.ServerName != "Grenier" || s.DownloadImages || s.ScanInterval != 0 || s.MissingGrace != week || s.Trickplay || s.DetectSegments || a.Server().Name != "Grenier" ||
+	if s.ServerName != "Attic" || s.DownloadImages || s.ScanInterval != 0 || s.MissingGrace != week || s.Trickplay || s.DetectSegments || a.Server().Name != "Attic" ||
 		s.PublicURL != "https://media.example.org/laterna" || s.PasskeyRPID != "example.org" ||
 		!slices.Equal(s.PasskeyOrigins, []string{"https://app.example.org", "android:apk-key-hash:abc"}) {
 		t.Errorf("after the update: %+v, server %q", s, a.Server().Name)
@@ -60,7 +60,7 @@ func TestSettings(t *testing.T) {
 	_ = st.Close()
 	st = openStore(t, path)
 	defer func() { _ = st.Close() }()
-	again, err := New(ctx, st, Options{ServerName: "Autre"})
+	again, err := New(ctx, st, Options{ServerName: "Other"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestSettings(t *testing.T) {
 	}
 	page, err := again.Activity(ctx, ActivityQuery{})
 	mustNil(t, err)
-	if len(page.Entries) == 0 || page.Entries[0].Kind != domain.ActivitySettingsUpdated || !strings.Contains(page.Entries[0].Text.String(), "Grenier") {
+	if len(page.Entries) == 0 || page.Entries[0].Kind != domain.ActivitySettingsUpdated || !strings.Contains(page.Entries[0].Text.String(), "Attic") {
 		t.Errorf("activity: %+v", page.Entries)
 	}
 }
@@ -80,8 +80,8 @@ func TestActivityOfLoginsAndAccounts(t *testing.T) {
 	_, admin := setupAdmin(t, a)
 	_, err := a.CreateAccount(ctx, admin, NewAccount{Username: "Léa", Password: "a-password"})
 	mustNil(t, err)
-	_, _ = a.Login(ctx, "Léa", "mauvais-mdp", dev("TV"), "10.0.0.9")
-	_, _ = a.Login(ctx, "Inconnu", "mauvais-mdp", dev("TV"), "10.0.0.9")
+	_, _ = a.Login(ctx, "Léa", "wrong-password", dev("TV"), "10.0.0.9")
+	_, _ = a.Login(ctx, "Unknown", "wrong-password", dev("TV"), "10.0.0.9")
 	login(t, a, "Léa", "a-password")
 
 	page, err := a.Activity(ctx, ActivityQuery{PageSize: 2})
@@ -104,7 +104,7 @@ func TestActivityOfLoginsAndAccounts(t *testing.T) {
 	}
 	warnings, err := a.Activity(ctx, ActivityQuery{WarningsOnly: true})
 	mustNil(t, err)
-	if len(warnings.Entries) != 2 || warnings.Entries[0].Text.Key != "activity.login_failed" || warnings.Entries[0].Text.Params["username"] != "Inconnu" {
+	if len(warnings.Entries) != 2 || warnings.Entries[0].Text.Key != "activity.login_failed" || warnings.Entries[0].Text.Params["username"] != "Unknown" {
 		t.Errorf("refused logins: %+v", warnings.Entries)
 	}
 	if _, err := a.Activity(ctx, ActivityQuery{PageToken: "!"}); !isKind(err, domain.ErrInvalid) {
@@ -166,7 +166,7 @@ func TestLogsAndDevices(t *testing.T) {
 	ctx := context.Background()
 	ring := logging.NewRing(50)
 	logDir := t.TempDir()
-	for _, name := range []string{"laterna_20260929.log", "laterna_20260930.log", "autre.txt"} {
+	for _, name := range []string{"laterna_20260929.log", "laterna_20260930.log", "other.txt"} {
 		mustNil(t, os.WriteFile(filepath.Join(logDir, name), []byte("x"), 0o600))
 	}
 	st := openStore(t, filepath.Join(t.TempDir(), store.FileName))
@@ -177,10 +177,10 @@ func TestLogsAndDevices(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, admin := setupAdmin(t, a)
-	name := "Grenier"
+	name := "Attic"
 	_, err = a.UpdateSettings(ctx, admin, SettingsChanges{ServerName: &name})
 	mustNil(t, err)
-	entries, err := a.RecentLogs(slog.LevelInfo, "grenier", 0)
+	entries, err := a.RecentLogs(slog.LevelInfo, "attic", 0)
 	mustNil(t, err)
 	if len(entries) != 1 || entries[0].Message != "settings updated" {
 		t.Errorf("log: %+v", entries)
@@ -196,7 +196,7 @@ func TestLogsAndDevices(t *testing.T) {
 	f, err := a.OpenLogFile("laterna_20260929.log")
 	mustNil(t, err)
 	_ = f.Close()
-	for _, bad := range []string{"autre.txt", "../laterna.db", "laterna_20260101.log"} {
+	for _, bad := range []string{"other.txt", "../laterna.db", "laterna_20260101.log"} {
 		if _, err := a.OpenLogFile(bad); !isKind(err, domain.ErrNotFound) {
 			t.Errorf("%q: %v", bad, err)
 		}
@@ -225,10 +225,10 @@ func TestLogsAndDevices(t *testing.T) {
 func TestActivePlaybacks(t *testing.T) {
 	a, _, p, movies := moviesByTitle(t)
 	ctx := context.Background()
-	info, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Deux Pistes"].ID, Audio: -1, Device: browser})
+	info, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Dual Audio"].ID, Audio: -1, Device: browser})
 	mustNil(t, err)
 	plays := a.Playbacks()
-	if len(plays) != 1 || plays[0].ID != info.SessionID || plays[0].Title != "Deux Pistes" || plays[0].Method != string(info.Method) ||
+	if len(plays) != 1 || plays[0].ID != info.SessionID || plays[0].Title != "Dual Audio" || plays[0].Method != string(info.Method) ||
 		plays[0].ProfileName == "" || plays[0].Device != "PC" || plays[0].Duration == 0 {
 		t.Fatalf("playbacks: %+v", plays)
 	}
@@ -245,7 +245,7 @@ func TestActivePlaybacks(t *testing.T) {
 	page, err := a.Activity(ctx, ActivityQuery{PageSize: 2})
 	mustNil(t, err)
 	if len(page.Entries) != 2 || page.Entries[0].Kind != domain.ActivityPlaybackStopped || page.Entries[1].Kind != domain.ActivityPlaybackStarted ||
-		page.Entries[1].Text.Params["title"] != "Deux Pistes" || page.Entries[1].Text.Params["device"] != "PC" || page.Entries[1].ItemID == nil {
+		page.Entries[1].Text.Params["title"] != "Dual Audio" || page.Entries[1].Text.Params["device"] != "PC" || page.Entries[1].ItemID == nil {
 		t.Errorf("activity: %+v", page.Entries)
 	}
 }

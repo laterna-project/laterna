@@ -29,7 +29,7 @@ func inLang[T any](req *connect.Request[T], lang string) *connect.Request[T] {
 // the server's). Texts composed by the server (home, activity log, made-up names) come with their
 // key.
 func TestInternationalisation(t *testing.T) {
-	url, token := libraryServer(t, domain.LibraryShows, "Séries")
+	url, token := libraryServer(t, domain.LibraryShows, "Shows")
 	ctx := context.Background()
 	c := http.DefaultClient
 	server := laternav1connect.NewServerServiceClient(c, url)
@@ -92,13 +92,13 @@ func TestInternationalisation(t *testing.T) {
 	}
 
 	// Home: the title of a row, and what is needed to translate it.
-	for lang, want := range map[string]string{"": "Recently added in Séries", french: "Ajouts récents dans Séries"} {
+	for lang, want := range map[string]string{"": "Recently added in Shows", french: "Ajouts récents dans Shows"} {
 		rows, err := home.GetHome(ctx, inLang(authed(&laternav1.GetHomeRequest{}, token), lang))
 		if err != nil || len(rows.Msg.GetRows()) != 1 {
 			t.Fatalf("home: %v %v", rows, err)
 		}
 		row := rows.Msg.GetRows()[0]
-		if row.GetTitle() != want || row.GetTitleText().GetKey() != "home.latest" || row.GetTitleText().GetParams()["library"] != "Séries" {
+		if row.GetTitle() != want || row.GetTitleText().GetKey() != "home.latest" || row.GetTitleText().GetParams()["library"] != "Shows" {
 			t.Errorf("language %q: row %q %v", lang, row.GetTitle(), row.GetTitleText())
 		}
 	}
@@ -139,7 +139,7 @@ func TestInternationalisation(t *testing.T) {
 	if info, err := server.GetServerInfo(ctx, connect.NewRequest(&laternav1.GetServerInfoRequest{})); err != nil || info.Msg.GetLanguage() != "fr" {
 		t.Errorf("announced language: %v %v", info, err)
 	}
-	_, err = auth.Login(ctx, connect.NewRequest(&laternav1.LoginRequest{Username: "admin", Password: "faux", Device: &laternav1.Device{Name: "Test"}}))
+	_, err = auth.Login(ctx, connect.NewRequest(&laternav1.LoginRequest{Username: "admin", Password: "wrong", Device: &laternav1.Device{Name: "Test"}}))
 	if !errors.As(err, &ce) || errorCode(err) != "auth.invalid_credentials" || ce.Message() != "Nom d'utilisateur ou mot de passe incorrect" {
 		t.Errorf("server in French, no language requested: %v", err)
 	}

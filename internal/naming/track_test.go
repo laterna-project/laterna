@@ -7,9 +7,9 @@ func TestParseTrack(t *testing.T) {
 		rel  string
 		want Track
 	}{
-		{"Artiste Test/Album Test (2020)/01 - Piste Un.flac", Track{Title: "Piste Un", Number: 1, Album: "Album Test", Year: 2020, Artist: "Artiste Test"}},
-		{"Artiste/Album/02. Deux.mp3", Track{Title: "Deux", Number: 2, Album: "Album", Artist: "Artiste"}},
-		{"Artiste/Album/03 Trois.mp3", Track{Title: "Trois", Number: 3, Album: "Album", Artist: "Artiste"}},
+		{"Artist Test/Album Test (2020)/01 - Track One.flac", Track{Title: "Track One", Number: 1, Album: "Album Test", Year: 2020, Artist: "Artist Test"}},
+		{"Artist/Album/02. Two.mp3", Track{Title: "Two", Number: 2, Album: "Album", Artist: "Artist"}},
+		{"Artist/Album/03 Three.mp3", Track{Title: "Three", Number: 3, Album: "Album", Artist: "Artist"}},
 		// Lidarr or release style: artist and album first, then disc and number.
 		{
 			"Daft Punk - Discovery (2001) FLAC [16bit 44.1kHz]-CML34/Daft Punk - Discovery - 01-04 Harder, Better, Faster, Stronger.flac",
@@ -18,7 +18,7 @@ func TestParseTrack(t *testing.T) {
 		// A dash in the title stays in the title.
 		{"A/B/05 - Face - B.flac", Track{Title: "Face - B", Number: 5, Album: "B", Artist: "A"}},
 		// Disc folder: the album is one level up.
-		{"Artiste/Album (1999)/CD2/03 Titre.flac", Track{Title: "Titre", Disc: 2, Number: 3, Album: "Album", Year: 1999, Artist: "Artiste"}},
+		{"Artist/Album (1999)/CD2/03 Title.flac", Track{Title: "Title", Disc: 2, Number: 3, Album: "Album", Year: 1999, Artist: "Artist"}},
 		{"Album/Disc 1/1 Intro.flac", Track{Title: "Intro", Disc: 1, Number: 1, Album: "Album"}},
 		// No number, at the root: the whole name is the title.
 		{"grand_project-wonders-of-the-earth-550792.mp3", Track{Title: "grand_project-wonders-of-the-earth-550792"}},

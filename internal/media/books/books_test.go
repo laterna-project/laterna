@@ -24,13 +24,13 @@ func write(t *testing.T, name string, data []byte) string {
 
 func TestEPUB(t *testing.T) {
 	cover := testfixtures.JPEG(testfixtures.PageImage(30, 45, 1))
-	p := write(t, "livre.epub", testfixtures.EPUB(`<?xml version="1.0"?>
+	p := write(t, "book.epub", testfixtures.EPUB(`<?xml version="1.0"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:title id="t">Titre</dc:title>
-    <dc:creator id="a1">Autrice</dc:creator>
+    <dc:title id="t">Title</dc:title>
+    <dc:creator id="a1">Author</dc:creator>
     <meta refines="#a1" property="role" scheme="marc:relators">aut</meta>
-    <meta property="belongs-to-collection" id="c1">Série</meta>
+    <meta property="belongs-to-collection" id="c1">Series</meta>
     <meta refines="#c1" property="collection-type">series</meta>
     <meta refines="#c1" property="group-position">3</meta>
   </metadata>
@@ -45,7 +45,7 @@ func TestEPUB(t *testing.T) {
 	}
 	m := info.Meta
 	if info.Format != domain.BookEPUB || info.Layout != domain.LayoutReflowable || !info.RightToLeft || !info.HasCover ||
-		m.Title != "Titre" || m.Series != "Série" || m.Number != 3 || !slices.Equal(m.Authors, []string{"Autrice"}) {
+		m.Title != "Title" || m.Series != "Series" || m.Number != 3 || !slices.Equal(m.Authors, []string{"Author"}) {
 		t.Fatalf("EPUB: %+v", info)
 	}
 	data, ext, err := Cover(p)
@@ -67,7 +67,7 @@ func TestCBZ(t *testing.T) {
 		{Name: "__MACOSX/Ch 9/._1.jpg", Data: []byte("x")},
 		{Name: ".DS_Store", Data: []byte("x")},
 	}
-	p := write(t, "tome.cbz", testfixtures.Zip(entries))
+	p := write(t, "volume.cbz", testfixtures.Zip(entries))
 	info, err := Read(p)
 	if err != nil {
 		t.Fatal(err)
@@ -97,14 +97,14 @@ func TestScannedPDF(t *testing.T) {
 		w := 40 + 40*(i/2) // the last one is a double page
 		pages = append(pages, testfixtures.PDFPage{JPEG: testfixtures.JPEG(testfixtures.PageImage(w, 56, i)), Width: w, Height: 56})
 	}
-	p := write(t, "bd.pdf", testfixtures.ScannedPDF(pages, map[string]string{"Title": "Bande dessinée", "Author": "A & B", "CreationDate": "D:20190304"}))
+	p := write(t, "comic.pdf", testfixtures.ScannedPDF(pages, map[string]string{"Title": "Café Comics", "Author": "A & B", "CreationDate": "D:20190304"}))
 	info, err := Read(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []domain.PageSize{{Width: 40, Height: 56}, {Width: 40, Height: 56}, {Width: 80, Height: 56}}
 	if info.Layout != domain.LayoutImages || info.PageCount != 3 || !slices.Equal(info.Pages, want) || !info.HasCover ||
-		info.Meta.Title != "Bande dessinée" || !slices.Equal(info.Meta.Authors, []string{"A", "B"}) || info.Meta.Date != "2019-03-04" {
+		info.Meta.Title != "Café Comics" || !slices.Equal(info.Meta.Authors, []string{"A", "B"}) || info.Meta.Date != "2019-03-04" {
 		t.Fatalf("scanned PDF: %+v", info)
 	}
 	for i, pg := range pages {
@@ -119,21 +119,21 @@ func TestScannedPDF(t *testing.T) {
 }
 
 func TestTextPDF(t *testing.T) {
-	p := write(t, "doc.pdf", testfixtures.TextPDF("Bonjour", map[string]string{"Title": "Été", "Author": "Autrice"}))
+	p := write(t, "doc.pdf", testfixtures.TextPDF("Hello", map[string]string{"Title": "Café", "Author": "Author"}))
 	info, err := Read(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Cross-reference stream (PNG predictor) and object streams: both read.
-	if info.Layout != domain.LayoutDocument || info.PageCount != 1 || info.HasCover || info.Meta.Title != "Été" ||
-		!slices.Equal(info.Meta.Authors, []string{"Autrice"}) {
+	if info.Layout != domain.LayoutDocument || info.PageCount != 1 || info.HasCover || info.Meta.Title != "Café" ||
+		!slices.Equal(info.Meta.Authors, []string{"Author"}) {
 		t.Fatalf("text PDF: %+v", info)
 	}
 	if _, _, err := Page(p, 0); !errors.Is(err, ErrNoPage) {
 		t.Errorf("page of a document: %v", err)
 	}
 	// A damaged PDF can still be read, rendered by the client.
-	broken := write(t, "abime.pdf", []byte("%PDF-1.4\ncassé"))
+	broken := write(t, "damaged.pdf", []byte("%PDF-1.4\nbroken"))
 	if info, err := Read(broken); err != nil || info.Layout != domain.LayoutDocument {
 		t.Fatalf("damaged PDF: %+v %v", info, err)
 	}

@@ -109,7 +109,7 @@ func TestArgsOnFixtures(t *testing.T) {
 	spec := Spec{Interval: 2 * time.Second, Width: 160, Columns: 3, Rows: 2}
 	for _, name := range []string{"Big Test Movie (2020)/Big Test Movie (2020).mp4", "HDR Test (2021)/HDR Test (2021).mkv"} {
 		dir := t.TempDir()
-		input := filepath.Join(root, "Films", filepath.FromSlash(name))
+		input := filepath.Join(root, "Movies", filepath.FromSlash(name))
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		out, err := proc.Command(ctx, ffmpeg, Args(input, spec, "", dir)...).CombinedOutput()
 		cancel()

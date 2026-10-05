@@ -22,15 +22,15 @@ func write(t *testing.T, path string, content []byte) {
 }
 
 func TestWalk(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "Films")
+	root := filepath.Join(t.TempDir(), "Movies")
 	for _, rel := range []string{
-		"Film (2020)/Film (2020).mkv",
-		"Film (2020)/Extras/Making of.mkv",
-		"Film (2020)/film-sample.mkv",
-		"Film (2020)/poster.jpg",
-		"Film (2020)/Film (2020).srt",
+		"Movie (2020)/Movie (2020).mkv",
+		"Movie (2020)/Extras/Making of.mkv",
+		"Movie (2020)/movie-sample.mkv",
+		"Movie (2020)/poster.jpg",
+		"Movie (2020)/Movie (2020).srt",
 		".cache/x.mkv",
-		"Autre.MP4",
+		"Other.MP4",
 	} {
 		write(t, filepath.Join(root, filepath.FromSlash(rel)), []byte("x"))
 	}
@@ -46,20 +46,20 @@ func TestWalk(t *testing.T) {
 		}
 	}
 	slices.Sort(rels)
-	if !slices.Equal(rels, []string{"Autre.MP4", "Film (2020)/Film (2020).mkv"}) {
+	if !slices.Equal(rels, []string{"Movie (2020)/Movie (2020).mkv", "Other.MP4"}) {
 		t.Errorf("files kept: %v", rels)
 	}
 	if len(w.Unavailable) != 1 || w.Counts[root] != 2 {
 		t.Errorf("roots: unavailable=%v counts=%v", w.Unavailable, w.Counts)
 	}
-	if len(w.Metadata) != 1 || w.Metadata[0].Rel != "Film (2020)/poster.jpg" {
+	if len(w.Metadata) != 1 || w.Metadata[0].Rel != "Movie (2020)/poster.jpg" {
 		t.Errorf("metadata: %+v", w.Metadata)
 	}
 }
 
 func TestMetadataSignatures(t *testing.T) {
 	root := t.TempDir()
-	for _, rel := range []string{"Série/tvshow.nfo", "Série/poster.jpg", "Série/Saison 1/E01.nfo", "Série/Saison 1/E01.mkv"} {
+	for _, rel := range []string{"Show/tvshow.nfo", "Show/poster.jpg", "Show/Season 1/E01.nfo", "Show/Season 1/E01.mkv"} {
 		write(t, filepath.Join(root, filepath.FromSlash(rel)), []byte("x"))
 	}
 	walk := func() map[string]string {
@@ -70,7 +70,7 @@ func TestMetadataSignatures(t *testing.T) {
 		}
 		return MetadataSignatures(w)
 	}
-	show, season := filepath.Join(root, "Série"), filepath.Join(root, "Série", "Saison 1")
+	show, season := filepath.Join(root, "Show"), filepath.Join(root, "Show", "Season 1")
 	before := walk()
 	if len(before) != 2 || before[show] == "" || before[season] == "" {
 		t.Fatalf("signatures: %v", before)
@@ -102,14 +102,14 @@ func TestFingerprint(t *testing.T) {
 	dir := t.TempDir()
 	big := bytes.Repeat([]byte("0123456789abcdef"), 20_000) // 320 KiB
 	write(t, filepath.Join(dir, "a.mkv"), big)
-	write(t, filepath.Join(dir, "sous", "renommé.mkv"), big)
+	write(t, filepath.Join(dir, "sub", "renamed.mkv"), big)
 	middle := slices.Clone(big)
 	middle[len(middle)/2] ^= 0xff // changed in the middle, outside what is read
-	write(t, filepath.Join(dir, "milieu.mkv"), middle)
+	write(t, filepath.Join(dir, "middle.mkv"), middle)
 	end := slices.Clone(big)
 	end[len(end)-1] ^= 0xff
-	write(t, filepath.Join(dir, "fin.mkv"), end)
-	write(t, filepath.Join(dir, "petit.mkv"), []byte("petit"))
+	write(t, filepath.Join(dir, "end.mkv"), end)
+	write(t, filepath.Join(dir, "small.mkv"), []byte("small"))
 
 	fp := func(name string) string {
 		t.Helper()
@@ -120,13 +120,13 @@ func TestFingerprint(t *testing.T) {
 		return s
 	}
 	a := fp("a.mkv")
-	if len(a) != 64 || a != fp("sous/renommé.mkv") {
+	if len(a) != 64 || a != fp("sub/renamed.mkv") {
 		t.Error("a renamed file must keep its fingerprint")
 	}
-	if a != fp("milieu.mkv") {
+	if a != fp("middle.mkv") {
 		t.Error("the fingerprint should only read the start and the end (accepted trade-off)")
 	}
-	if a == fp("fin.mkv") || fp("petit.mkv") == a {
+	if a == fp("end.mkv") || fp("small.mkv") == a {
 		t.Error("different contents, same fingerprint")
 	}
 	if _, err := Fingerprint(filepath.Join(dir, "absent.mkv")); err == nil {
@@ -135,12 +135,12 @@ func TestFingerprint(t *testing.T) {
 }
 
 func TestUnder(t *testing.T) {
-	dirs := []string{filepath.Join("m", "films"), filepath.Join("m", "séries") + string(filepath.Separator)}
+	dirs := []string{filepath.Join("m", "movies"), filepath.Join("m", "shows") + string(filepath.Separator)}
 	for p, want := range map[string]bool{
-		filepath.Join("m", "films", "a.mkv"):       true,
-		filepath.Join("m", "films"):                true,
-		filepath.Join("m", "films2", "a.mkv"):      false,
-		filepath.Join("m", "séries", "x", "y.mkv"): true,
+		filepath.Join("m", "movies", "a.mkv"):     true,
+		filepath.Join("m", "movies"):              true,
+		filepath.Join("m", "movies2", "a.mkv"):    false,
+		filepath.Join("m", "shows", "x", "y.mkv"): true,
 	} {
 		if got := Under(p, dirs); got != want {
 			t.Errorf("Under(%q) = %v", p, got)

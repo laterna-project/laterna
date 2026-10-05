@@ -47,7 +47,7 @@ func TestTrickplay(t *testing.T) {
 	_, d, err := a.Movie(ctx, p, movies["Big Test Movie"].ID)
 	mustNil(t, err)
 	current := d.Files[0].Trickplay
-	stale := a.trickplayDir(current.FileID, "ancienne")
+	stale := a.trickplayDir(current.FileID, "old")
 	mustNil(t, os.MkdirAll(stale, 0o750))
 	writeText(t, filepath.Join(stale, "000.jpg"), "x")
 	old := time.Now().Add(-2 * time.Hour)

@@ -41,7 +41,7 @@ func TestDetect(t *testing.T) {
 	if forced, ok := caps.Prefer("libx264"); !ok || forced.Names()[0] != "libx264" || len(forced.Names()) != len(names) {
 		t.Errorf("forced libx264: %v", forced.Names())
 	}
-	if _, ok := caps.Prefer("h264_inconnu"); ok {
+	if _, ok := caps.Prefer("h264_unknown"); ok {
 		t.Error("unknown encoder forced")
 	}
 	if !slices.Equal(caps.Names(), names) {
@@ -187,7 +187,7 @@ func TestArgs(t *testing.T) {
 		!strings.Contains(a, "format=nv12,hwupload") || strings.Contains(a, "-c:a") {
 		t.Errorf("VAAPI: %s", a)
 	}
-	if _, ok := ByName("inconnu"); ok {
+	if _, ok := ByName("unknown"); ok {
 		t.Error("unknown encoder accepted")
 	}
 }
@@ -219,8 +219,8 @@ func TestArgsBurn(t *testing.T) {
 		},
 		{
 			"text: libass and fonts, relative paths",
-			Burn{Text: "burn.ass", FontsDir: "polices"},
-			[]string{"-i file:a.mkv -filter_complex [0:V:0]subtitles=f=burn.ass:fontsdir=polices," + tail},
+			Burn{Text: "burn.ass", FontsDir: "fonts"},
+			[]string{"-i file:a.mkv -filter_complex [0:V:0]subtitles=f=burn.ass:fontsdir=fonts," + tail},
 		},
 	}
 	for _, c := range cases {

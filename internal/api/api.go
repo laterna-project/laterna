@@ -99,7 +99,7 @@ func httpMetrics(reg *metrics.Registry) httpx.Hook {
 	end := func(o httpx.Observation) {
 		route := o.Route
 		if route == "" {
-			route = "autre"
+			route = "other"
 		}
 		class := strconv.Itoa(o.Status/100) + "xx"
 		if o.Status == 499 {

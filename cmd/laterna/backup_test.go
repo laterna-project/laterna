@@ -21,7 +21,7 @@ import (
 func TestBackupRestoreCommands(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
-	dirs := platform.Dirs{Data: filepath.Join(root, "données"), Cache: filepath.Join(root, "cache"), Metadata: filepath.Join(root, "metadata")}
+	dirs := platform.Dirs{Data: filepath.Join(root, "café"), Cache: filepath.Join(root, "cache"), Metadata: filepath.Join(root, "metadata")}
 	t.Setenv("LATERNA_CONFIG", "")
 	t.Setenv("LATERNA_DATA_DIR", dirs.Data)
 	t.Setenv("LATERNA_CACHE_DIR", dirs.Cache)

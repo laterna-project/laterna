@@ -21,7 +21,7 @@ decides what to do with them: a button, an automatic skip, "next episode".
 
 `internal/segments` is pure logic. Titles are lowercased and stripped of accents, and recognized
 when they start with a known name followed by nothing, a space or a digit ("OP1", "Opening 2",
-but not "Edition spéciale"). From the most specific to the most general:
+but not "Edition Notes"). From the most specific to the most general:
 
 - credits: "end credits", "ending", "credits", "outro", "ED", "générique de fin";
 - intro: "opening", "intro", "OP", "générique de début";

@@ -37,9 +37,9 @@ func rels(subs []Sidecar) []string {
 func TestSidecars(t *testing.T) {
 	root := t.TempDir()
 	touch(t, root,
-		"Film (2020)/Film (2020).mkv", "Film (2020)/Film (2020).fr.srt", "Film (2020)/Film (2020).en.forced.ass",
-		"Film (2020)/Subs/2_English.srt", "Film (2020)/Film (2020).idx", "Film (2020)/Film (2020).sub",
-		"Film (2020)/Autre.srt",
+		"Movie (2020)/Movie (2020).mkv", "Movie (2020)/Movie (2020).fr.srt", "Movie (2020)/Movie (2020).en.forced.ass",
+		"Movie (2020)/Subs/2_English.srt", "Movie (2020)/Movie (2020).idx", "Movie (2020)/Movie (2020).sub",
+		"Movie (2020)/Other.srt",
 		"Show/S01/Show.S01E01.mkv", "Show/S01/Show.S01E02.mkv", "Show/S01/Show.S01E01.ja.ass",
 		"Show/S01/Subs/Show.S01E02/3_French.srt", "Show/S01/Subs/1_English.srt",
 	)
@@ -48,9 +48,9 @@ func TestSidecars(t *testing.T) {
 		t.Fatalf("walk: %d videos, %d subtitles, %v", len(w.Entries), len(w.Subtitles), err)
 	}
 	all := Sidecars(w)
-	film := filepath.Join(root, "Film (2020)", "Film (2020).mkv")
-	want := []string{"Film (2020)/Film (2020).en.forced.ass", "Film (2020)/Film (2020).fr.srt", "Film (2020)/Film (2020).idx", "Film (2020)/Subs/2_English.srt"}
-	subs := all[film]
+	movie := filepath.Join(root, "Movie (2020)", "Movie (2020).mkv")
+	want := []string{"Movie (2020)/Movie (2020).en.forced.ass", "Movie (2020)/Movie (2020).fr.srt", "Movie (2020)/Movie (2020).idx", "Movie (2020)/Subs/2_English.srt"}
+	subs := all[movie]
 	if got := rels(subs); !slices.Equal(got, want) || len(subs) == 0 {
 		t.Fatalf("movie: %v", got)
 	}
@@ -72,7 +72,7 @@ func TestSidecars(t *testing.T) {
 		}
 		return w.Entries[i]
 	}
-	for _, path := range []string{film, e1, e2} {
+	for _, path := range []string{movie, e1, e2} {
 		near, err := Near(filepath.Dir(path))
 		if err != nil {
 			t.Fatal(err)
@@ -85,13 +85,13 @@ func TestSidecars(t *testing.T) {
 	}
 
 	// A changed subtitle changes the signature. No subtitle, no signature.
-	before := Signature(video(w, film), all[film])
+	before := Signature(video(w, movie), all[movie])
 	future := time.Now().Add(time.Hour)
-	if err := os.Chtimes(filepath.Join(root, "Film (2020)", "Film (2020).fr.srt"), future, future); err != nil {
+	if err := os.Chtimes(filepath.Join(root, "Movie (2020)", "Movie (2020).fr.srt"), future, future); err != nil {
 		t.Fatal(err)
 	}
 	w2, _ := Walk(context.Background(), []string{root}, naming.IsVideo)
-	if Signature(video(w2, film), Sidecars(w2)[film]) == before {
+	if Signature(video(w2, movie), Sidecars(w2)[movie]) == before {
 		t.Error("signature unchanged after an edit")
 	}
 	if Signature(Entry{}, nil) != "" {

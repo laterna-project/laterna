@@ -1,5 +1,5 @@
-// Outils de developpement epingles, isoles du module principal pour ne pas melanger
-// leurs dependances aux notres. Usage : go tool -modfile=tools/go.mod <outil>
+// Pinned development tools, kept out of the main module so that their dependencies do not mix
+// with ours. Usage: go tool -modfile=tools/go.mod <tool>
 module github.com/laterna-project/laterna/tools
 
 go 1.27

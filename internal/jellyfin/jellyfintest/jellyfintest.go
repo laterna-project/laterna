@@ -150,7 +150,7 @@ func Write(dir string, s Server) error {
 	for _, it := range s.Items {
 		t, ok := types[it.Type]
 		if !ok {
-			return fmt.Errorf("sorte %q inconnue", it.Type)
+			return fmt.Errorf("unknown kind %q", it.Type)
 		}
 		exec("INSERT INTO BaseItems (Id, Type, Path, Name, SeriesName, RunTimeTicks, SeriesId, SeasonId, ParentId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			it.ID, t, nullable(it.Path), it.Name, nullable(it.SeriesName), int64(it.Runtime/100), nullable(it.Series), nullable(it.Season), nullable(it.Parent))

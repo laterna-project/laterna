@@ -18,9 +18,9 @@ func catalogApp(t *testing.T) (*App, domain.Principal, domain.Library, domain.Li
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	films, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Films")}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Movies")}, "")
 	mustNil(t, err)
-	shows, err := a.CreateLibrary(ctx, "Séries", domain.LibraryShows, []string{filepath.Join(testfixtures.Root(), "Séries")}, "")
+	shows, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{filepath.Join(testfixtures.Root(), "Shows")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	return a, p, films, shows
@@ -73,7 +73,7 @@ func TestCatalogMovies(t *testing.T) {
 	}
 	view, details, err := a.Movie(ctx, p, big.Item.ID)
 	mustNil(t, err)
-	if view.Item.Overview == "" || !slices.Equal(details.Genres, []string{"Aventure"}) || len(details.Files) != 1 || details.Files[0].File.Info.Container == "" {
+	if view.Item.Overview == "" || !slices.Equal(details.Genres, []string{"Adventure"}) || len(details.Files) != 1 || details.Files[0].File.Info.Container == "" {
 		t.Errorf("details: %+v %+v", view.Item, details)
 	}
 	if _, _, _, err := a.Series(ctx, p, big.Item.ID); !isKind(err, domain.ErrNotFound) {
@@ -90,7 +90,7 @@ func TestCatalogMovies(t *testing.T) {
 	if page, _ := a.ListMovies(ctx, p, ListQuery{FavoritesOnly: true}); len(page.Items) != 1 || page.Items[0].Item.ID != all[1].Item.ID {
 		t.Errorf("favorites: %v", titles(page.Items))
 	}
-	if page, _ := a.ListMovies(ctx, p, ListQuery{Genre: "aventure"}); len(page.Items) != 1 {
+	if page, _ := a.ListMovies(ctx, p, ListQuery{Genre: "adventure"}); len(page.Items) != 1 {
 		t.Errorf("genre: %v", titles(page.Items))
 	}
 	if genres, _ := a.Genres(ctx, p, &films.ID); len(genres) == 0 {
@@ -114,7 +114,7 @@ func TestCatalogSeries(t *testing.T) {
 	series := page.Items[0].Item
 	view, details, seasons, err := a.Series(ctx, p, series.ID)
 	mustNil(t, err)
-	if view.Item.Title != "Série Test" || !slices.Equal(details.Genres, []string{"Drame"}) || len(seasons) != 2 || seasons[0].Season.Number != 1 {
+	if view.Item.Title != "Café Stories" || !slices.Equal(details.Genres, []string{"Drama"}) || len(seasons) != 2 || seasons[0].Season.Number != 1 {
 		t.Fatalf("series details: %+v %+v %d seasons", view.Item, details, len(seasons))
 	}
 	eps, err := a.Episodes(ctx, p, series.ID, nil)
@@ -129,7 +129,7 @@ func TestCatalogSeries(t *testing.T) {
 	if _, err := a.Episodes(ctx, p, series.ID, &other); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("unknown season: %v", err)
 	}
-	if ep, d, err := a.Episode(ctx, p, eps[0].Item.ID); err != nil || ep.SeriesTitle != "Série Test" || len(d.Files) != 1 {
+	if ep, d, err := a.Episode(ctx, p, eps[0].Item.ID); err != nil || ep.SeriesTitle != "Café Stories" || len(d.Files) != 1 {
 		t.Errorf("episode details: %+v %+v %v", ep, d, err)
 	}
 
@@ -147,10 +147,10 @@ func TestCatalogSeries(t *testing.T) {
 func TestCatalogSearch(t *testing.T) {
 	a, p, _, _ := catalogApp(t)
 	ctx := context.Background()
-	res, err := a.Search(ctx, p, "serie", 0)
+	res, err := a.Search(ctx, p, "cafe", 0)
 	mustNil(t, err)
 	if len(res) == 0 || res[0].Item.Kind != domain.ItemSeries {
-		t.Errorf("\"serie\": %v", titles(res))
+		t.Errorf("\"cafe\": %v", titles(res))
 	}
 	if res, _ := a.Search(ctx, p, "BIG tes", 0); !slices.Equal(titles(res), []string{"Big Test Movie"}) {
 		t.Errorf("\"BIG tes\": %v", titles(res))
@@ -196,7 +196,7 @@ func TestCatalogImages(t *testing.T) {
 	if big, _ := a.Image(ctx, poster.ID, poster.Hash, 5000); big.Path != poster.Path {
 		t.Errorf("never upscaled: %+v", big)
 	}
-	if _, err := a.Image(ctx, poster.ID, "perime", 0); !isKind(err, domain.ErrNotFound) {
+	if _, err := a.Image(ctx, poster.ID, "stale", 0); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("stale hash: %v", err)
 	}
 }

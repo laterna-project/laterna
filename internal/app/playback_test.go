@@ -33,7 +33,7 @@ func moviesByTitle(t *testing.T) (*App, *clock, domain.Principal, map[string]dom
 	a, c := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	_, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{testRoot("Films")}, "")
+	_, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{testRoot("Movies")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	page, err := a.ListMovies(ctx, p, ListQuery{PageSize: 50})
@@ -58,7 +58,7 @@ func TestPlaybackDecisions(t *testing.T) {
 	if path, err := a.DirectFile(ctx, direct.SessionID, direct.Token); err != nil || !strings.HasSuffix(path, ".mp4") {
 		t.Errorf("direct file: %q %v", path, err)
 	}
-	if _, err := a.DirectFile(ctx, direct.SessionID, "mauvais-secret"); !isKind(err, domain.ErrNotFound) {
+	if _, err := a.DirectFile(ctx, direct.SessionID, "wrong-secret"); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("wrong secret: %v", err)
 	}
 	// 10-bit HDR HEVC on this browser without HDR: video re-encoded and converted to BT.709 SDR.
@@ -75,12 +75,12 @@ func TestPlaybackDecisions(t *testing.T) {
 	mustNil(t, a.StopPlayback(ctx, p, hdr.SessionID, 0))
 	// A device without HLS and without the container: no way to play.
 	noHLS := playback.DeviceProfile{Containers: []string{"mp4"}, Video: browser.Video, AudioCodecs: browser.AudioCodecs}
-	if _, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Deux Pistes"].ID, Audio: -1, Device: noHLS}); !isKind(err, domain.ErrPrecondition) ||
+	if _, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Dual Audio"].ID, Audio: -1, Device: noHLS}); !isKind(err, domain.ErrPrecondition) ||
 		domain.CodeOf(err) != "playback.unplayable" || !strings.Contains(err.Error(), "reason.no_hls") {
 		t.Errorf("no HLS: %v", err)
 	}
 	// The keyframe index was computed at import time (background job).
-	files, err := a.store.Read().ItemFiles(ctx, movies["Deux Pistes"].ID)
+	files, err := a.store.Read().ItemFiles(ctx, movies["Dual Audio"].ID)
 	mustNil(t, err)
 	if len(files) != 1 {
 		t.Fatalf("%d files", len(files))
@@ -93,7 +93,7 @@ func TestPlaybackDecisions(t *testing.T) {
 func TestPlaybackHLS(t *testing.T) {
 	a, _, p, movies := moviesByTitle(t)
 	ctx := context.Background()
-	info, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Deux Pistes"].ID, Audio: -1, Device: browser})
+	info, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Dual Audio"].ID, Audio: -1, Device: browser})
 	mustNil(t, err)
 	if info.Method != playback.Remux {
 		t.Fatalf("H.264 MKV in a browser: %s", info.Method)
@@ -119,7 +119,7 @@ func TestPlaybackHLS(t *testing.T) {
 	// the movie.
 	joined := join(t, init, first, last)
 	decodes(t, joined)
-	if src, got := ffprobeCSV(t, testfixtures.Path(t, "Films/Deux Pistes (2019)/Deux Pistes (2019).mkv"), "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=nb_read_frames"),
+	if src, got := ffprobeCSV(t, testfixtures.Path(t, "Movies/Dual Audio (2019)/Dual Audio (2019).mkv"), "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=nb_read_frames"),
 		ffprobeCSV(t, joined, "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=nb_read_frames"); src != got {
 		t.Errorf("%s frames decoded, %s in the source", got, src)
 	}
@@ -183,7 +183,7 @@ func join(t *testing.T, parts ...string) string {
 		mustNil(t, err)
 		data = append(data, b...)
 	}
-	path := filepath.Join(t.TempDir(), "flux.mp4")
+	path := filepath.Join(t.TempDir(), "stream.mp4")
 	mustNil(t, os.WriteFile(path, data, 0o600))
 	return path
 }
@@ -293,7 +293,7 @@ func TestPlaybackTranscodeVideo(t *testing.T) {
 			a, _ := startMediaApp(t, func(o *Options) { o.Encoder = enc })
 			_, p := setupAdmin(t, a)
 			ctx := context.Background()
-			_, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+			_, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 			mustNil(t, err)
 			waitIdle(t, a)
 			page, err := a.ListMovies(ctx, p, ListQuery{PageSize: 10})
@@ -353,7 +353,7 @@ func oldMovie(t *testing.T, seconds int) (root, src string) {
 	t.Helper()
 	testfixtures.Library(t) // skips the test without FFmpeg
 	root = t.TempDir()
-	src = filepath.Join(root, "Vieux Film (2003)", "Vieux Film (2003).avi")
+	src = filepath.Join(root, "Old Movie (2003)", "Old Movie (2003).avi")
 	mustNil(t, os.MkdirAll(filepath.Dir(src), 0o750))
 	ffmpeg, _, _ := testfixtures.FFmpeg()
 	d := strconv.Itoa(seconds)
@@ -374,7 +374,7 @@ func TestPlaybackHealsSkippedSegments(t *testing.T) {
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	_, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+	_, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	page, err := a.ListMovies(ctx, p, ListQuery{PageSize: 10})
@@ -407,7 +407,7 @@ func TestPlaybackHealsSkippedSegments(t *testing.T) {
 func TestPlaybackSegmentMissingFromStream(t *testing.T) {
 	a, _, p, movies := moviesByTitle(t)
 	ctx := context.Background()
-	info, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Deux Pistes"].ID, Audio: -1, Device: browser})
+	info, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Dual Audio"].ID, Audio: -1, Device: browser})
 	mustNil(t, err)
 	resegment(t, a, info.SessionID, playback.FixedSegments(info.Duration, time.Second))
 	begin := time.Now()
@@ -446,7 +446,7 @@ func TestPlaybackEndurance(t *testing.T) {
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	_, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+	_, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	page, err := a.ListMovies(ctx, p, ListQuery{PageSize: 10})
@@ -493,7 +493,7 @@ func TestTranscodeLimit(t *testing.T) {
 	a, clk := startMediaApp(t, func(o *Options) { o.Encoder = "libx264" })
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	_, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+	_, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	page, err := a.ListMovies(ctx, p, ListQuery{PageSize: 10})

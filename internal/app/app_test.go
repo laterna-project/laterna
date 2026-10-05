@@ -26,11 +26,11 @@ func TestServerIDIsStableAcrossRestarts(t *testing.T) {
 	path := filepath.Join(t.TempDir(), store.FileName)
 
 	st := openStore(t, path)
-	first, err := New(ctx, st, Options{ServerName: "Salon"})
+	first, err := New(ctx, st, Options{ServerName: "Living room"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Server().ID.IsZero() || first.Server().Name != "Salon" {
+	if first.Server().ID.IsZero() || first.Server().Name != "Living room" {
 		t.Fatalf("unexpected identity: %+v", first.Server())
 	}
 	_ = st.Close()

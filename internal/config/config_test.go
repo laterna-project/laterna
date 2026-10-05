@@ -42,7 +42,7 @@ func TestLoadDefaults(t *testing.T) {
 
 // Runtime settings live in the database: their old config keys are rejected like typos.
 func TestHotSettingsNotInConfig(t *testing.T) {
-	for _, toml := range []string{"[metadata]\ndownload_images = false\n", "[metadata]\nonline = true\n", "[server]\nname = \"Salon\"\n"} {
+	for _, toml := range []string{"[metadata]\ndownload_images = false\n", "[metadata]\nonline = true\n", "[server]\nname = \"Living room\"\n"} {
 		if _, err := Load(writeFile(t, toml), envMap(nil)); err == nil {
 			t.Errorf("%q accepted", toml)
 		}
@@ -101,10 +101,10 @@ func TestValidate(t *testing.T) {
 		mutate func(*Config)
 		want   string
 	}{
-		{"adresse vide", func(c *Config) { c.Server.Address = "" }, "server.address"},
-		{"niveau inconnu", func(c *Config) { c.Log.Level = "verbose" }, "log.level"},
-		{"format inconnu", func(c *Config) { c.Log.Format = "xml" }, "log.format"},
-		{"proxy invalide", func(c *Config) { c.Server.TrustedProxies = []string{"10.0.0.0/8", "proxy.local"} }, "server.trusted_proxies"},
+		{"empty address", func(c *Config) { c.Server.Address = "" }, "server.address"},
+		{"unknown level", func(c *Config) { c.Log.Level = "verbose" }, "log.level"},
+		{"unknown format", func(c *Config) { c.Log.Format = "xml" }, "log.format"},
+		{"invalid proxy", func(c *Config) { c.Server.TrustedProxies = []string{"10.0.0.0/8", "proxy.local"} }, "server.trusted_proxies"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -121,9 +121,9 @@ func TestValidate(t *testing.T) {
 func TestDirsOverride(t *testing.T) {
 	defaults := platform.Dirs{Data: "d", Cache: "c", Metadata: "m"}
 	cfg := Default()
-	cfg.Paths.Cache = "autre"
+	cfg.Paths.Cache = "other"
 	got := cfg.Dirs(defaults)
-	if got != (platform.Dirs{Data: "d", Cache: "autre", Metadata: "m"}) {
+	if got != (platform.Dirs{Data: "d", Cache: "other", Metadata: "m"}) {
 		t.Errorf("got %+v", got)
 	}
 }
@@ -181,7 +181,7 @@ func TestDiscovery(t *testing.T) {
 	if err != nil || !cfg.Server.Discovery {
 		t.Fatalf("the environment wins: %v, %v", cfg.Server.Discovery, err)
 	}
-	if _, err := Load("", envMap(map[string]string{"LATERNA_DISCOVERY": "oui"})); err == nil {
+	if _, err := Load("", envMap(map[string]string{"LATERNA_DISCOVERY": "yes"})); err == nil {
 		t.Fatal("a value that is not a boolean must be rejected")
 	}
 }

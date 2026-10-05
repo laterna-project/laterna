@@ -16,7 +16,7 @@ import (
 // History through the API: a playback that was watched enough becomes a play, summed up by the
 // year's statistics.
 func TestHistoryServiceOverHTTP(t *testing.T) {
-	s, catalog, token := mediaServerWith(t, fixtureLibrary{"Films", laternav1.LibraryKind_LIBRARY_KIND_MOVIES})
+	s, catalog, token := mediaServerWith(t, fixtureLibrary{"Movies", laternav1.LibraryKind_LIBRARY_KIND_MOVIES})
 	ctx := context.Background()
 	c := http.DefaultClient
 	player := laternav1connect.NewPlaybackServiceClient(c, s.url)
@@ -70,7 +70,7 @@ func TestHistoryServiceOverHTTP(t *testing.T) {
 		len(m.GetTopMovies()) != 1 || len(m.GetTopMovies()[0].GetImages()) == 0 || m.GetFirst().GetTitle() != "Big Test Movie" {
 		t.Errorf("statistics: %v", m)
 	}
-	if _, err := history.GetStats(ctx, withToken(&laternav1.GetStatsRequest{TimeZone: "Nulle/Part"}, token)); code(err) != connect.CodeInvalidArgument {
+	if _, err := history.GetStats(ctx, withToken(&laternav1.GetStatsRequest{TimeZone: "No/Where"}, token)); code(err) != connect.CodeInvalidArgument {
 		t.Errorf("unknown time zone: %v", err)
 	}
 

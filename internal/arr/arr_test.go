@@ -26,7 +26,7 @@ func TestClient(t *testing.T) {
 	if _, err := arr.New(arr.Radarr, srv.URL, arrtest.Key, srv.Client()).Status(ctx); err == nil {
 		t.Error("a Sonarr taken for a Radarr")
 	}
-	if _, err := arr.New(arr.Sonarr, srv.URL, "mauvaise", srv.Client()).Status(ctx); !errors.Is(err, arr.ErrUnauthorized) {
+	if _, err := arr.New(arr.Sonarr, srv.URL, "wrong", srv.Client()).Status(ctx); !errors.Is(err, arr.ErrUnauthorized) {
 		t.Errorf("wrong key: %v", err)
 	}
 
@@ -57,7 +57,7 @@ func TestClient(t *testing.T) {
 		got = append(got, r.URL.Path)
 	}))
 	defer hook.Close()
-	if err := c.InstallWebhook(ctx, hook.URL+"/hooks/sonarr", "laterna", "mauvais"); err == nil {
+	if err := c.InstallWebhook(ctx, hook.URL+"/hooks/sonarr", "laterna", "wrong"); err == nil {
 		t.Error("webhook refused by Laterna but installed")
 	} else if !errors.As(err, new(*arr.Error)) {
 		t.Errorf("refusal: %v", err)
@@ -95,16 +95,16 @@ func TestClient(t *testing.T) {
 	}
 
 	srv.Set(func(s *arrtest.Server) {
-		s.Folders = []arr.Folder{{Title: "Dr. STONE", Path: "/tv/Animes/Dr. STONE", HasFiles: true}}
+		s.Folders = []arr.Folder{{Title: "Dr. STONE", Path: "/tv/Anime/Dr. STONE", HasFiles: true}}
 	})
-	if f, err := c.Folders(ctx); err != nil || len(f) != 1 || f[0].Path != "/tv/Animes/Dr. STONE" || !f[0].HasFiles {
+	if f, err := c.Folders(ctx); err != nil || len(f) != 1 || f[0].Path != "/tv/Anime/Dr. STONE" || !f[0].HasFiles {
 		t.Errorf("series: %+v %v", f, err)
 	}
 }
 
 func TestParseEvent(t *testing.T) {
-	e, err := arr.ParseEvent([]byte(`{"eventType":"Download","series":{"id":1,"path":"/tv/Animes/Dr. STONE"},"episodeFile":{}}`))
-	if err != nil || e.Type != "Download" || e.Path != "/tv/Animes/Dr. STONE" || !e.ChangesFiles() {
+	e, err := arr.ParseEvent([]byte(`{"eventType":"Download","series":{"id":1,"path":"/tv/Anime/Dr. STONE"},"episodeFile":{}}`))
+	if err != nil || e.Type != "Download" || e.Path != "/tv/Anime/Dr. STONE" || !e.ChangesFiles() {
 		t.Errorf("Sonarr: %+v %v", e, err)
 	}
 	e, err = arr.ParseEvent([]byte(`{"eventType":"MovieDelete","movie":{"folderPath":"/movies/Suzume (2022)"}}`))
@@ -126,7 +126,7 @@ func TestParseEvent(t *testing.T) {
 func TestMapPath(t *testing.T) {
 	base := t.TempDir()
 	tv := filepath.Join(base, "data", "tv")
-	for _, d := range []string{filepath.Join(tv, "Animes", "Dr. STONE"), filepath.Join(tv, "Séries", "Lost")} {
+	for _, d := range []string{filepath.Join(tv, "Anime", "Dr. STONE"), filepath.Join(tv, "Shows", "Lost")} {
 		if err := os.MkdirAll(d, 0o750); err != nil {
 			t.Fatal(err)
 		}
@@ -138,13 +138,13 @@ func TestMapPath(t *testing.T) {
 		want    string
 	}{
 		// Sonarr in a container (/tv <-> .../data/tv), library on the root or on a subfolder.
-		{"/tv/Animes/Dr. STONE", []string{tv}, filepath.Join(tv, "Animes", "Dr. STONE")},
-		{"/tv/Animes/Dr. STONE", []string{filepath.Join(tv, "Séries"), filepath.Join(tv, "Animes")}, filepath.Join(tv, "Animes", "Dr. STONE")},
+		{"/tv/Anime/Dr. STONE", []string{tv}, filepath.Join(tv, "Anime", "Dr. STONE")},
+		{"/tv/Anime/Dr. STONE", []string{filepath.Join(tv, "Shows"), filepath.Join(tv, "Anime")}, filepath.Join(tv, "Anime", "Dr. STONE")},
 		// Same machine, same paths.
-		{filepath.Join(tv, "Séries", "Lost"), []string{tv}, filepath.Join(tv, "Séries", "Lost")},
+		{filepath.Join(tv, "Shows", "Lost"), []string{tv}, filepath.Join(tv, "Shows", "Lost")},
 		// Windows paths seen from elsewhere.
-		{`D:\Médias\tv\Séries\Lost`, []string{tv}, filepath.Join(tv, "Séries", "Lost")},
-		{"/tv/Animes/Inconnu", []string{tv}, ""},
+		{`D:\Media\tv\Shows\Lost`, []string{tv}, filepath.Join(tv, "Shows", "Lost")},
+		{"/tv/Anime/Unknown", []string{tv}, ""},
 		{"", []string{tv}, ""},
 	} {
 		got, ok := arr.MapPath(c.arrPath, c.roots, exists)

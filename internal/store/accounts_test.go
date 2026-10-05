@@ -46,11 +46,11 @@ func TestAccountsUniqueIgnoringCase(t *testing.T) {
 func TestProfilesAndSessionsLifecycle(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	acc := newAccount("famille", false)
+	acc := newAccount("family", false)
 	adult := domain.Profile{ID: domain.NewID(), AccountID: acc.ID, Name: "Parents", CreatedAt: t0, UpdatedAt: t0}
-	kid := domain.Profile{ID: domain.NewID(), AccountID: acc.ID, Name: "Enfants", Kid: true, CreatedAt: t0.Add(time.Second), UpdatedAt: t0}
+	kid := domain.Profile{ID: domain.NewID(), AccountID: acc.ID, Name: "Kids", Kid: true, CreatedAt: t0.Add(time.Second), UpdatedAt: t0}
 	session := domain.Session{
-		ID: domain.NewID(), AccountID: acc.ID, Device: domain.Device{Name: "Salon", Client: "Test", ClientVersion: "1", Platform: "TV"},
+		ID: domain.NewID(), AccountID: acc.ID, Device: domain.Device{Name: "Living room", Client: "Test", ClientVersion: "1", Platform: "TV"},
 		CreatedAt: t0, LastUsedAt: t0, ExpiresAt: t0.Add(time.Hour),
 	}
 	mustWrite(t, st, func(q Q) error {
@@ -107,7 +107,7 @@ func TestProfilesAndSessionsLifecycle(t *testing.T) {
 func TestDeletingAccountCascades(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	acc := newAccount("temporaire", false)
+	acc := newAccount("temporary", false)
 	p := domain.Profile{ID: domain.NewID(), AccountID: acc.ID, Name: "p", CreatedAt: t0, UpdatedAt: t0}
 	mustWrite(t, st, func(q Q) error {
 		if err := q.CreateAccount(ctx, acc, "h"); err != nil {
@@ -126,7 +126,7 @@ func TestDeletingAccountCascades(t *testing.T) {
 func TestAccountAccessAndSummaries(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	films, series := newLibrary("Films", domain.LibraryMovies, "/m"), newLibrary("Séries", domain.LibraryShows, "/s")
+	films, series := newLibrary("Movies", domain.LibraryMovies, "/m"), newLibrary("Shows", domain.LibraryShows, "/s")
 	admin := newAccount("Chloé", true)
 	twelve := 12
 	kid := newAccount("Léa", false)
@@ -136,7 +136,7 @@ func TestAccountAccessAndSummaries(t *testing.T) {
 	session := domain.Session{ID: domain.NewID(), AccountID: kid.ID, Device: domain.Device{Name: "TV"}, CreatedAt: t0, LastUsedAt: t0.Add(time.Hour), ExpiresAt: t0.Add(48 * time.Hour)}
 	mustWrite(t, st, func(q Q) error {
 		return errors.Join(q.CreateLibrary(ctx, films), q.CreateLibrary(ctx, series), q.CreateAccount(ctx, admin, "h"),
-			q.CreateAccount(ctx, kid, "h"), q.CreateProfile(ctx, profile, ""), q.CreateSession(ctx, session, "jeton"))
+			q.CreateAccount(ctx, kid, "h"), q.CreateProfile(ctx, profile, ""), q.CreateSession(ctx, session, "token"))
 	})
 	got, err := st.Read().Account(ctx, kid.ID)
 	if err != nil || got.Libraries.All || !slices.Equal(got.Libraries.IDs, []domain.ID{films.ID}) ||
