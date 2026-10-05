@@ -19,7 +19,7 @@ server runs, continue with the [first steps](../README.md#first-steps).
 | Linux amd64, arm64 | Docker image, deb, rpm, archives with and without FFmpeg | yes |
 | Windows amd64 | archives with and without FFmpeg | yes |
 | Windows arm64 | archives with and without FFmpeg | built only |
-| macOS, Apple Silicon and Intel | archive without FFmpeg | Apple Silicon, without HDR conversion and subtitle burn-in |
+| macOS, Apple Silicon and Intel | archive without FFmpeg | Apple Silicon, without its hardware encoder |
 | Linux armv7, FreeBSD amd64 | archive without FFmpeg | built only |
 
 The FFmpeg shipped with Laterna is a pinned static GPL build from
@@ -157,7 +157,6 @@ Homebrew's `ffmpeg` formula is built without `libass` and `zimg`: with it, subti
 burned in and HDR sources cannot be converted to SDR. The `ffmpeg-full` formula has both. It is
 not linked into `PATH`, so name it with
 `LATERNA_FFMPEG="$(brew --prefix ffmpeg-full)/bin/ffmpeg"` and the same for `LATERNA_FFPROBE`.
-CI only runs the tests against the plain formula.
 
 Data goes to `~/Library/Application Support/Laterna` and `~/Library/Caches/Laterna`. One limit on
 macOS: if the server is killed abruptly, FFmpeg processes it started can outlive it.

@@ -1,13 +1,9 @@
 package transcode
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"strings"
 	"time"
-
-	"github.com/laterna-project/laterna/internal/proc"
 )
 
 // ToneMapper converts an HDR picture (PQ or HLG, BT.2020) to BT.709 SDR, for video re-encoded to
@@ -83,18 +79,13 @@ func DetectToneMappers(ctx context.Context, ffmpeg string, e Encoder) []ToneMapp
 }
 
 func tryToneMap(ctx context.Context, ffmpeg string, e Encoder, tm ToneMapper) error {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
 	args := append([]string{"-hide_banner", "-v", "error", "-nostdin"}, e.device...)
 	args = append(args, tm.device...)
 	args = append(args, "-f", "lavfi", "-i", hdrTestSource, "-vf", videoFilter(e, 0, &tm))
 	args = append(args, e.encode()...)
 	args = append(args, "-f", "null", "-")
-	cmd := proc.Command(ctx, ffmpeg, args...)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%s: %w: %s", tm.Name, err, strings.TrimSpace(stderr.String()))
+	if err := trial(ctx, 30*time.Second, ffmpeg, args); err != nil {
+		return fmt.Errorf("%s: %w", tm.Name, err)
 	}
 	return nil
 }

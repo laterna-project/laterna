@@ -52,7 +52,7 @@ jobs:
       - run: task nilaway
       - run: task vuln
       - name: Shell scripts
-        run: shellcheck -x packaging/*.sh packaging/scripts/*.sh docker/*.sh
+        run: shellcheck -x packaging/*.sh packaging/scripts/*.sh docker/*.sh .github/scripts/*.sh
       - name: Workflows
         run: |
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12
@@ -93,13 +93,9 @@ jobs:
           - name: Windows
             os: windows-latest
             ffmpeg: windows amd64
-          # Homebrew's ffmpeg has neither libass nor zimg, so the tests that burn subtitles in or
-          # convert HDR are skipped here. (The ffmpeg-full formula has both, but its VideoToolbox
-          # trial hangs on hosted runners.)
           - name: macOS
             os: macos-latest
             ffmpeg: ""
-            skip: TestToneMappers|TestPlaybackDecisions|TestPlaybackOverHTTP|TestDownloads|TestPlaybackBurnsSubtitles
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -116,12 +112,23 @@ jobs:
           echo "$RUNNER_TEMP/ffmpeg" >> "$GITHUB_PATH"
       - name: FFmpeg (Homebrew)
         if: runner.os == 'macOS'
-        run: brew install ffmpeg
+        # The full formula has libass and zimg, which the plain one lacks. The wrapper hides the
+        # VideoToolbox encoders, which hang or fail on hosted runners.
+        run: |
+          brew install ffmpeg-full
+          keg="$(brew --prefix ffmpeg-full)/bin"
+          mkdir -p "$RUNNER_TEMP/bin"
+          cp .github/scripts/ffmpeg-no-videotoolbox.sh "$RUNNER_TEMP/bin/ffmpeg"
+          chmod +x "$RUNNER_TEMP/bin/ffmpeg"
+          echo "REAL_FFMPEG=$keg/ffmpeg" >> "$GITHUB_ENV"
+          echo "$keg" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: FFmpeg in use
+        run: |
+          command -v ffmpeg ffprobe
+          ffmpeg -hide_banner -version | head -n 1
       - run: go build ./...
-      - name: Tests
-        env:
-          SKIP: ${{ matrix.skip }}
-        run: go test ${SKIP:+-skip "$SKIP"} ./...
+      - run: go test ./...
 
   build:
     name: Cross-build

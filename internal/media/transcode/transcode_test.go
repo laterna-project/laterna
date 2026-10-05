@@ -91,7 +91,7 @@ func TestKeyframesOnSegmentBoundaries(t *testing.T) {
 			audio = 1
 		}
 		for _, enc := range caps.Encoders {
-			t.Run(fmt.Sprintf("%s/son=%v", enc.Name, sound), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%s/sound=%v", enc.Name, sound), func(t *testing.T) {
 				for _, start := range []time.Duration{0, 6 * time.Second, 12 * time.Second, 18 * time.Second} {
 					starts := fragments(t, ffmpeg, Options{
 						Path: path, Start: start, Audio: audio, Encoder: enc, MaxHeight: 1080, Segment: 6 * time.Second, Channels: 1,
