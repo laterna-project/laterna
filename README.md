@@ -10,7 +10,8 @@ in [`proto/`](proto/laterna/v1). A small development console is included to try 
 without a client.
 
 > The project is young. The server covers the scope below and is well tested, but it has only
-> run on a handful of machines, and the API may still change before a first tagged release.
+> run on a handful of machines. Until version 1.0, a minor version may change the configuration
+> or what the API offers; the release notes say how to upgrade.
 
 ## What it does
 
@@ -45,13 +46,13 @@ without a client.
 docker run -d --name laterna -p 8096:8096 \
   -v laterna-config:/config -v laterna-cache:/cache \
   -v /path/to/media:/media:ro \
-  ghcr.io/laterna-project/laterna:edge
+  ghcr.io/laterna-project/laterna:latest
 ```
 
 The image includes a pinned FFmpeg build. Media folders can be mounted read-only: Laterna never
 writes into them. To let TVs and apps find the server on the local network, run the container
-with `--network host` (multicast does not cross Docker's bridge network). `edge` follows the
-development branch; releases are tagged `latest` and `X.Y.Z`.
+with `--network host` (multicast does not cross Docker's bridge network). `latest` is the last
+release; `edge` follows the development branch.
 
 ### Packages and archives
 

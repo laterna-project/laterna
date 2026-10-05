@@ -57,7 +57,7 @@ volumes:
 ```
 
 - Tags: `latest` and `X.Y.Z` are releases, `X.Y` follows the patches of a minor version, `edge`
-  follows the `develop` branch. Until the first release is out, only `edge` exists.
+  follows the `develop` branch.
 - `/config` holds the database, the logs, downloaded images and backups: this is the volume to
   keep. `/cache` can be thrown away.
 - The server runs as user 1000. Media can be mounted read-only; Laterna never writes there.
