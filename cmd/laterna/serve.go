@@ -53,6 +53,18 @@ func loadConfig(fs *flag.FlagSet, args []string) (config.Config, platform.Dirs, 
 	return cfg, dirs, nil
 }
 
+// executableDir is the folder of the running binary, symbolic links resolved; empty if unknown.
+func executableDir() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
+	return filepath.Dir(exe)
+}
+
 // recentLogs is the number of log messages kept in memory for the admin API.
 const recentLogs = 2000
 
@@ -134,8 +146,11 @@ func serve(ctx context.Context, cfg config.Config, dirs platform.Dirs, log *slog
 		tracer.Shutdown(flushCtx)
 	}()
 
+	// FFmpeg shipped next to the server (release archives) is used unless the configuration
+	// names another one.
+	tools := cfg.FFmpeg.NextTo(executableDir())
 	opts := app.Options{
-		Logger: log, Logs: ring, FFmpeg: cfg.FFmpeg.FFmpeg, FFprobe: cfg.FFmpeg.FFprobe, Encoder: cfg.FFmpeg.Encoder,
+		Logger: log, Logs: ring, FFmpeg: tools.FFmpeg, FFprobe: tools.FFprobe, Encoder: cfg.FFmpeg.Encoder,
 		DataDir: dirs.Data, CacheDir: dirs.Cache, MetadataDir: dirs.Metadata, LogDir: dirs.Log(), BackupDir: dirs.BackupDir(), Tracer: tracer,
 	}
 	a, err := app.New(ctx, st, opts)

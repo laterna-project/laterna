@@ -6,8 +6,10 @@ declares what it can play, and the server decides from that profile and the sour
 
 ## FFmpeg: stock, and a child process
 
-- **Stock FFmpeg**, 7.1 or later. The Docker image and CI use a pinned, checksummed static GPL
-  build from BtbN. No fork is required.
+- **Stock FFmpeg**, 7.1 or later. The Docker image, CI and the release bundles use one pinned,
+  checksummed static GPL build from BtbN (`packaging/ffmpeg.lock`). No fork is required.
+- The server uses the `ffmpeg` and `ffprobe` it is configured with, otherwise the ones shipped
+  next to its own binary, otherwise the ones in `PATH`.
 - FFmpeg and ffprobe run as **child processes**, never linked into the binary. A crash in FFmpeg
   does not take the server down, and its GPL license stays on its side of the process boundary.
 - **Capabilities are probed at startup with real attempts** (encoders, tone mappers, the GPU

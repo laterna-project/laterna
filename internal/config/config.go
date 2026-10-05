@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -96,6 +98,28 @@ type FFmpeg struct {
 	// Encoder forces the H.264 encoder used for transcoding ("libx264", "h264_nvenc"...). Empty
 	// means the best one that works on this machine, detected at startup.
 	Encoder string `toml:"encoder"`
+}
+
+// NextTo fills in the executables that are not configured with the ones found in dir, the folder
+// of the server binary. Release archives ship FFmpeg there, so they work without anything in
+// PATH. What is configured always wins, and a tool that is not in dir is left to PATH.
+func (f FFmpeg) NextTo(dir string) FFmpeg {
+	pick := func(configured, name string) string {
+		if configured != "" || dir == "" {
+			return configured
+		}
+		if runtime.GOOS == "windows" {
+			name += ".exe"
+		}
+		p := filepath.Join(dir, name)
+		if info, err := os.Stat(p); err != nil || info.IsDir() {
+			return ""
+		}
+		return p
+	}
+	f.FFmpeg = pick(f.FFmpeg, "ffmpeg")
+	f.FFprobe = pick(f.FFprobe, "ffprobe")
+	return f
 }
 
 // Dirs returns the folders in effect: the configured ones, otherwise the platform's.
