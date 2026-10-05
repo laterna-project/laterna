@@ -2,12 +2,28 @@
   "name": "develop",
   "target": "branch",
   "enforcement": "active",
-  "conditions": { "ref_name": { "include": ["refs/heads/develop"], "exclude": [] } },
-  "bypass_actors": [{ "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "pull_request" }],
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "refs/heads/develop"
+      ],
+      "exclude": []
+    }
+  },
+  "bypass_actors": [
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "pull_request"
+    }
+  ],
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    { "type": "required_linear_history" },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
     {
       "type": "pull_request",
       "parameters": {
@@ -16,7 +32,10 @@
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": true,
-        "allowed_merge_methods": ["squash"]
+        "allowed_merge_methods": [
+          "squash",
+          "merge"
+        ]
       }
     },
     {
@@ -24,10 +43,18 @@
       "parameters": {
         "strict_required_status_checks_policy": false,
         "required_status_checks": [
-          { "context": "Lint" },
-          { "context": "Tests (Linux)" },
-          { "context": "Cross-build" },
-          { "context": "Image / Build and smoke test" }
+          {
+            "context": "Lint"
+          },
+          {
+            "context": "Tests (Linux)"
+          },
+          {
+            "context": "Cross-build"
+          },
+          {
+            "context": "Image / Build and smoke test"
+          }
         ]
       }
     }
