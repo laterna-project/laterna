@@ -76,7 +76,7 @@ func TestRefused(t *testing.T) {
 	phishing := *a
 	phishing.Origin = "https://media-example.com"
 	_, err = login(&phishing, cred, webauthn.NewChallenge())
-	refused("autre origine", err, "origin")
+	refused("another origin", err, "origin")
 
 	// User not verified.
 	lazy := *a
@@ -101,17 +101,17 @@ func TestRefused(t *testing.T) {
 	}
 	c.SignCount = 10
 	_, err = login(counted, c, webauthn.NewChallenge())
-	refused("compteur", err, "counter")
+	refused("counter", err, "counter")
 
 	// Passkey of another site.
-	elsewhere := webauthn.RP{ID: "autre.example", Origins: rp.Origins}
+	elsewhere := webauthn.RP{ID: "other.example", Origins: rp.Origins}
 	challenge := webauthn.NewChallenge()
 	resp, err = a.Get(webauthn.RequestOptions(rp, challenge))
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = webauthn.VerifyAssertion(elsewhere, challenge, cred, resp)
-	refused("autre site", err, "site")
+	refused("another site", err, "site")
 }
 
 func TestOptions(t *testing.T) {

@@ -28,35 +28,35 @@ func TestMusic(t *testing.T) {
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	lib, err := a.CreateLibrary(ctx, "Musique", domain.LibraryMusic, []string{testRoot("Musique")}, "")
+	lib, err := a.CreateLibrary(ctx, "Music", domain.LibraryMusic, []string{testRoot("Music")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 
 	artists, err := a.ListArtists(ctx, p, ListQuery{})
 	mustNil(t, err)
-	if got := titles(artists.Items); !slices.Equal(got, []string{"Artiste Test", domain.UnknownArtist}) {
+	if got := titles(artists.Items); !slices.Equal(got, []string{"Artist Test", domain.UnknownArtist}) {
 		t.Fatalf("artists: %v", got)
 	}
 	artistID := artists.Items[0].Item.ID
 	artist, d, albums, err := a.Artist(ctx, p, artistID)
 	mustNil(t, err)
-	if artist.Item.Overview != "Artiste inventé pour les tests." || d.ProviderIDs["musicbrainz_artist"] != "00000000-0000-0000-0000-00000000a001" ||
+	if artist.Item.Overview != "An artist made up for the tests." || d.ProviderIDs["musicbrainz_artist"] != "00000000-0000-0000-0000-00000000a001" ||
 		imageSource(artist, domain.ImagePoster) != domain.ImageLocal || artist.AlbumCount != 2 || artist.TrackCount != 4 {
 		t.Errorf("artist: %+v %+v", artist, d)
 	}
-	if got := titles(albums); len(albums) != 2 || !slices.Equal(got, []string{"Deuxième Album", "Album Test"}) {
+	if got := titles(albums); len(albums) != 2 || !slices.Equal(got, []string{"Double Album", "Album Test"}) {
 		t.Fatalf("albums, newest first: %v", got)
 	}
 
 	// First album: NFO and cover next to it, two tracks in order.
 	first, d, tracks, err := a.Album(ctx, p, albums[1].Item.ID)
 	mustNil(t, err)
-	if first.Item.Year != 2020 || first.Item.Overview != "Premier album de l'artiste de test." || first.ArtistName != "Artiste Test" ||
-		d.ProviderIDs["musicbrainz_release"] != "00000000-0000-0000-0000-00000000b001" || !slices.Equal(d.Genres, []string{"Électro"}) ||
+	if first.Item.Year != 2020 || first.Item.Overview != "First album of the test artist." || first.ArtistName != "Artist Test" ||
+		d.ProviderIDs["musicbrainz_release"] != "00000000-0000-0000-0000-00000000b001" || !slices.Equal(d.Genres, []string{"Electro"}) ||
 		imageSource(first, domain.ImagePoster) != domain.ImageLocal || first.TrackCount != 2 || first.Item.Runtime < 20*time.Second {
 		t.Errorf("first album: %+v %+v", first, d)
 	}
-	if got := titles(tracks); !slices.Equal(got, []string{"Piste Un", "Piste Deux"}) {
+	if got := titles(tracks); !slices.Equal(got, []string{"Track One", "Track Two"}) {
 		t.Errorf("tracks: %v", got)
 	}
 
@@ -64,14 +64,14 @@ func TestMusic(t *testing.T) {
 	second, d, tracks, err := a.Album(ctx, p, albums[0].Item.ID)
 	mustNil(t, err)
 	if second.Item.PremiereDate != "2022-05-13" || imageSource(second, domain.ImagePoster) != domain.ImageEmbedded ||
-		!slices.Equal(d.Genres, []string{"Ambient", "Électro"}) {
+		!slices.Equal(d.Genres, []string{"Ambient", "Electro"}) {
 		t.Errorf("second album: %+v %+v", second, d)
 	}
 	if len(tracks) != 2 || tracks[0].Track == nil || tracks[1].Track == nil {
 		t.Fatalf("tracks of the second album: %+v", tracks)
 	}
-	if t2 := tracks[1].Track; tracks[0].Track.Disc != 1 || t2.Disc != 2 || t2.Number != 1 || t2.Artists != "Artiste Test feat. Invité" ||
-		t2.TrackGain == nil || *t2.TrackGain != -4.10 || t2.TrackPeak == nil || *t2.TrackPeak != 0.95 || tracks[1].AlbumTitle != "Deuxième Album" {
+	if t2 := tracks[1].Track; tracks[0].Track.Disc != 1 || t2.Disc != 2 || t2.Number != 1 || t2.Artists != "Artist Test feat. Guest" ||
+		t2.TrackGain == nil || *t2.TrackGain != -4.10 || t2.TrackPeak == nil || *t2.TrackPeak != 0.95 || tracks[1].AlbumTitle != "Double Album" {
 		t.Errorf("track of the second disc: %+v %+v", tracks[1], t2)
 	}
 	// A track shows the cover of its album.
@@ -82,17 +82,17 @@ func TestMusic(t *testing.T) {
 	// Untagged file at the root.
 	loose, err := a.ArtistTracks(ctx, p, artists.Items[1].Item.ID)
 	mustNil(t, err)
-	if len(loose) != 1 || loose[0].Item.Title != "Sans étiquette" || loose[0].AlbumTitle != domain.UnknownAlbum {
+	if len(loose) != 1 || loose[0].Item.Title != "Untagged" || loose[0].AlbumTitle != domain.UnknownAlbum {
 		t.Errorf("untagged file: %+v", loose)
 	}
 	all, err := a.ArtistTracks(ctx, p, artistID)
 	mustNil(t, err)
-	if got := titles(all); !slices.Equal(got, []string{"Piste Un", "Piste Deux", "Premier", "Second"}) {
+	if got := titles(all); !slices.Equal(got, []string{"Track One", "Track Two", "First", "Second"}) {
 		t.Errorf("all tracks of the artist: %v", got)
 	}
 
 	// Search, library counts, genres.
-	found, err := a.Search(ctx, p, "deuxieme", 10)
+	found, err := a.Search(ctx, p, "double", 10)
 	mustNil(t, err)
 	if len(found) != 1 || found[0].Item.Kind != domain.ItemAlbum {
 		t.Errorf("search for an album: %+v", titles(found))
@@ -151,7 +151,7 @@ func TestMusic(t *testing.T) {
 		kinds = append(kinds, r.Kind)
 	}
 	if len(rows) != 2 || !slices.Equal(kinds, []HomeRowKind{RowRecentAlbums, RowLatestAlbums}) ||
-		!slices.Equal(titles(rows[0].Items), []string{"Deuxième Album"}) {
+		!slices.Equal(titles(rows[0].Items), []string{"Double Album"}) {
 		t.Fatalf("home: %v", kinds)
 	}
 
@@ -164,7 +164,7 @@ func TestMusic(t *testing.T) {
 			t.Errorf("track not marked as played: %s", tr.Item.Title)
 		}
 	}
-	pl, err := a.CreatePlaylist(ctx, p, "Tout l'artiste", []domain.ID{artistID})
+	pl, err := a.CreatePlaylist(ctx, p, "The whole artist", []domain.ID{artistID})
 	mustNil(t, err)
 	if pl.EntryCount != 4 || len(pl.Images) == 0 {
 		t.Errorf("playlist: %+v", pl)

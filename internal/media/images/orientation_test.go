@@ -24,7 +24,7 @@ func TestOrientation(t *testing.T) {
 		}
 	}
 	dir := t.TempDir()
-	src := filepath.Join(dir, "couchee.jpg")
+	src := filepath.Join(dir, "sideways.jpg")
 	if err := os.WriteFile(src, testfixtures.JPEGWithExif(img, testfixtures.Exif{Orientation: 6}), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestOrientation(t *testing.T) {
 	if err != nil || a.Width != 48 || a.Height != 64 {
 		t.Fatalf("analysis: %+v %v", a, err)
 	}
-	dst := filepath.Join(dir, "reduite.jpg")
+	dst := filepath.Join(dir, "reduced.jpg")
 	if err := Resize(src, dst, 24); err != nil {
 		t.Fatal(err)
 	}

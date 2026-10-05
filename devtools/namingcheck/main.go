@@ -43,15 +43,15 @@ func main() {
 				out += " [version " + m.Version + "]"
 			}
 			if m.Part > 0 {
-				out += fmt.Sprintf(" [partie %d]", m.Part)
+				out += fmt.Sprintf(" [part %d]", m.Part)
 			}
 			switch {
 			case m.Title == "":
-				return out, "titre vide"
+				return out, "empty title"
 			case m.Year == 0:
 				return out, "unknown year"
 			case len(m.Version) > 20:
-				return out, "version suspecte"
+				return out, "doubtful version"
 			}
 			return out, ""
 		})
@@ -68,14 +68,14 @@ func main() {
 				out += fmt.Sprintf("-E%02d", e.EpisodeEnd)
 			}
 			if e.Absolute {
-				out += " (absolu)"
+				out += " (absolute)"
 			}
 			groups[e.SeriesTitle]++
 			switch {
 			case e.SeriesTitle == "":
 				return out, "series without a title"
 			case e.Season < 0:
-				return out, "saison inconnue"
+				return out, "unknown season"
 			case e.Episode == 0:
 				return out, "episode 0"
 			}

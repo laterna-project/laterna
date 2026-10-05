@@ -39,7 +39,7 @@ func TestCodeFlow(t *testing.T) {
 		}
 		return back.Query().Get("code")
 	}
-	if _, err := p.Exchange(ctx, "laterna", "secret", authorize(), "autre-verificateur", redirect); err == nil {
+	if _, err := p.Exchange(ctx, "laterna", "secret", authorize(), "another-verifier", redirect); err == nil {
 		t.Error("PKCE ignored")
 	}
 	token, err := p.Exchange(ctx, "laterna", "secret", authorize(), verifier, redirect)

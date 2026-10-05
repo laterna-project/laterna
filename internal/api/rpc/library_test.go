@@ -16,7 +16,7 @@ import (
 func TestLibraryServiceOverHTTP(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
-	films, series := filepath.Join(t.TempDir(), "Films"), filepath.Join(t.TempDir(), "Séries")
+	films, series := filepath.Join(t.TempDir(), "Movies"), filepath.Join(t.TempDir(), "Shows")
 	for _, d := range []string{films, series} {
 		if err := os.MkdirAll(d, 0o750); err != nil {
 			t.Fatal(err)
@@ -29,7 +29,7 @@ func TestLibraryServiceOverHTTP(t *testing.T) {
 	token := setup(t, s)
 
 	created, err := s.library.CreateLibrary(ctx, withToken(&laternav1.CreateLibraryRequest{
-		Name: "Films", Kind: laternav1.LibraryKind_LIBRARY_KIND_MOVIES, Paths: []string{films},
+		Name: "Movies", Kind: laternav1.LibraryKind_LIBRARY_KIND_MOVIES, Paths: []string{films},
 	}, token))
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestLibraryServiceOverHTTP(t *testing.T) {
 
 	invalid := []*laternav1.CreateLibraryRequest{
 		{Name: "No kind", Paths: []string{series}},
-		{Name: "Relatif", Kind: laternav1.LibraryKind_LIBRARY_KIND_SHOWS, Paths: []string{"Séries"}},
+		{Name: "Relative", Kind: laternav1.LibraryKind_LIBRARY_KIND_SHOWS, Paths: []string{"Shows"}},
 		{Name: "No folder", Kind: laternav1.LibraryKind_LIBRARY_KIND_SHOWS},
 	}
 	for _, m := range invalid {
@@ -51,14 +51,14 @@ func TestLibraryServiceOverHTTP(t *testing.T) {
 		}
 	}
 	_, err = s.library.CreateLibrary(ctx, withToken(&laternav1.CreateLibraryRequest{
-		Name: "Doublon", Kind: laternav1.LibraryKind_LIBRARY_KIND_MOVIES, Paths: []string{filepath.Join(films, "..", "Films")},
+		Name: "Duplicate", Kind: laternav1.LibraryKind_LIBRARY_KIND_MOVIES, Paths: []string{filepath.Join(films, "..", "Movies")},
 	}, token))
 	if code(err) != connect.CodeAlreadyExists {
 		t.Errorf("folder already taken: %v", err)
 	}
 
 	// Empty Paths: folders unchanged.
-	name := "Mes films"
+	name := "My movies"
 	updated, err := s.library.UpdateLibrary(ctx, withToken(&laternav1.UpdateLibraryRequest{LibraryId: lib.GetId(), Name: &name}, token))
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestLibraryServiceOverHTTP(t *testing.T) {
 
 	// Library order: by kind as long as nobody chose one, then the one the administrator gives.
 	second, err := s.library.CreateLibrary(ctx, withToken(&laternav1.CreateLibraryRequest{
-		Name: "Animes", Kind: laternav1.LibraryKind_LIBRARY_KIND_SHOWS, Paths: []string{series},
+		Name: "Anime", Kind: laternav1.LibraryKind_LIBRARY_KIND_SHOWS, Paths: []string{series},
 	}, token))
 	if err != nil {
 		t.Fatal(err)

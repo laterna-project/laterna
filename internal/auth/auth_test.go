@@ -98,7 +98,7 @@ func TestBearerToken(t *testing.T) {
 		{"Bearer lat_abc", "lat_abc", true},
 		{"bearer   lat_abc  ", "lat_abc", true},
 		{"Basic lat_abc", "", false},
-		{"Bearer autre", "autre", false},
+		{"Bearer other", "other", false},
 		{"", "", false},
 		{"lat_abc", "", false},
 	}
@@ -125,7 +125,7 @@ func TestLimiter(t *testing.T) {
 	if ok || wait != 10*time.Minute {
 		t.Fatalf("after 3 failures: ok=%v wait=%v", ok, wait)
 	}
-	if _, ok := l.Allow("compte:autre"); !ok {
+	if _, ok := l.Allow("account:other"); !ok {
 		t.Error("another key must not be blocked")
 	}
 

@@ -51,8 +51,8 @@ var changesFiles = map[string]bool{
 // ChangesFiles reports an event that calls for a new scan.
 func (e Event) ChangesFiles() bool { return changesFiles[e.Type] }
 
-// MapPath maps a folder as Sonarr or Radarr sees it (often inside a container: "/tv/Animes/Dr.
-// STONE") to the folder Laterna sees ("D:\media\tv\Animes\Dr. STONE"). No setting is needed: the
+// MapPath maps a folder as Sonarr or Radarr sees it (often inside a container: "/tv/Anime/Dr.
+// STONE") to the folder Laterna sees ("D:\media\tv\Anime\Dr. STONE"). No setting is needed: the
 // path is used as is if it is under a root, otherwise we take the longest tail of the path that
 // exists under one of the roots. exists checks that a folder exists.
 func MapPath(arrPath string, roots []string, exists func(string) bool) (string, bool) {

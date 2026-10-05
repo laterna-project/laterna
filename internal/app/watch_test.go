@@ -36,14 +36,14 @@ func TestWatchLibraries(t *testing.T) {
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
 	root := t.TempDir()
-	copyTree(t, filepath.Join(testRoot("Films"), "Big Test Movie (2020)"), filepath.Join(root, "Big Test Movie (2020)"))
-	_, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+	copyTree(t, filepath.Join(testRoot("Movies"), "Big Test Movie (2020)"), filepath.Join(root, "Big Test Movie (2020)"))
+	_, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	waitMovies(t, a, p, 1)
 
 	// A movie folder is added: scanned on its own.
-	copyTree(t, filepath.Join(testRoot("Films"), "Deux Pistes (2019)"), filepath.Join(root, "Deux Pistes (2019)"))
+	copyTree(t, filepath.Join(testRoot("Movies"), "Dual Audio (2019)"), filepath.Join(root, "Dual Audio (2019)"))
 	waitMovies(t, a, p, 2)
 	// A file is removed: the movie goes away (file recorded as missing).
 	mustNil(t, os.RemoveAll(filepath.Join(root, "Big Test Movie (2020)")))
@@ -54,7 +54,7 @@ func TestWatchLibraries(t *testing.T) {
 	_, err = a.UpdateSettings(ctx, p, SettingsChanges{WatchLibraries: &off})
 	mustNil(t, err)
 	time.Sleep(300 * time.Millisecond) // watching stops
-	copyTree(t, filepath.Join(testRoot("Films"), "Sans Index (2018)"), filepath.Join(root, "Sans Index (2018)"))
+	copyTree(t, filepath.Join(testRoot("Movies"), "Stream Dump (2018)"), filepath.Join(root, "Stream Dump (2018)"))
 	time.Sleep(time.Second)
 	waitIdle(t, a)
 	waitMovies(t, a, p, 1)
@@ -63,6 +63,6 @@ func TestWatchLibraries(t *testing.T) {
 	_, err = a.UpdateSettings(ctx, p, SettingsChanges{WatchLibraries: &on})
 	mustNil(t, err)
 	time.Sleep(300 * time.Millisecond)
-	copyTree(t, filepath.Join(testRoot("Films"), "Versions (2017)"), filepath.Join(root, "Versions (2017)"))
+	copyTree(t, filepath.Join(testRoot("Movies"), "Versions (2017)"), filepath.Join(root, "Versions (2017)"))
 	waitMovies(t, a, p, 3)
 }

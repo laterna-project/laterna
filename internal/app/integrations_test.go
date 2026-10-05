@@ -73,21 +73,21 @@ func TestSonarrIntegration(t *testing.T) {
 	fake := arrtest.New(t, arr.Sonarr)
 	a.http = fake.Client()
 
-	// Series library on .../tv/Animes; Sonarr, in a container, sees /tv.
+	// Series library on .../tv/Anime; Sonarr, in a container, sees /tv.
 	tv := filepath.Join(t.TempDir(), "tv")
-	for _, d := range []string{"Animes/Dr. STONE", "Animes/Lost"} {
+	for _, d := range []string{"Anime/Dr. STONE", "Anime/Lost"} {
 		mustNil(t, os.MkdirAll(filepath.Join(tv, filepath.FromSlash(d)), 0o750))
 	}
-	writeText(t, filepath.Join(tv, "Animes", "Dr. STONE", "tvshow.nfo"), "<tvshow><title>Dr. STONE</title></tvshow>")
-	lib, err := a.CreateLibrary(ctx, "Animes", domain.LibraryShows, []string{filepath.Join(tv, "Animes")}, "")
+	writeText(t, filepath.Join(tv, "Anime", "Dr. STONE", "tvshow.nfo"), "<tvshow><title>Dr. STONE</title></tvshow>")
+	lib, err := a.CreateLibrary(ctx, "Anime", domain.LibraryShows, []string{filepath.Join(tv, "Anime")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 	fake.Set(func(s *arrtest.Server) {
 		s.Folders = []arr.Folder{
-			{Title: "Lost", Path: "/tv/Animes/Lost", HasFiles: true},
-			{Title: "Dr. STONE", Path: "/tv/Animes/Dr. STONE", HasFiles: true},
-			{Title: "Ailleurs", Path: "/tv/Autres/Ailleurs", HasFiles: true},
-			{Title: "À venir", Path: "/tv/Animes/À venir"},
+			{Title: "Lost", Path: "/tv/Anime/Lost", HasFiles: true},
+			{Title: "Dr. STONE", Path: "/tv/Anime/Dr. STONE", HasFiles: true},
+			{Title: "Elsewhere", Path: "/tv/Others/Elsewhere", HasFiles: true},
+			{Title: "Upcoming", Path: "/tv/Anime/Upcoming"},
 		}
 	})
 
@@ -95,7 +95,7 @@ func TestSonarrIntegration(t *testing.T) {
 	for _, c := range []struct{ kind, url, key string }{
 		{"sonarr", "ftp://x", arrtest.Key},
 		{"sonarr", fake.URL, ""},
-		{"sonarr", fake.URL, "mauvaise"},
+		{"sonarr", fake.URL, "wrong"},
 		{"radarr", fake.URL, arrtest.Key},
 		{"plex", fake.URL, arrtest.Key},
 	} {
@@ -138,13 +138,13 @@ func TestSonarrIntegration(t *testing.T) {
 
 	// Import: one scan of the library, in 30 s. Events close together make a single one.
 	for range 3 {
-		mustNil(t, fake.Send(map[string]any{"eventType": "Download", "series": map[string]any{"path": "/tv/Animes/Lost"}}))
+		mustNil(t, fake.Send(map[string]any{"eventType": "Download", "series": map[string]any{"path": "/tv/Anime/Lost"}}))
 	}
-	mustNil(t, fake.Send(map[string]any{"eventType": "Grab", "series": map[string]any{"path": "/tv/Animes/Lost"}}))
+	mustNil(t, fake.Send(map[string]any{"eventType": "Grab", "series": map[string]any{"path": "/tv/Anime/Lost"}}))
 	if n := pendingJobs(t, a, jobScanLibrary); n != 1 {
 		t.Errorf("%d scans waiting, want 1", n)
 	}
-	if err := a.ArrWebhook(ctx, "sonarr", "faux-secret", []byte(`{"eventType":"Download"}`)); !errors.Is(err, domain.ErrUnauthenticated) {
+	if err := a.ArrWebhook(ctx, "sonarr", "wrong-secret", []byte(`{"eventType":"Download"}`)); !errors.Is(err, domain.ErrUnauthenticated) {
 		t.Errorf("wrong secret: %v", err)
 	}
 	if err := a.ArrWebhook(ctx, "radarr", "", []byte(`{"eventType":"Download"}`)); !errors.Is(err, domain.ErrUnauthenticated) {

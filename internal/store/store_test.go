@@ -20,7 +20,7 @@ import (
 // profile may have.
 func openTemp(t *testing.T) (*Store, string) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "donnée", FileName)
+	path := filepath.Join(t.TempDir(), "café", FileName)
 	st, err := Open(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestOpenMigratesAndReopens(t *testing.T) {
 	st, path := openTemp(t)
 	ctx := context.Background()
 	if err := st.Write(ctx, func(q Q) error {
-		return q.SetSetting(ctx, "server.name", "Salon")
+		return q.SetSetting(ctx, "server.name", "Living room")
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestOpenMigratesAndReopens(t *testing.T) {
 	}
 	defer func() { _ = again.Close() }()
 	got, ok, err := again.Read().Setting(ctx, "server.name")
-	if err != nil || !ok || got != "Salon" {
+	if err != nil || !ok || got != "Living room" {
 		t.Fatalf("value read back %q, %v", got, err)
 	}
 }
@@ -81,14 +81,14 @@ func TestReaderIsReadOnly(t *testing.T) {
 func TestInsertSettingIfAbsentKeepsExisting(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	for _, v := range []string{"premier", "second"} {
+	for _, v := range []string{"first", "second"} {
 		if err := st.Write(ctx, func(q Q) error {
 			return q.InitSetting(ctx, "server.id", v)
 		}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if got, _, _ := st.Read().Setting(ctx, "server.id"); got != "premier" {
+	if got, _, _ := st.Read().Setting(ctx, "server.id"); got != "first" {
 		t.Errorf("existing value overwritten: %q", got)
 	}
 }
@@ -101,7 +101,7 @@ func TestConcurrentWritesAreSerialized(t *testing.T) {
 	for i := range 20 {
 		wg.Go(func() {
 			errs <- st.Write(ctx, func(q Q) error {
-				return q.SetSetting(ctx, "compteur", string(rune('a'+i)))
+				return q.SetSetting(ctx, "counter", string(rune('a'+i)))
 			})
 		})
 	}
@@ -125,7 +125,7 @@ func TestOpenRejectsQueryCharacters(t *testing.T) {
 func TestMusicMigrationKeepsCatalog(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
 	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "k", Title: "Amélie", SortTitle: "amelie", AddedAt: t0, UpdatedAt: t0}
 	mustWrite(t, st, func(q Q) error { return errors.Join(q.CreateLibrary(ctx, lib), q.CreateItem(ctx, movie)) })
 
@@ -149,7 +149,7 @@ func TestMusicMigrationKeepsCatalog(t *testing.T) {
 	if it, err := st.Read().Item(ctx, movie.ID); err != nil || it.Title != "Amélie" {
 		t.Fatalf("item lost: %+v %v", it, err)
 	}
-	music := newLibrary("Musique", domain.LibraryMusic, "/a")
+	music := newLibrary("Music", domain.LibraryMusic, "/a")
 	mustWrite(t, st, func(q Q) error { return q.CreateLibrary(ctx, music) })
 	mustWrite(t, st, func(q Q) error { return q.DeleteLibrary(ctx, lib.ID) })
 	if _, err := st.Read().Item(ctx, movie.ID); !IsNotFound(err) {
@@ -162,7 +162,7 @@ func TestMusicMigrationKeepsCatalog(t *testing.T) {
 func TestMigrationReappliesMetadata(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
 	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "k", Title: "x", SortTitle: "x", AddedAt: t0, UpdatedAt: t0}
 	mustWrite(t, st, func(q Q) error { return errors.Join(q.CreateLibrary(ctx, lib), q.CreateItem(ctx, movie)) })
 
@@ -213,9 +213,9 @@ func TestReaderCacheIsBounded(t *testing.T) {
 func TestThemesMigrationRoundTrip(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
 	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "k", Title: "x", SortTitle: "x", AddedAt: t0, UpdatedAt: t0}
-	theme := domain.Theme{ID: domain.NewID(), Name: "Maison", CreatedAt: t0, UpdatedAt: t0}
+	theme := domain.Theme{ID: domain.NewID(), Name: "House", CreatedAt: t0, UpdatedAt: t0}
 	mustWrite(t, st, func(q Q) error {
 		if err := errors.Join(q.CreateLibrary(ctx, lib), q.CreateItem(ctx, movie), q.CreateTheme(ctx, theme)); err != nil {
 			return err

@@ -17,7 +17,7 @@ func TestDeviceLogin(t *testing.T) {
 	_, phone := setupAdmin(t, a)
 	ctx := context.Background()
 
-	start, err := a.StartDeviceLogin(ctx, dev("Salon"), "10.0.0.9")
+	start, err := a.StartDeviceLogin(ctx, dev("Living room"), "10.0.0.9")
 	mustNil(t, err)
 	if !regexp.MustCompile(`^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$`).MatchString(start.UserCode) ||
 		len(start.DeviceCode) < 40 || start.Interval != 5*time.Second || !start.ExpiresAt.Equal(c.now().Add(10*time.Minute)) {
@@ -46,7 +46,7 @@ func TestDeviceLogin(t *testing.T) {
 	typed := strings.ToLower(strings.ReplaceAll(start.UserCode, "-", " "))
 	req, err := a.DeviceLogin(ctx, phone, typed)
 	mustNil(t, err)
-	if req.Device.Name != "Salon" || req.IP != "10.0.0.9" {
+	if req.Device.Name != "Living room" || req.IP != "10.0.0.9" {
 		t.Errorf("device: %+v", req)
 	}
 	if _, err := a.DeviceLogin(ctx, phone, "BBBB-BBBB"); !isKind(err, domain.ErrNotFound) {
@@ -54,7 +54,7 @@ func TestDeviceLogin(t *testing.T) {
 	}
 
 	// A kid profile cannot approve.
-	kid, err := a.CreateProfile(ctx, phone, "Enfant", "", true, nil, "")
+	kid, err := a.CreateProfile(ctx, phone, "Kid", "", true, nil, "")
 	mustNil(t, err)
 	kidP := phone
 	kidP.Profile = &kid
@@ -82,7 +82,7 @@ func TestDeviceLogin(t *testing.T) {
 	}
 
 	// Denied.
-	other, err := a.StartDeviceLogin(ctx, dev("Chambre"), "10.0.0.10")
+	other, err := a.StartDeviceLogin(ctx, dev("Bedroom"), "10.0.0.10")
 	mustNil(t, err)
 	mustNil(t, a.DenyDeviceLogin(ctx, phone, other.UserCode))
 	if poll, err := a.PollDeviceLogin(ctx, other.DeviceCode); err != nil || poll.State != DeviceLoginDenied {
@@ -90,7 +90,7 @@ func TestDeviceLogin(t *testing.T) {
 	}
 
 	// Approved but never collected: the session is closed when the request expires.
-	lost, err := a.StartDeviceLogin(ctx, dev("Grenier"), "10.0.0.11")
+	lost, err := a.StartDeviceLogin(ctx, dev("Attic"), "10.0.0.11")
 	mustNil(t, err)
 	mustNil(t, a.ApproveDeviceLogin(ctx, phone, lost.UserCode, false))
 	before, err := a.Sessions(ctx, phone)
@@ -122,7 +122,7 @@ func TestDeviceLoginVerificationURL(t *testing.T) {
 	ctx := context.Background()
 	start := func() DeviceLoginStart {
 		t.Helper()
-		s, err := a.StartDeviceLogin(ctx, dev("Salon"), "10.0.0.9")
+		s, err := a.StartDeviceLogin(ctx, dev("Living room"), "10.0.0.9")
 		mustNil(t, err)
 		return s
 	}

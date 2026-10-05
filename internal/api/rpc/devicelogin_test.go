@@ -19,7 +19,7 @@ func TestDeviceLoginOverHTTP(t *testing.T) {
 	ctx := context.Background()
 
 	start, err := s.auth.StartDeviceLogin(ctx, connect.NewRequest(&laternav1.StartDeviceLoginRequest{
-		Device: &laternav1.Device{Name: "Salon", Client: "Laterna TV", ClientVersion: "1", Platform: "Android TV"},
+		Device: &laternav1.Device{Name: "Living room", Client: "Laterna TV", ClientVersion: "1", Platform: "Android TV"},
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +36,7 @@ func TestDeviceLoginOverHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	withURL, err := s.auth.StartDeviceLogin(ctx, connect.NewRequest(&laternav1.StartDeviceLoginRequest{
-		Device: &laternav1.Device{Name: "Chambre", Client: "Laterna TV", ClientVersion: "1", Platform: "Android TV"},
+		Device: &laternav1.Device{Name: "Bedroom", Client: "Laterna TV", ClientVersion: "1", Platform: "Android TV"},
 	}))
 	if err != nil || withURL.Msg.GetVerificationUrl() != "https://app.example.org/device" ||
 		withURL.Msg.GetVerificationUrlComplete() != "https://app.example.org/device?code="+withURL.Msg.GetUserCode() {
@@ -64,7 +64,7 @@ func TestDeviceLoginOverHTTP(t *testing.T) {
 	// First poll: the session, with a token that works.
 	r, err := poll(st.GetDeviceCode())
 	if err != nil || r.GetState() != laternav1.DeviceLoginState_DEVICE_LOGIN_STATE_APPROVED || r.GetToken() == "" ||
-		r.GetSession().GetDevice().GetName() != "Salon" {
+		r.GetSession().GetDevice().GetName() != "Living room" {
 		t.Fatalf("approved: %v %v", r, err)
 	}
 	session, err := s.auth.GetSession(ctx, withToken(&laternav1.GetSessionRequest{}, r.GetToken()))
@@ -77,7 +77,7 @@ func TestDeviceLoginOverHTTP(t *testing.T) {
 
 	// Polling too fast: RESOURCE_EXHAUSTED.
 	other, err := s.auth.StartDeviceLogin(ctx, connect.NewRequest(&laternav1.StartDeviceLoginRequest{
-		Device: &laternav1.Device{Name: "Chambre", Client: "Laterna TV", ClientVersion: "1", Platform: "tvOS"},
+		Device: &laternav1.Device{Name: "Bedroom", Client: "Laterna TV", ClientVersion: "1", Platform: "tvOS"},
 	}))
 	if err != nil {
 		t.Fatal(err)

@@ -15,7 +15,7 @@ import (
 func TestMatroskaCuesMatchProbe(t *testing.T) {
 	_, ffprobe, _ := testfixtures.FFmpeg()
 	ctx := context.Background()
-	for _, rel := range []string{"Films/Deux Pistes (2019)/Deux Pistes (2019).mkv", "Films/HDR Test (2021)/HDR Test (2021).mkv"} {
+	for _, rel := range []string{"Movies/Dual Audio (2019)/Dual Audio (2019).mkv", "Movies/HDR Test (2021)/HDR Test (2021).mkv"} {
 		path := testfixtures.Path(t, rel)
 		cues, err := Matroska(path)
 		if err != nil {
@@ -33,7 +33,7 @@ func TestMatroskaCuesMatchProbe(t *testing.T) {
 
 func TestNoIndexFallsBackToProbe(t *testing.T) {
 	_, ffprobe, _ := testfixtures.FFmpeg()
-	for _, rel := range []string{"Films/Sans Index (2018)/Sans Index (2018).mkv", "Films/Big Test Movie (2020)/Big Test Movie (2020).mp4"} {
+	for _, rel := range []string{"Movies/Stream Dump (2018)/Stream Dump (2018).mkv", "Movies/Big Test Movie (2020)/Big Test Movie (2020).mp4"} {
 		path := testfixtures.Path(t, rel)
 		if _, err := Matroska(path); !errors.Is(err, ErrNoIndex) {
 			t.Errorf("%s: %v, want ErrNoIndex", rel, err)
@@ -46,7 +46,7 @@ func TestNoIndexFallsBackToProbe(t *testing.T) {
 }
 
 func TestMatroskaRejectsGarbage(t *testing.T) {
-	path := t.TempDir() + "/faux.mkv"
+	path := t.TempDir() + "/fake.mkv"
 	if err := os.WriteFile(path, []byte("not a matroska file at all"), 0o600); err != nil {
 		t.Fatal(err)
 	}

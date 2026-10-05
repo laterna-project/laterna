@@ -236,7 +236,7 @@ func itemSortFromMsg(s laternav1.ItemSort) domain.ItemSort {
 	case laternav1.ItemSort_ITEM_SORT_UNSPECIFIED, laternav1.ItemSort_ITEM_SORT_TITLE:
 		return domain.SortTitle
 	}
-	return domain.ItemSort("inconnu") // value from a newer client: rejected by app
+	return domain.ItemSort("unknown") // value from a newer client: rejected by app
 }
 
 // clampInt32 clamps an integer to the int32 range of the contract.

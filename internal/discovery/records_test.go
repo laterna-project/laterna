@@ -9,7 +9,7 @@ import (
 	"golang.org/x/net/dns/dnsmessage"
 )
 
-var testInfo = Info{ID: "0192f0c4-7d1e-7a3b-9c2d-1e2f3a4b5c6d", Name: "Salon", Version: "0.3.0"}
+var testInfo = Info{ID: "0192f0c4-7d1e-7a3b-9c2d-1e2f3a4b5c6d", Name: "Living room", Version: "0.3.0"}
 
 func testZone(t *testing.T) zone {
 	t.Helper()
@@ -120,7 +120,7 @@ func TestAnswerBrowse(t *testing.T) {
 		t.Errorf("unique SRV, flushes caches: %+v", got.additional[0].Header)
 	}
 	txt := got.additional[1].Body.(*dnsmessage.TXTResource)
-	if !slices.Equal(txt.TXT, []string{"id=" + testInfo.ID, "name=Salon", "version=0.3.0"}) {
+	if !slices.Equal(txt.TXT, []string{"id=" + testInfo.ID, "name=Living room", "version=0.3.0"}) {
 		t.Errorf("TXT: %q", txt.TXT)
 	}
 	if a := got.additional[2].Body.(*dnsmessage.AResource); a.A != [4]byte{192, 168, 1, 20} {
@@ -150,7 +150,7 @@ func TestAnswerQuestions(t *testing.T) {
 			[]dnsmessage.Type{dnsmessage.TypeA},
 		},
 		{
-			"tout de l'instance",
+			"everything about the instance",
 			[]dnsmessage.Question{question(instance, dnsmessage.TypeALL)},
 			[]dnsmessage.Type{dnsmessage.TypeSRV, dnsmessage.TypeTXT},
 			[]dnsmessage.Type{dnsmessage.TypeA},
@@ -184,11 +184,11 @@ func TestAnswerQuestions(t *testing.T) {
 func TestAnswerIgnores(t *testing.T) {
 	z := testZone(t)
 	for name, msg := range map[string][]byte{
-		"autre service":    query(t, 0, question("_googlecast._tcp.local.", dnsmessage.TypePTR)),
-		"autre type":       query(t, 0, question("_laterna._tcp.local.", dnsmessage.TypeTXT)),
+		"another service":  query(t, 0, question("_googlecast._tcp.local.", dnsmessage.TypePTR)),
+		"another type":     query(t, 0, question("_laterna._tcp.local.", dnsmessage.TypeTXT)),
 		"IPv6 of the host": query(t, 0, question("laterna-0192f0c47d1e7a3b9c2d1e2f3a4b5c6d.local.", dnsmessage.TypeAAAA)),
 		"truncated":        query(t, 0, question("_laterna._tcp.local.", dnsmessage.TypePTR))[:14],
-		"vide":             nil,
+		"empty":            nil,
 	} {
 		if resp, recs := answer(msg, z, false); resp != nil || recs != nil {
 			t.Errorf("%s: unexpected answer", name)
@@ -265,7 +265,7 @@ func TestPick(t *testing.T) {
 	}{
 		{"incoming interface known", 2, addr("10.0.0.5"), netip.Addr{}, []netip.Addr{addr("192.168.1.20")}},
 		{"client's network", 0, addr("192.168.1.42"), netip.Addr{}, []netip.Addr{addr("192.168.1.20")}},
-		{"conteneur", 0, addr("172.17.0.2"), netip.Addr{}, []netip.Addr{addr("172.17.0.1")}},
+		{"container", 0, addr("172.17.0.2"), netip.Addr{}, []netip.Addr{addr("172.17.0.1")}},
 		{"unknown: all of them", 0, addr("10.9.9.9"), netip.Addr{}, []netip.Addr{addr("172.17.0.1"), addr("192.168.1.20")}},
 		{"forced listen address", 3, addr("172.17.0.2"), addr("192.168.1.20"), []netip.Addr{addr("192.168.1.20")}},
 	} {

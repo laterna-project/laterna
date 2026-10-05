@@ -215,7 +215,7 @@ func (a *App) checkPIN(profile domain.Profile, pinHash, pin string) error {
 	if !profile.HasPIN {
 		return nil
 	}
-	key := "profil:" + profile.ID.String()
+	key := "profile:" + profile.ID.String()
 	if wait, ok := a.limiter.Allow(key); !ok {
 		return domain.TooManyAttempts("profile.too_many_pin_attempts", "retry_after_seconds", roundUp(wait))
 	}

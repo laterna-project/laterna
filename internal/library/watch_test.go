@@ -45,8 +45,8 @@ func expectNothing(t *testing.T, w *Watcher) {
 }
 
 func TestWatcher(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "Films")
-	sub := filepath.Join(root, "Film (2020)")
+	root := filepath.Join(t.TempDir(), "Movies")
+	sub := filepath.Join(root, "Movie (2020)")
 	if err := os.MkdirAll(sub, 0o750); err != nil {
 		t.Fatal(err)
 	}
@@ -65,17 +65,17 @@ func TestWatcher(t *testing.T) {
 	}
 
 	// File in an existing subfolder.
-	if err := os.WriteFile(filepath.Join(sub, "film.mkv"), []byte("x"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(sub, "movie.mkv"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	expectChange(t, w, root)
 	// New folder, then a file in it: the folder gets watched too.
-	fresh := filepath.Join(root, "Nouveau (2021)")
+	fresh := filepath.Join(root, "New (2021)")
 	if err := os.Mkdir(fresh, 0o750); err != nil {
 		t.Fatal(err)
 	}
 	expectChange(t, w, root)
-	if err := os.WriteFile(filepath.Join(fresh, "nouveau.mkv"), []byte("x"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(fresh, "new.mkv"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	expectChange(t, w, root)
@@ -85,7 +85,7 @@ func TestWatcher(t *testing.T) {
 	}
 	expectNothing(t, w)
 	// Removal.
-	if err := os.Remove(filepath.Join(sub, "film.mkv")); err != nil {
+	if err := os.Remove(filepath.Join(sub, "movie.mkv")); err != nil {
 		t.Fatal(err)
 	}
 	expectChange(t, w, root)
@@ -94,7 +94,7 @@ func TestWatcher(t *testing.T) {
 	if _, err := w.Sync(nil); err != nil || w.Dirs() != 0 {
 		t.Fatalf("forgetting: %v (%d folders)", err, w.Dirs())
 	}
-	if err := os.WriteFile(filepath.Join(sub, "autre.mkv"), []byte("x"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(sub, "other.mkv"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	expectNothing(t, w)

@@ -12,7 +12,7 @@ import (
 func TestSubtitleSets(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	lib := newLibrary("Séries", domain.LibraryShows, "/s")
+	lib := newLibrary("Shows", domain.LibraryShows, "/s")
 	ep1 := domain.MediaFile{ID: domain.NewID(), LibraryID: lib.ID, Path: "/s/e1.mkv", Size: 1, ModTime: t0, Fingerprint: "e1"}
 	ep2 := domain.MediaFile{ID: domain.NewID(), LibraryID: lib.ID, Path: "/s/e2.mkv", Size: 1, ModTime: t0, Fingerprint: "e2"}
 	mustWrite(t, st, func(q Q) error {
@@ -29,7 +29,7 @@ func TestSubtitleSets(t *testing.T) {
 	}
 
 	shared := domain.Font{SHA256: "aa11", Names: []string{"go", "go regular"}, Ext: ".ttf", Size: 10}
-	own := domain.Font{SHA256: "bb22", Names: []string{"titre"}, Ext: ".otf", Size: 20}
+	own := domain.Font{SHA256: "bb22", Names: []string{"title"}, Ext: ".otf", Size: 20}
 	set := domain.SubtitleSet{
 		Fingerprint: "e1", Sidecars: "sig", ExtractedAt: t0,
 		Subtitles: []domain.Subtitle{
@@ -52,7 +52,7 @@ func TestSubtitleSets(t *testing.T) {
 	if !got.Subtitles[1].Image() || got.Subtitles[0].Image() || !got.Subtitles[2].External() {
 		t.Error("Image / External")
 	}
-	if f, err := st.Read().Font(ctx, "bb22"); err != nil || f.Ext != ".otf" || !slices.Equal(f.Names, []string{"titre"}) {
+	if f, err := st.Read().Font(ctx, "bb22"); err != nil || f.Ext != ".otf" || !slices.Equal(f.Names, []string{"title"}) {
 		t.Errorf("font: %+v %v", f, err)
 	}
 

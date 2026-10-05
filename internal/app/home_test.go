@@ -27,7 +27,7 @@ func TestHome(t *testing.T) {
 	mustNil(t, err)
 	// Nothing started: only the recently added rows, libraries by name.
 	if len(rows) != 2 || rows[0].Kind != RowLatestMovies || rows[0].Library.ID != films.ID || len(rows[0].Items) != 5 ||
-		rows[1].Kind != RowLatestSeries || rows[1].Library.ID != shows.ID || rows[1].Title.String() != "home.latest (library=Séries)" {
+		rows[1].Kind != RowLatestSeries || rows[1].Library.ID != shows.ID || rows[1].Title.String() != "home.latest (library=Shows)" {
 		t.Fatalf("initial home: %v", rowKinds(rows))
 	}
 
@@ -81,13 +81,13 @@ func TestReorderLibraries(t *testing.T) {
 		}
 		return out
 	}
-	if got := libraryNames(); !slices.Equal(got, []string{"Films", "Séries"}) {
+	if got := libraryNames(); !slices.Equal(got, []string{"Movies", "Shows"}) {
 		t.Fatalf("default order: %v", got)
 	}
 
 	// An order must name every library once, and only once.
 	for name, ids := range map[string][]domain.ID{
-		"incomplet": {shows.ID}, "en double": {shows.ID, shows.ID}, "inconnue": {shows.ID, domain.NewID()},
+		"incomplete": {shows.ID}, "twice": {shows.ID, shows.ID}, "unknown": {shows.ID, domain.NewID()},
 		"one too many": {shows.ID, films.ID, domain.NewID()}, "empty": nil,
 	} {
 		if _, err := a.ReorderLibraries(ctx, ids); domain.CodeOf(err) != "library.invalid_order" {
@@ -100,7 +100,7 @@ func TestReorderLibraries(t *testing.T) {
 	if len(list) != 2 || list[0].Library.ID != shows.ID || list[0].Library.Position != 1 || list[1].Library.Position != 2 {
 		t.Fatalf("after reordering: %+v", list)
 	}
-	if got := libraryNames(); !slices.Equal(got, []string{"Séries", "Films"}) {
+	if got := libraryNames(); !slices.Equal(got, []string{"Shows", "Movies"}) {
 		t.Errorf("lists: %v", got)
 	}
 	rows, err := a.Home(ctx, p, 0)
@@ -110,7 +110,7 @@ func TestReorderLibraries(t *testing.T) {
 	}
 	page, err := a.Activity(ctx, ActivityQuery{PageSize: 1})
 	mustNil(t, err)
-	if len(page.Entries) != 1 || page.Entries[0].Text.String() != "activity.libraries_reordered (names=Séries, Films)" {
+	if len(page.Entries) != 1 || page.Entries[0].Text.String() != "activity.libraries_reordered (names=Shows, Movies)" {
 		t.Errorf("activity log: %+v", page.Entries)
 	}
 }
@@ -165,7 +165,7 @@ func TestEvents(t *testing.T) {
 	otherSub := a.Subscribe(other)
 	defer otherSub.Close()
 
-	lib, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{testRoot("Films")}, "")
+	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{testRoot("Movies")}, "")
 	mustNil(t, err)
 	next[domain.LibrariesChanged](t, adminSub)
 	if scanned := next[domain.LibraryScanned](t, adminSub); scanned.LibraryID != lib.ID || scanned.Added != 6 {

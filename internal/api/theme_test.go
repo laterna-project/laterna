@@ -81,7 +81,7 @@ func TestThemes(t *testing.T) {
 	unreadable := *tokens.GetDark()
 	unreadable.Text = "#30343c"
 	bad := &laternav1.ThemeTokens{Dark: &unreadable, Light: tokens.GetLight(), Radius: 8, Density: tokens.GetDensity(), Font: tokens.GetFont()}
-	_, err = themes.CreateTheme(ctx, authed(&laternav1.CreateThemeRequest{Name: "Gris", Tokens: bad}, token))
+	_, err = themes.CreateTheme(ctx, authed(&laternav1.CreateThemeRequest{Name: "Gray", Tokens: bad}, token))
 	rejected := errorDetail(err)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument || rejected.GetCode() != "theme.rejected" || len(rejected.GetCauses()) == 0 {
 		t.Fatalf("unreadable theme: %v", err)
@@ -93,7 +93,7 @@ func TestThemes(t *testing.T) {
 
 	// Creation, logo.
 	mine := &laternav1.ThemeTokens{Dark: tokens.GetDark(), Light: tokens.GetLight(), Radius: 20, Density: laternav1.ThemeDensity_THEME_DENSITY_COMPACT, Font: laternav1.ThemeFont_THEME_FONT_SERIF}
-	created, err := themes.CreateTheme(ctx, authed(&laternav1.CreateThemeRequest{Name: "Maison", Tokens: mine}, token))
+	created, err := themes.CreateTheme(ctx, authed(&laternav1.CreateThemeRequest{Name: "House", Tokens: mine}, token))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,13 +137,13 @@ func TestThemes(t *testing.T) {
 	if !stream.Receive() || stream.Msg().GetEvent().GetThemesChanged() == nil {
 		t.Errorf("want an event: %v %v", stream.Msg(), stream.Err())
 	}
-	if server, err := themes.GetServerTheme(ctx, connect.NewRequest(&laternav1.GetServerThemeRequest{})); err != nil || server.Msg.GetTheme().GetName() != "Maison" {
+	if server, err := themes.GetServerTheme(ctx, connect.NewRequest(&laternav1.GetServerThemeRequest{})); err != nil || server.Msg.GetTheme().GetName() != "House" {
 		t.Errorf("new server theme: %v %v", server, err)
 	}
 
 	// The profile's choice.
 	my, err := themes.GetMyTheme(ctx, authed(&laternav1.GetMyThemeRequest{}, token))
-	if err != nil || my.Msg.GetTheme().GetName() != "Maison" || !my.Msg.GetFollowsServer() || my.Msg.GetMode() != laternav1.ThemeMode_THEME_MODE_AUTO {
+	if err != nil || my.Msg.GetTheme().GetName() != "House" || !my.Msg.GetFollowsServer() || my.Msg.GetMode() != laternav1.ThemeMode_THEME_MODE_AUTO {
 		t.Fatalf("profile theme: %v %v", my, err)
 	}
 	ocean := list.Msg.GetThemes()[1]
@@ -157,7 +157,7 @@ func TestThemes(t *testing.T) {
 
 	// Export then import: same tokens, logo included, numbered name.
 	exported, err := themes.ExportTheme(ctx, authed(&laternav1.ExportThemeRequest{ThemeId: house.GetId()}, token))
-	if err != nil || exported.Msg.GetFileName() != "Maison.laterna-theme.json" {
+	if err != nil || exported.Msg.GetFileName() != "House.laterna-theme.json" {
 		t.Fatalf("export: %v %v", exported, err)
 	}
 	imported, err := themes.ImportTheme(ctx, authed(&laternav1.ImportThemeRequest{Data: exported.Msg.GetData()}, token))
@@ -165,7 +165,7 @@ func TestThemes(t *testing.T) {
 		t.Fatal(err)
 	}
 	copyTheme := imported.Msg.GetTheme()
-	if copyTheme.GetName() != "Maison (2)" || copyTheme.GetTokens().GetRadius() != 20 || copyTheme.GetLogo().GetWidth() != 64 {
+	if copyTheme.GetName() != "House (2)" || copyTheme.GetTokens().GetRadius() != 20 || copyTheme.GetLogo().GetWidth() != 64 {
 		t.Errorf("import: %v", copyTheme)
 	}
 
@@ -176,7 +176,7 @@ func TestThemes(t *testing.T) {
 	if _, err := themes.DeleteTheme(ctx, authed(&laternav1.DeleteThemeRequest{ThemeId: copyTheme.GetId()}, token)); err != nil {
 		t.Fatal(err)
 	}
-	if my, err := themes.GetMyTheme(ctx, authed(&laternav1.GetMyThemeRequest{}, token)); err != nil || my.Msg.GetTheme().GetName() != "Maison" || !my.Msg.GetFollowsServer() {
+	if my, err := themes.GetMyTheme(ctx, authed(&laternav1.GetMyThemeRequest{}, token)); err != nil || my.Msg.GetTheme().GetName() != "House" || !my.Msg.GetFollowsServer() {
 		t.Errorf("after deleting the chosen theme: %v %v", my, err)
 	}
 	// Deleting the server's theme brings the built-in one back.

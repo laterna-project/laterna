@@ -25,7 +25,7 @@ func sample(t *testing.T, name, path string) domain.MediaInfo {
 }
 
 func TestParseMultiTrackMKV(t *testing.T) {
-	info := sample(t, "multipiste", "x.mkv")
+	info := sample(t, "multitrack", "x.mkv")
 	if info.Container != "mkv" || info.Duration != 12021*time.Millisecond || info.Bitrate == 0 {
 		t.Errorf("format: %+v", info)
 	}
@@ -36,7 +36,7 @@ func TestParseMultiTrackMKV(t *testing.T) {
 	if v.Kind != domain.StreamVideo || v.Codec != "h264" || v.Width != 640 || v.BitDepth != 8 || v.FrameRate != 24 || v.DynamicRange != domain.SDR {
 		t.Errorf("video: %+v", v)
 	}
-	if fr.Kind != domain.StreamAudio || fr.Language != "fre" || fr.Title != "Français" || !fr.Default || fr.Channels != 2 || fr.SampleRate != 48000 {
+	if fr.Kind != domain.StreamAudio || fr.Language != "fre" || fr.Title != "French" || !fr.Default || fr.Channels != 2 || fr.SampleRate != 48000 {
 		t.Errorf("French audio: %+v", fr)
 	}
 	if ja.Language != "jpn" || ja.Default || ja.Title != "日本語" {
@@ -62,8 +62,8 @@ func TestParseHDR(t *testing.T) {
 }
 
 func TestParseMP3WithCover(t *testing.T) {
-	info := sample(t, "mp3", "piste.mp3")
-	if info.Container != "mp3" || info.Tags["title"] != "Piste Deux" || info.Tags["album"] != "Album Test" {
+	info := sample(t, "mp3", "track.mp3")
+	if info.Container != "mp3" || info.Tags["title"] != "Track Two" || info.Tags["album"] != "Album Test" {
 		t.Errorf("MP3: %+v", info)
 	}
 	if len(info.Streams) != 2 || info.Streams[1].Kind != domain.StreamAttachment {
@@ -99,14 +99,14 @@ func TestProbeRealFiles(t *testing.T) {
 	_, ffprobe, _ := testfixtures.FFmpeg()
 	p := New(ffprobe)
 	ctx := context.Background()
-	info, err := p.Probe(ctx, testfixtures.Path(t, "Films/Deux Pistes (2019)/Deux Pistes (2019).mkv"))
+	info, err := p.Probe(ctx, testfixtures.Path(t, "Movies/Dual Audio (2019)/Dual Audio (2019).mkv"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if info.Container != "mkv" || len(info.Streams) != 5 || len(info.Chapters) != 3 {
 		t.Fatalf("real probe: %+v", info)
 	}
-	if info.Streams[2].Title != "日本語" || info.Chapters[1].Title != "Épisode" {
+	if info.Streams[2].Title != "日本語" || info.Chapters[1].Title != "Episode" {
 		t.Errorf("non-UTF-8 text (titles): %q, %q", info.Streams[2].Title, info.Chapters[1].Title)
 	}
 	// A name that looks like a protocol is still a file name (the "file:" prefix).

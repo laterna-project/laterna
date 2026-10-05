@@ -23,7 +23,7 @@ func TestGPU(t *testing.T) {
 		t.Skip("no Vulkan chain here")
 	}
 	_, ffprobe, _ := testfixtures.FFmpeg()
-	src := testfixtures.Path(t, "Films/HDR Test (2021)/HDR Test (2021).mkv")
+	src := testfixtures.Path(t, "Movies/HDR Test (2021)/HDR Test (2021).mkv")
 	tm, _ := ToneMapperByName("zscale") // ignored: libplacebo converts on the card
 	args := Args(Options{Path: src, Start: 6 * time.Second, Audio: -1, Encoder: enc, MaxHeight: 1080, Segment: 6 * time.Second, ToneMap: &tm, GPU: true})
 	out := filepath.Join(t.TempDir(), "gpu.mp4")
@@ -47,7 +47,7 @@ func TestGPU(t *testing.T) {
 		t.Errorf("10-bit H.264: %v", starts)
 	}
 	if starts := fragments(t, ffmpeg, Options{
-		Path:  testfixtures.Path(t, "Films/Deux Pistes (2019)/Deux Pistes (2019).mkv"),
+		Path:  testfixtures.Path(t, "Movies/Dual Audio (2019)/Dual Audio (2019).mkv"),
 		Audio: -1, Encoder: enc, MaxHeight: 1080, Segment: 6 * time.Second, GPU: true,
 	}); !slices.Contains(starts, 6*time.Second) {
 		t.Errorf("keyframe at 6 s missing: %v", starts)

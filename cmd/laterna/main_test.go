@@ -29,7 +29,7 @@ func TestRunVersionAndUnknownCommand(t *testing.T) {
 	if !strings.HasPrefix(out.String(), "laterna ") {
 		t.Errorf("version: %q", out.String())
 	}
-	if code := run(context.Background(), []string{"danse"}, &out, &errOut); code != 2 {
+	if code := run(context.Background(), []string{"dance"}, &out, &errOut); code != 2 {
 		t.Errorf("unknown command: code %d", code)
 	}
 }
@@ -40,7 +40,7 @@ func startServer(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	dirs := platform.Dirs{
-		Data:     filepath.Join(root, "données"),
+		Data:     filepath.Join(root, "café"),
 		Cache:    filepath.Join(root, "cache"),
 		Metadata: filepath.Join(root, "metadata"),
 	}

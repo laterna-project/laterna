@@ -91,7 +91,7 @@ func TestDefaultDirsLinuxWithoutHome(t *testing.T) {
 func TestEnsureCreatesDirs(t *testing.T) {
 	root := t.TempDir()
 	d := Dirs{
-		Data:     filepath.Join(root, "données"),
+		Data:     filepath.Join(root, "café"),
 		Cache:    filepath.Join(root, "cache"),
 		Metadata: filepath.Join(root, "metadata"),
 	}
@@ -108,10 +108,10 @@ func TestInContainer(t *testing.T) {
 		files []string
 		want  bool
 	}{
-		"hors conteneur": {nil, false},
-		"Docker":         {[]string{"/.dockerenv"}, true},
-		"Podman":         {[]string{"/run/.containerenv"}, true},
-		"another file":   {[]string{"/etc/hostname"}, false},
+		"not in a container": {nil, false},
+		"Docker":             {[]string{"/.dockerenv"}, true},
+		"Podman":             {[]string{"/run/.containerenv"}, true},
+		"another file":       {[]string{"/etc/hostname"}, false},
 	} {
 		got := inContainer(func(path string) bool {
 			for _, f := range c.files {

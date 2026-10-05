@@ -10,7 +10,7 @@ import (
 )
 
 func TestRunStopAndCancel(t *testing.T) {
-	path := testfixtures.Path(t, "Films/Deux Pistes (2019)/Deux Pistes (2019).mkv")
+	path := testfixtures.Path(t, "Movies/Dual Audio (2019)/Dual Audio (2019).mkv")
 	ffmpeg, _, _ := testfixtures.FFmpeg()
 	cmd := Command{Bin: ffmpeg, Args: remux.Args(remux.Options{Path: path, Audio: -1})}
 	n := 0

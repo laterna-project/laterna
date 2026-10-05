@@ -35,7 +35,7 @@ func TestItemSortValid(t *testing.T) {
 			t.Errorf("%s rejected", s)
 		}
 	}
-	if ItemSort("hasard").Valid() || ItemSort("").Valid() {
+	if ItemSort("bogus").Valid() || ItemSort("").Valid() {
 		t.Error("unknown order accepted")
 	}
 }

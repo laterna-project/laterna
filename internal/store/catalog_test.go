@@ -30,8 +30,8 @@ func newCatalogFixture(t *testing.T) *catalogFixture {
 	st, _ := openTemp(t)
 	ctx := context.Background()
 	f := &catalogFixture{st: st, movies: map[string]domain.Item{}, files: map[domain.ID]domain.ID{}}
-	f.lib = newLibrary("Tout", domain.LibraryMovies, "/m")
-	acc := newAccount("famille", true)
+	f.lib = newLibrary("All", domain.LibraryMovies, "/m")
+	acc := newAccount("family", true)
 	profile := domain.Profile{ID: domain.NewID(), AccountID: acc.ID, Name: "Chloé", CreatedAt: t0, UpdatedAt: t0}
 	f.profile = profile.ID
 
@@ -42,10 +42,10 @@ func newCatalogFixture(t *testing.T) *catalogFixture {
 		genres            []string
 	}
 	movies := []movie{
-		{"Amélie", "amelie", "2001-04-25", 2001, 7.9, []string{"Comédie", "Romance"}},
+		{"Amélie", "amelie", "2001-04-25", 2001, 7.9, []string{"Comedy", "Romance"}},
 		{"Le Voyage de Chihiro", "voyage de chihiro", "2001-07-20", 2001, 8.5, []string{"Animation"}},
-		{"Alien", "alien", "", 1979, 8.5, []string{"Science-fiction"}},
-		{"Brazil", "brazil", "1985-02-20", 1985, 7.9, []string{"Science-fiction", "Comédie"}},
+		{"Alien", "alien", "", 1979, 8.5, []string{"Science Fiction"}},
+		{"Brazil", "brazil", "1985-02-20", 1985, 7.9, []string{"Science Fiction", "Comedy"}},
 		{"Casablanca", "casablanca", "1942-11-26", 1942, 8.2, nil},
 		{"Zodiac", "zodiac", "2007-03-02", 2007, 0, []string{"Thriller"}},
 		{"Alien", "alien", "", 1979, 6.0, nil}, // same title twice: the order must stay stable
@@ -73,19 +73,19 @@ func newCatalogFixture(t *testing.T) *catalogFixture {
 			f.link(t, q, it, fmt.Sprintf("/m/%d.mkv", i))
 		}
 
-		f.series = domain.Item{ID: domain.NewID(), LibraryID: f.lib.ID, Kind: domain.ItemSeries, GroupKey: "series:x", Title: "Série Test", SortTitle: "serie test", AddedAt: t0, UpdatedAt: t0}
+		f.series = domain.Item{ID: domain.NewID(), LibraryID: f.lib.ID, Kind: domain.ItemSeries, GroupKey: "series:x", Title: "Café Stories", SortTitle: "cafe stories", AddedAt: t0, UpdatedAt: t0}
 		add(q.CreateItem(ctx, f.series))
 		for n := range 2 {
-			s := domain.Item{ID: domain.NewID(), LibraryID: f.lib.ID, Kind: domain.ItemSeason, ParentID: &f.series.ID, GroupKey: fmt.Sprintf("season:%d", n+1), Title: fmt.Sprintf("Saison %d", n+1), SortTitle: fmt.Sprintf("%04d", n+1), AddedAt: t0, UpdatedAt: t0}
+			s := domain.Item{ID: domain.NewID(), LibraryID: f.lib.ID, Kind: domain.ItemSeason, ParentID: &f.series.ID, GroupKey: fmt.Sprintf("season:%d", n+1), Title: fmt.Sprintf("Season %d", n+1), SortTitle: fmt.Sprintf("%04d", n+1), AddedAt: t0, UpdatedAt: t0}
 			add(q.CreateItem(ctx, s))
 			add(q.CreateSeason(ctx, domain.Season{ItemID: s.ID, SeriesID: f.series.ID, Number: n + 1}))
 			f.seasons[n] = s
 		}
 		for _, se := range [][2]int{{1, 2}, {1, 1}, {2, 1}} { // created out of order
-			e := domain.Item{ID: domain.NewID(), LibraryID: f.lib.ID, Kind: domain.ItemEpisode, ParentID: &f.seasons[se[0]-1].ID, GroupKey: fmt.Sprintf("episode:%d:%d", se[0], se[1]), Title: fmt.Sprintf("Épisode %d", se[1]), SortTitle: fmt.Sprintf("%04d", se[1]), AddedAt: t0, UpdatedAt: t0}
+			e := domain.Item{ID: domain.NewID(), LibraryID: f.lib.ID, Kind: domain.ItemEpisode, ParentID: &f.seasons[se[0]-1].ID, GroupKey: fmt.Sprintf("episode:%d:%d", se[0], se[1]), Title: fmt.Sprintf("Episode %d", se[1]), SortTitle: fmt.Sprintf("%04d", se[1]), AddedAt: t0, UpdatedAt: t0}
 			add(q.CreateItem(ctx, e))
 			add(q.CreateEpisode(ctx, domain.Episode{ItemID: e.ID, SeriesID: f.series.ID, SeasonID: f.seasons[se[0]-1].ID, SeasonNumber: se[0], Number: se[1]}))
-			f.link(t, q, e, fmt.Sprintf("/m/serie/%d-%d.mkv", se[0], se[1]))
+			f.link(t, q, e, fmt.Sprintf("/m/show/%d-%d.mkv", se[0], se[1]))
 			f.eps = append(f.eps, e)
 		}
 		f.eps[0], f.eps[1] = f.eps[1], f.eps[0] // S1E1, S1E2, S2E1
@@ -165,7 +165,7 @@ func TestItemsPaginationAndSorts(t *testing.T) {
 	if got := movies(domain.SortRating, false); got[0] != "Alien 1979" || got[6] != "Zodiac 2007" {
 		t.Errorf("by rating: %v", got)
 	}
-	if got := f.all(t, ItemQuery{Kind: domain.ItemSeries, Sort: domain.SortTitle}); !slices.Equal(got, []string{"Série Test 0"}) {
+	if got := f.all(t, ItemQuery{Kind: domain.ItemSeries, Sort: domain.SortTitle}); !slices.Equal(got, []string{"Café Stories 0"}) {
 		t.Errorf("series: %v", got)
 	}
 }
@@ -175,7 +175,7 @@ func TestItemsFilters(t *testing.T) {
 	ctx := context.Background()
 	q := ItemQuery{Kind: domain.ItemMovie, Sort: domain.SortTitle}
 
-	q.Genre = "comédie" // case does not matter
+	q.Genre = "COMEDY" // case does not matter
 	if got := f.all(t, q); !slices.Equal(got, []string{"Amélie 2001", "Brazil 1985"}) {
 		t.Errorf("genre: %v", got)
 	}
@@ -240,7 +240,7 @@ func TestSeriesSeasonsEpisodes(t *testing.T) {
 		t.Fatalf("episodes: %v", err)
 	}
 	for i, want := range [][2]int{{1, 1}, {1, 2}, {2, 1}} {
-		if e := eps[i].Episode; e == nil || e.SeasonNumber != want[0] || e.Number != want[1] || eps[i].SeriesTitle != "Série Test" {
+		if e := eps[i].Episode; e == nil || e.SeasonNumber != want[0] || e.Number != want[1] || eps[i].SeriesTitle != "Café Stories" {
 			t.Errorf("episode %d: %+v", i, eps[i])
 		}
 	}
@@ -287,8 +287,8 @@ func TestSearch(t *testing.T) {
 		"AMÉ":                     {"Amélie"}, // prefix, case
 		"voyage chihiro":          {"Le Voyage de Chihiro"},
 		"chihiro voyage":          {"Le Voyage de Chihiro"}, // any order
-		"serie":                   {"Série Test"},
-		"épisode":                 {"Épisode 1", "Épisode 1", "Épisode 2"}, // same relevance: by title
+		"cafe":                    {"Café Stories"},
+		"episode":                 {"Episode 1", "Episode 1", "Episode 2"}, // same relevance: by title
 		`"; DROP TABLE items; --`: nil,                                     // words to search for, never interpreted
 		"alien OR zodiac":         nil,                                     // FTS5 syntax is not interpreted
 		"":                        nil,
@@ -299,23 +299,23 @@ func TestSearch(t *testing.T) {
 			t.Errorf("%q: %v, want %v", text, got, want)
 		}
 	}
-	if got := search("s"); len(got) == 0 || got[0] != "Série Test" {
+	if got := search("s"); len(got) == 0 || got[0] != "Café Stories" {
 		t.Errorf("series must come before episodes: %v", got)
 	}
 
 	// The index follows title changes and deletions.
 	zodiac := f.movies["Zodiac"]
 	mustWrite(t, f.st, func(w Q) error {
-		_, err := w.SetMetadata(ctx, zodiac.ID, domain.Metadata{Title: "Zodiaque", SortTitle: "zodiaque"}, t0)
+		_, err := w.SetMetadata(ctx, zodiac.ID, domain.Metadata{Title: "Zodiaco", SortTitle: "zodiaco"}, t0)
 		return err
 	})
-	if got := search("zodiaque"); !slices.Equal(got, []string{"Zodiaque"}) {
+	if got := search("zodiaco"); !slices.Equal(got, []string{"Zodiaco"}) {
 		t.Errorf("after a title change: %v", got)
 	}
 	mustWrite(t, f.st, func(w Q) error {
 		return errors.Join(w.DeleteFile(ctx, f.files[zodiac.ID]), func() error { _, err := w.DeleteOrphanItems(ctx, f.lib.ID); return err }())
 	})
-	if got := search("zodiaque"); len(got) != 0 {
+	if got := search("zodiaco"); len(got) != 0 {
 		t.Errorf("after deletion: %v", got)
 	}
 }
@@ -326,7 +326,7 @@ func TestGenres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []domain.GenreCount{{Name: "Animation", Count: 1}, {Name: "Comédie", Count: 2}, {Name: "Romance", Count: 1}, {Name: "Science-fiction", Count: 2}, {Name: "Thriller", Count: 1}}
+	want := []domain.GenreCount{{Name: "Animation", Count: 1}, {Name: "Comedy", Count: 2}, {Name: "Romance", Count: 1}, {Name: "Science Fiction", Count: 2}, {Name: "Thriller", Count: 1}}
 	if !slices.Equal(genres, want) {
 		t.Errorf("genres: %v", genres)
 	}
@@ -410,7 +410,7 @@ func TestViewerFilter(t *testing.T) {
 			return err
 		})
 	}
-	rate(f.movies["Amélie"], &ten, "Comédie", "Romance")
+	rate(f.movies["Amélie"], &ten, "Comedy", "Romance")
 	rate(f.movies["Alien"], &sixteen)
 	rate(f.series, &fourteen)
 	viewer := func(libs []domain.ID, maxAge *int, block bool) domain.Viewer {
@@ -439,7 +439,7 @@ func TestViewerFilter(t *testing.T) {
 	if n := series(v); n != 0 {
 		t.Errorf("age 12: %d series", n)
 	}
-	if n := search(v, "épisode"); n != 0 {
+	if n := search(v, "episode"); n != 0 {
 		t.Errorf("age 12: %d episodes found", n)
 	}
 	for _, id := range []domain.ID{f.series.ID, f.seasons[0].ID, f.eps[0].ID, f.movies["Alien"].ID} {
@@ -455,7 +455,7 @@ func TestViewerFilter(t *testing.T) {
 		t.Errorf("visible genres: %v", g)
 	}
 	// Only "unrated hidden": the two rated movies, the series and its episodes.
-	if got := movies(viewer(nil, nil, true)); len(got) != 2 || series(viewer(nil, nil, true)) != 1 || search(viewer(nil, nil, true), "épisode") != 3 {
+	if got := movies(viewer(nil, nil, true)); len(got) != 2 || series(viewer(nil, nil, true)) != 1 || search(viewer(nil, nil, true), "episode") != 3 {
 		t.Errorf("rated only: %v", got)
 	}
 	// Libraries: none, or the only one there is.

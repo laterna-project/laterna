@@ -14,9 +14,9 @@ import (
 func TestSaveOfflineProgress(t *testing.T) {
 	st, _ := openTemp(t)
 	ctx := context.Background()
-	acc := newAccount("famille", false)
+	acc := newAccount("family", false)
 	prof := domain.Profile{ID: domain.NewID(), AccountID: acc.ID, Name: "Parents", CreatedAt: t0, UpdatedAt: t0}
-	lib := newLibrary("Films", domain.LibraryMovies, "/m")
+	lib := newLibrary("Movies", domain.LibraryMovies, "/m")
 	movie := domain.Item{ID: domain.NewID(), LibraryID: lib.ID, Kind: domain.ItemMovie, GroupKey: "k", Title: "x", SortTitle: "x", AddedAt: t0, UpdatedAt: t0}
 	mustWrite(t, st, func(q Q) error {
 		return errors.Join(q.CreateAccount(ctx, acc, "h"), q.CreateProfile(ctx, prof, ""), q.CreateLibrary(ctx, lib), q.CreateItem(ctx, movie))

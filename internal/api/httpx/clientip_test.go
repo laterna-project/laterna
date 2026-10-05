@@ -18,10 +18,10 @@ func TestClientIP(t *testing.T) {
 		"header from a stranger ignored": {remote: "203.0.113.5:4000", xff: []string{"1.2.3.4"}, want: "203.0.113.5"},
 		"behind the proxy":               {remote: "127.0.0.1:5000", xff: []string{"198.51.100.7"}, want: "198.51.100.7"},
 		"made-up address on the left":    {remote: "127.0.0.1:5000", xff: []string{"6.6.6.6, 198.51.100.7"}, want: "198.51.100.7"},
-		"deux proxys de confiance":       {remote: "127.0.0.1:5000", xff: []string{"198.51.100.7, 172.18.0.3"}, want: "198.51.100.7"},
+		"two trusted proxies":            {remote: "127.0.0.1:5000", xff: []string{"198.51.100.7, 172.18.0.3"}, want: "198.51.100.7"},
 		"several headers":                {remote: "127.0.0.1:5000", xff: []string{"198.51.100.7", "172.18.0.3"}, want: "198.51.100.7"},
 		"IPv6":                           {remote: "127.0.0.1:5000", xff: []string{"2001:db8::1"}, want: "2001:db8::1"},
-		"unreadable chain":               {remote: "127.0.0.1:5000", xff: []string{"198.51.100.7, n'importe quoi"}, want: "127.0.0.1"},
+		"unreadable chain":               {remote: "127.0.0.1:5000", xff: []string{"198.51.100.7, anything at all"}, want: "127.0.0.1"},
 		"proxy without a header":         {remote: "127.0.0.1:5000", want: "127.0.0.1"},
 		"IPv4 in trusted IPv6":           {remote: "[::ffff:127.0.0.1]:5000", xff: []string{"198.51.100.7"}, want: "198.51.100.7"},
 	} {

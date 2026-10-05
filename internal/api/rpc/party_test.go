@@ -25,7 +25,7 @@ func TestPartyServiceOverHTTP(t *testing.T) {
 	// Second device of the same account: another member.
 	other, err := s.auth.Login(ctx, connect.NewRequest(&laternav1.LoginRequest{
 		Username: "Chloé", Password: "a-strong-password",
-		Device: &laternav1.Device{Name: "Tablette", Client: "Tests", ClientVersion: "1", Platform: "Go"},
+		Device: &laternav1.Device{Name: "Tablet", Client: "Tests", ClientVersion: "1", Platform: "Go"},
 	}))
 	if err != nil {
 		t.Fatal(err)

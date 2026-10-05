@@ -28,7 +28,7 @@ func TestDecideDownload(t *testing.T) {
 		maxHeight, audioRate int
 		toneMap              bool
 	}{
-		{"MP4 lisible, original : tel quel", media("mp4", 5000, sized(h264, 1080), aac), phone, domain.DownloadOriginal, Direct, true, true, 0, 0, false},
+		{"playable MP4, original: as is", media("mp4", 5000, sized(h264, 1080), aac), phone, domain.DownloadOriginal, Direct, true, true, 0, 0, false},
 		{"light playable MP4, high quality: as is", media("mp4", 5000, sized(h264, 1080), aac), phone, domain.DownloadHigh, Direct, true, true, 0, 0, false},
 		{"1080p MP4 at medium quality: scaled down", media("mp4", 5000, sized(h264, 1080), aac), phone, domain.DownloadMedium, Transcode, false, false, 720, 160, false},
 		{"playable 720p MKV: MP4 without re-encoding", media("mkv", 3000, sized(h264, 720), aac), phone, domain.DownloadHigh, Remux, true, true, 0, 0, false},

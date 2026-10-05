@@ -83,8 +83,8 @@ func TestParseMovie(t *testing.T) {
 			Movie{Title: "Movie Title", Year: 2019, Version: "Director's Cut", GroupKey: "/movietitle-2019"},
 		},
 		{
-			"Films d'action/Heat {imdb-tt0113277} (1995)/Heat.mkv",
-			Movie{Title: "Heat", Year: 1995, IDs: map[string]string{"imdb": "tt0113277"}, GroupKey: "Films d'action/Heat {imdb-tt0113277} (1995)/heat"},
+			"Action Movies/Heat {imdb-tt0113277} (1995)/Heat.mkv",
+			Movie{Title: "Heat", Year: 1995, IDs: map[string]string{"imdb": "tt0113277"}, GroupKey: "Action Movies/Heat {imdb-tt0113277} (1995)/heat"},
 		},
 	}
 	for _, tt := range tests {
@@ -102,8 +102,8 @@ func TestParseEpisode(t *testing.T) {
 		want Episode
 	}{
 		{
-			"Série Test (2022)/Saison 01/Série Test (2022) S01E02.mkv",
-			Episode{SeriesDir: "Série Test (2022)", SeriesTitle: "Série Test", SeriesYear: 2022, Season: 1, Episode: 2},
+			"Café Stories (2022)/Saison 01/Café Stories (2022) S01E02.mkv",
+			Episode{SeriesDir: "Café Stories (2022)", SeriesTitle: "Café Stories", SeriesYear: 2022, Season: 1, Episode: 2},
 		},
 		{
 			"Show/Season 2/Show - S02E05E06 - Double.mkv",
@@ -134,7 +134,7 @@ func TestParseEpisode(t *testing.T) {
 			Episode{SeriesDir: "Friends", SeriesTitle: "Friends", Season: 1, Episode: 3, Title: "The One with the Thumb"},
 		},
 		{
-			"Anime Test/[Groupe] Anime Test - 01 [1080p].mkv",
+			"Anime Test/[Group] Anime Test - 01 [1080p].mkv",
 			Episode{SeriesDir: "Anime Test", SeriesTitle: "Anime Test", Season: 1, Episode: 1, Absolute: true, AbsoluteNumber: 1},
 		},
 		{
@@ -157,8 +157,8 @@ func TestParseEpisode(t *testing.T) {
 		},
 		{
 			// The dash followed by a number wins: "100" is part of the name.
-			"Mob Psycho 100/Mob Psycho 100 - 03 - Le titre.mkv",
-			Episode{SeriesDir: "Mob Psycho 100", SeriesTitle: "Mob Psycho 100", Season: 1, Episode: 3, Absolute: true, AbsoluteNumber: 3, Title: "Le titre"},
+			"Mob Psycho 100/Mob Psycho 100 - 03 - The Title.mkv",
+			Episode{SeriesDir: "Mob Psycho 100", SeriesTitle: "Mob Psycho 100", Season: 1, Episode: 3, Absolute: true, AbsoluteNumber: 3, Title: "The Title"},
 		},
 		{
 			"One Piece/One Piece - 1071.mkv",
@@ -177,8 +177,8 @@ func TestParseEpisode(t *testing.T) {
 			Episode{SeriesDir: "Show", SeriesTitle: "Show", Season: 3, Episode: 3},
 		},
 		{
-			"Mushishi/Season 1/07 - Les Oiseaux.mkv",
-			Episode{SeriesDir: "Mushishi", SeriesTitle: "Mushishi", Season: 1, Episode: 7, Title: "Les Oiseaux"},
+			"Mushishi/Season 1/07 - The Birds.mkv",
+			Episode{SeriesDir: "Mushishi", SeriesTitle: "Mushishi", Season: 1, Episode: 7, Title: "The Birds"},
 		},
 	}
 	for _, tt := range tests {

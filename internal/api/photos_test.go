@@ -56,10 +56,10 @@ func TestPhotosOverHTTP(t *testing.T) {
 	if err != nil || len(y2024.Msg.GetAlbums()) != 1 || y2024.Msg.GetAlbum().GetAlbumCount() != 1 || len(y2024.Msg.GetAlbum().GetImages()) != 1 {
 		t.Fatalf("album 2024: %v %v", y2024, err)
 	}
-	vacances := y2024.Msg.GetAlbums()[0]
-	in, err := photos.ListPhotos(ctx, authed(&laternav1.ListPhotosRequest{AlbumId: vacances.GetId()}, token))
+	holidays := y2024.Msg.GetAlbums()[0]
+	in, err := photos.ListPhotos(ctx, authed(&laternav1.ListPhotosRequest{AlbumId: holidays.GetId()}, token))
 	if err != nil || len(in.Msg.GetPhotos()) != 2 {
-		t.Fatalf("photos of Vacances: %v %v", in, err)
+		t.Fatalf("photos of Holidays: %v %v", in, err)
 	}
 	var first string
 	for _, p := range in.Msg.GetPhotos() {
@@ -72,7 +72,7 @@ func TestPhotosOverHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	ph := full.Msg.GetPhoto()
-	if ph.GetCameraModel() != "Appareil Test" || ph.GetFNumber() != 1.8 || ph.GetExposureTime() != "1/250" || ph.GetIso() != 100 ||
+	if ph.GetCameraModel() != "Test Camera" || ph.GetFNumber() != 1.8 || ph.GetExposureTime() != "1/250" || ph.GetIso() != 100 ||
 		ph.GetLocation().GetLatitude() < 48 || ph.GetSummary().GetUtcOffset().AsDuration().Hours() != 2 || len(full.Msg.GetFiles()) != 1 {
 		t.Errorf("details: %v", ph)
 	}

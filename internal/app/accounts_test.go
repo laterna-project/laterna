@@ -29,7 +29,7 @@ func TestAccountAdministration(t *testing.T) {
 
 	// Refused: password too short, restricted administrator, unknown library.
 	for _, n := range []NewAccount{
-		{Username: "Léa", Password: "court"},
+		{Username: "Léa", Password: "short"},
 		{Username: "Léa", Password: "a-password", IsAdmin: true, Parental: &domain.ParentalControl{MaxAge: &twelve}},
 		{Username: "Léa", Password: "a-password", Libraries: &domain.LibraryAccess{IDs: []domain.ID{domain.NewID()}}},
 	} {
@@ -55,7 +55,7 @@ func TestAccountAdministration(t *testing.T) {
 	}
 
 	// New password: her devices are signed out.
-	pw := "nouveau-mdp"
+	pw := "new-password"
 	_, err = a.UpdateAccount(ctx, admin, lea.ID, AccountChanges{Password: &pw})
 	mustNil(t, err)
 	if _, err := a.Authenticate(ctx, l.Token, ""); !isKind(err, domain.ErrUnauthenticated) {
@@ -135,7 +135,7 @@ func TestProfileParentalRules(t *testing.T) {
 	mustNil(t, func() error { _, err := a.SelectProfile(ctx, adult, teen.ID, ""); return err }())
 	onTeen := adult
 	onTeen.Profile = &teen
-	if _, err := a.CreateProfile(ctx, onTeen, "Libre", "", false, nil, ""); !isKind(err, domain.ErrForbidden) {
+	if _, err := a.CreateProfile(ctx, onTeen, "Free", "", false, nil, ""); !isKind(err, domain.ErrForbidden) {
 		t.Errorf("restricted profile creating one: %v", err)
 	}
 	if _, err := a.UpdateProfile(ctx, onTeen, teen.ID, "", ProfileChanges{Parental: &domain.ParentalControl{}}); !isKind(err, domain.ErrForbidden) {
@@ -175,12 +175,12 @@ func TestLibraryAccessAndParentalControl(t *testing.T) {
 	root := t.TempDir()
 	for name, mpaa := range map[string]string{"Big Test Movie (2020)": "TV-MA", "Versions (2017)": "-10"} {
 		dir := filepath.Join(root, name)
-		copyTree(t, filepath.Join(testfixtures.Root(), "Films", name), dir)
+		copyTree(t, filepath.Join(testfixtures.Root(), "Movies", name), dir)
 		writeText(t, filepath.Join(dir, "movie.nfo"), "<movie><title>"+name[:len(name)-7]+"</title><mpaa>"+mpaa+"</mpaa></movie>")
 	}
-	films, err := a.CreateLibrary(ctx, "Films", domain.LibraryMovies, []string{root}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
 	mustNil(t, err)
-	series, err := a.CreateLibrary(ctx, "Séries", domain.LibraryShows, []string{testRoot("Séries")}, "")
+	series, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")}, "")
 	mustNil(t, err)
 	waitIdle(t, a)
 
@@ -208,16 +208,16 @@ func TestLibraryAccessAndParentalControl(t *testing.T) {
 	}
 	allSeries, err := a.ListSeries(ctx, admin, ListQuery{})
 	mustNil(t, err)
-	serie := allSeries.Items[0].Item.ID
-	eps, err := a.Episodes(ctx, admin, serie, nil)
+	show := allSeries.Items[0].Item.ID
+	eps, err := a.Episodes(ctx, admin, show, nil)
 	mustNil(t, err)
 	if len(eps) == 0 {
 		t.Fatal("no episode")
 	}
-	if _, _, _, err := a.Series(ctx, lea, serie); !isKind(err, domain.ErrNotFound) {
+	if _, _, _, err := a.Series(ctx, lea, show); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("details of a forbidden series: %v", err)
 	}
-	if _, err := a.Episodes(ctx, lea, serie, nil); !isKind(err, domain.ErrNotFound) {
+	if _, err := a.Episodes(ctx, lea, show, nil); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("episodes of a forbidden series: %v", err)
 	}
 	if _, err := a.StartPlayback(ctx, lea, PlayRequest{ItemID: eps[0].Item.ID}); !isKind(err, domain.ErrNotFound) {
@@ -226,7 +226,7 @@ func TestLibraryAccessAndParentalControl(t *testing.T) {
 	if found, _ := a.Search(ctx, lea, "test", 20); slices.ContainsFunc(found, func(v domain.ItemView) bool { return v.Item.LibraryID == series.ID }) {
 		t.Errorf("search: %v", titles(found))
 	}
-	if err := a.SetFavorite(ctx, lea, serie, true); !isKind(err, domain.ErrNotFound) {
+	if err := a.SetFavorite(ctx, lea, show, true); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("forbidden favorite: %v", err)
 	}
 	sub := a.Subscribe(lea)

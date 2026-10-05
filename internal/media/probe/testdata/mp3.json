@@ -112,12 +112,12 @@
   "bit_rate": "66086",
   "probe_score": 52,
   "tags": {
-   "title": "Piste Deux",
-   "artist": "Artiste Test",
-   "album_artist": "Artiste Test",
+   "title": "Track Two",
+   "artist": "Artist Test",
+   "album_artist": "Artist Test",
    "album": "Album Test",
    "encoder": "Lavf63.1.102",
-   "genre": "Électro",
+   "genre": "Electro",
    "track": "2/2",
    "date": "2020"
   }

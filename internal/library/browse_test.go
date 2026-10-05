@@ -34,15 +34,15 @@ func TestList(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
 	mkdirs(t, root,
-		"Séries/Saison 10/", "Séries/Saison 2/E01.mkv", "Séries/Saison 2/E02.mkv", "Séries/Saison 2/notes.txt",
-		"Séries/Musique/01 - Titre.flac", "Séries/Musique/cover.jpg", "Séries/Musique/livret.jpg",
-		"Séries/Photos/IMG_2041.jpg", "Séries/Photos/poster.jpg", "Séries/poster.jpg", "Séries/Saison 2/E01-thumb.jpg",
-		"Séries/Vide/", "Séries/.cache/", "Séries/@eaDir/",
-		"Séries/Données de Laterna/", "Séries/Film.mkv", "Séries/Film-trailer.mkv", "Séries/Livres/Tome 1.cbz",
-		"Séries/Livres/Tome 2/",
+		"Shows/Season 10/", "Shows/Season 2/E01.mkv", "Shows/Season 2/E02.mkv", "Shows/Season 2/notes.txt",
+		"Shows/Music/01 - Title.flac", "Shows/Music/cover.jpg", "Shows/Music/booklet.jpg",
+		"Shows/Photos/IMG_2041.jpg", "Shows/Photos/poster.jpg", "Shows/poster.jpg", "Shows/Season 2/E01-thumb.jpg",
+		"Shows/Empty/", "Shows/.cache/", "Shows/@eaDir/",
+		"Shows/Laterna data/", "Shows/Movie.mkv", "Shows/Movie-trailer.mkv", "Shows/Books/Volume 1.cbz",
+		"Shows/Books/Volume 2/",
 	)
-	dir := filepath.Join(root, "Séries")
-	l, err := List(ctx, dir, []string{filepath.Join(dir, "Données de Laterna")})
+	dir := filepath.Join(root, "Shows")
+	l, err := List(ctx, dir, []string{filepath.Join(dir, "Laterna data")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,16 +58,16 @@ func TestList(t *testing.T) {
 		names = append(names, f.Name)
 		byName[f.Name] = f
 	}
-	if !slices.Equal(names, []string{"Livres", "Musique", "Photos", "Saison 2", "Saison 10", "Vide"}) {
+	if !slices.Equal(names, []string{"Books", "Empty", "Music", "Photos", "Season 2", "Season 10"}) {
 		t.Fatalf("subfolders: %q", names)
 	}
 	for name, want := range map[string]Folder{
-		"Livres":    {Readable: true, HasSubfolders: true, Media: MediaCounts{Books: 1}},
-		"Musique":   {Readable: true, Media: MediaCounts{Audio: 1}},
+		"Books":     {Readable: true, HasSubfolders: true, Media: MediaCounts{Books: 1}},
+		"Music":     {Readable: true, Media: MediaCounts{Audio: 1}},
 		"Photos":    {Readable: true, Media: MediaCounts{Photos: 1}},
-		"Saison 2":  {Readable: true, Media: MediaCounts{Videos: 2}},
-		"Saison 10": {Readable: true},
-		"Vide":      {Readable: true},
+		"Season 2":  {Readable: true, Media: MediaCounts{Videos: 2}},
+		"Season 10": {Readable: true},
+		"Empty":     {Readable: true},
 	} {
 		got := byName[name]
 		if got.Path != filepath.Join(dir, name) || got.Readable != want.Readable || got.HasSubfolders != want.HasSubfolders || got.Media != want.Media {
@@ -75,13 +75,13 @@ func TestList(t *testing.T) {
 		}
 	}
 
-	if _, err := List(ctx, "relatif", nil); err == nil {
+	if _, err := List(ctx, "relative", nil); err == nil {
 		t.Error("relative path accepted")
 	}
 	if _, err := List(ctx, filepath.Join(root, "absent"), nil); !os.IsNotExist(err) {
 		t.Errorf("missing folder: %v", err)
 	}
-	if _, err := List(ctx, filepath.Join(dir, "Film.mkv"), nil); err == nil {
+	if _, err := List(ctx, filepath.Join(dir, "Movie.mkv"), nil); err == nil {
 		t.Error("file accepted as a folder")
 	}
 }

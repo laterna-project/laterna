@@ -131,9 +131,9 @@ func TestRetryThenPermanentFailure(t *testing.T) {
 func TestPanicBecomesFailure(t *testing.T) {
 	r, st := newRunner(t)
 	r.Class("cpu", 1)
-	r.Register("boum", "cpu", func(context.Context, string) error { panic("oups") })
+	r.Register("boom", "cpu", func(context.Context, string) error { panic("oops") })
 	start(t, r)
-	enqueue(t, r, st, "boum", "z")
+	enqueue(t, r, st, "boom", "z")
 	eventually(t, func() bool { return states(t, st)["failed"] == 1 })
 }
 
@@ -155,10 +155,10 @@ func TestConcurrencyPerClass(t *testing.T) {
 		running.Add(-1)
 		return nil
 	}
-	r.Register("lourde", "ffmpeg", slow)
+	r.Register("heavy", "ffmpeg", slow)
 	start(t, r)
 	for _, target := range []string{"1", "2", "3"} {
-		enqueue(t, r, st, "lourde", target)
+		enqueue(t, r, st, "heavy", target)
 	}
 	time.Sleep(100 * time.Millisecond)
 	close(block)
@@ -172,7 +172,7 @@ func TestInterruptedJobsResumeAtStart(t *testing.T) {
 	r, st := newRunner(t)
 	r.Class("io", 1)
 	started := make(chan struct{})
-	r.Register("longue", "io", func(ctx context.Context, _ string) error {
+	r.Register("long", "io", func(ctx context.Context, _ string) error {
 		close(started)
 		<-ctx.Done()
 		return ctx.Err()
@@ -181,7 +181,7 @@ func TestInterruptedJobsResumeAtStart(t *testing.T) {
 	if err := r.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
-	enqueue(t, r, st, "longue", "t")
+	enqueue(t, r, st, "long", "t")
 	<-started
 	cancel()
 	r.Wait()
@@ -194,7 +194,7 @@ func TestInterruptedJobsResumeAtStart(t *testing.T) {
 	r2.idle = 20 * time.Millisecond
 	r2.Class("io", 1)
 	done := make(chan struct{})
-	r2.Register("longue", "io", func(context.Context, string) error { close(done); return nil })
+	r2.Register("long", "io", func(context.Context, string) error { close(done); return nil })
 	start(t, r2)
 	select {
 	case <-done:
@@ -206,7 +206,7 @@ func TestInterruptedJobsResumeAtStart(t *testing.T) {
 func TestEnqueueUnknownKind(t *testing.T) {
 	r, st := newRunner(t)
 	ctx := context.Background()
-	if err := st.Write(ctx, func(q store.Q) error { return r.Enqueue(ctx, q, "inconnue", "x", 0) }); err == nil {
+	if err := st.Write(ctx, func(q store.Q) error { return r.Enqueue(ctx, q, "unknown", "x", 0) }); err == nil {
 		t.Error("unknown kind accepted")
 	}
 }

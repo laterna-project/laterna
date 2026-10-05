@@ -76,10 +76,10 @@ func TestFailedJobsAndDevices(t *testing.T) {
 			}
 			claimed = append(claimed, j)
 		}
-		return errors.Join(q.FailJob(ctx, claimed[0].ID, "boum", t0), q.FailJob(ctx, claimed[1].ID, "patatras", t0.Add(time.Minute)))
+		return errors.Join(q.FailJob(ctx, claimed[0].ID, "boom", t0), q.FailJob(ctx, claimed[1].ID, "crash", t0.Add(time.Minute)))
 	})
 	failed, err := st.Read().FailedJobs(ctx, 10)
-	if err != nil || len(failed) != 2 || failed[0].LastError != "patatras" || failed[0].Attempts != 1 {
+	if err != nil || len(failed) != 2 || failed[0].LastError != "crash" || failed[0].Attempts != 1 {
 		t.Fatalf("failed: %+v %v", failed, err)
 	}
 	if j, err := st.Read().FailedJob(ctx, failed[1].ID); err != nil || j.Kind != "file.analyze" || j.Target != "a" {
@@ -95,7 +95,7 @@ func TestFailedJobsAndDevices(t *testing.T) {
 	profile := domain.Profile{ID: domain.NewID(), AccountID: b.ID, Name: "Tom", CreatedAt: t0, UpdatedAt: t0}
 	sa := domain.Session{ID: domain.NewID(), AccountID: a.ID, Device: domain.Device{Name: "PC"}, CreatedAt: t0, LastUsedAt: t0, ExpiresAt: t0.Add(time.Hour)}
 	sb := domain.Session{ID: domain.NewID(), AccountID: b.ID, Device: domain.Device{Name: "TV"}, CreatedAt: t0, LastUsedAt: t0.Add(time.Minute), ExpiresAt: t0.Add(time.Hour)}
-	old := domain.Session{ID: domain.NewID(), AccountID: b.ID, Device: domain.Device{Name: "Vieux"}, CreatedAt: t0, LastUsedAt: t0, ExpiresAt: t0}
+	old := domain.Session{ID: domain.NewID(), AccountID: b.ID, Device: domain.Device{Name: "Old"}, CreatedAt: t0, LastUsedAt: t0, ExpiresAt: t0}
 	mustWrite(t, st, func(q Q) error {
 		return errors.Join(q.CreateAccount(ctx, a, "h"), q.CreateAccount(ctx, b, "h"), q.CreateProfile(ctx, profile, ""),
 			q.CreateSession(ctx, sa, "ja"), q.CreateSession(ctx, sb, "jb"), q.CreateSession(ctx, old, "jc"), q.SetSessionProfile(ctx, sb.ID, profile.ID))

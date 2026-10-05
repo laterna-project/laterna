@@ -35,14 +35,14 @@ func TestChainOrder(t *testing.T) {
 func TestRecover(t *testing.T) {
 	var logs bytes.Buffer
 	h := Recover(slog.New(slog.NewTextHandler(&logs, nil)))(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		panic("oups")
+		panic("oops")
 	}))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status %d", rec.Code)
 	}
-	if !strings.Contains(logs.String(), "oups") {
+	if !strings.Contains(logs.String(), "oops") {
 		t.Errorf("panic not logged: %s", logs.String())
 	}
 }
@@ -59,9 +59,9 @@ func TestRequestID(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(RequestIDHeader, "amont-42")
+	req.Header.Set(RequestIDHeader, "upstream-42")
 	h.ServeHTTP(httptest.NewRecorder(), req)
-	if seen != "amont-42" {
+	if seen != "upstream-42" {
 		t.Errorf("the ID from an upstream proxy must be reused, got %q", seen)
 	}
 }
@@ -74,11 +74,11 @@ func TestAccessLogKeepsReaderFromAndStatus(t *testing.T) {
 			t.Error("ReadFrom hidden: sendfile would be lost for files")
 		}
 		w.WriteHeader(http.StatusTeapot)
-		_, _ = io.Copy(w, strings.NewReader("thé"))
+		_, _ = io.Copy(w, strings.NewReader("tea"))
 	}))
-	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/theiere", nil))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/teapot", nil))
 	out := logs.String()
-	if !strings.Contains(out, "status=418") || !strings.Contains(out, "bytes=4") || !strings.Contains(out, "level=INFO") {
+	if !strings.Contains(out, "status=418") || !strings.Contains(out, "bytes=3") || !strings.Contains(out, "level=INFO") {
 		t.Errorf("unexpected log: %s", out)
 	}
 }
@@ -124,7 +124,7 @@ func TestCORSPreflight(t *testing.T) {
 
 func TestCORSRestrictedOrigins(t *testing.T) {
 	h := CORS([]string{"http://jellyweb.lan"})(http.HandlerFunc(ok))
-	for origin, want := range map[string]string{"http://jellyweb.lan": "http://jellyweb.lan", "http://ailleurs.test": ""} {
+	for origin, want := range map[string]string{"http://jellyweb.lan": "http://jellyweb.lan", "http://elsewhere.test": ""} {
 		req := httptest.NewRequest(http.MethodGet, "/x", nil)
 		req.Header.Set("Origin", origin)
 		rec := httptest.NewRecorder()
@@ -140,13 +140,13 @@ func TestCORSRestrictedOrigins(t *testing.T) {
 
 func TestWriteJSON(t *testing.T) {
 	rec := httptest.NewRecorder()
-	if err := WriteJSON(rec, http.StatusCreated, map[string]string{"Nom": "Élodie"}); err != nil {
+	if err := WriteJSON(rec, http.StatusCreated, map[string]string{"Name": "Élodie"}); err != nil {
 		t.Fatal(err)
 	}
 	if rec.Code != http.StatusCreated || rec.Header().Get("Content-Type") != ContentTypeJSON {
 		t.Errorf("status %d, type %q", rec.Code, rec.Header().Get("Content-Type"))
 	}
-	if rec.Body.String() != `{"Nom":"Élodie"}` {
+	if rec.Body.String() != `{"Name":"Élodie"}` {
 		t.Errorf("body %q", rec.Body.String())
 	}
 	if err := WriteJSON(httptest.NewRecorder(), http.StatusOK, func() {}); err == nil {

@@ -80,7 +80,7 @@ func TestRender(t *testing.T) {
 			domain.T("activity.change.password"), domain.T("activity.change.disabled"),
 		}), "admin updated the account lea: password; disabled"},
 		// A sentence stored before texts were keyed stays as it was.
-		{English, domain.Literal("Connexion de Léa sur Salon"), "Connexion de Léa sur Salon"},
+		{French, domain.Literal("Léa signed in on Living room"), "Léa signed in on Living room"},
 		// An unknown key stays readable.
 		{French, domain.T("no.such_key", "a", 1), "no.such_key (a=1)"},
 		// A missing param is left empty, without braces.
@@ -112,7 +112,7 @@ func TestFormats(t *testing.T) {
 		{formatOnOff, "true", "on", "activé"},
 		{formatOnOff, "false", "off", "désactivé"},
 		// Anything that is not a number goes through untouched.
-		{formatDuration, "bientôt", "bientôt", "bientôt"},
+		{formatDuration, "soon", "soon", "soon"},
 		{"", "42", "42", "42"},
 	} {
 		if en, fr := formatParam(English, c.format, c.value), formatParam(French, c.format, c.value); en != c.en || fr != c.fr {

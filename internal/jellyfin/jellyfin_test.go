@@ -29,12 +29,12 @@ func TestRead(t *testing.T) {
 			{ID: admin, Name: "root", Password: "$PBKDF2-SHA512$iterations=1000$00$00", Admin: true, AllLibraries: true},
 			{ID: kid, Name: "Sam", Libraries: []string{films}, MaxScore: &twelve, BlockUnrated: true},
 		},
-		Libraries: []jellyfintest.Library{{ID: films, Name: "Films"}},
+		Libraries: []jellyfintest.Library{{ID: films, Name: "Movies"}},
 		Items: []jellyfintest.Item{
-			{ID: movie, Type: "Movie", Path: "/media/movies/Film (2020)/Film (2020).mkv", Name: "Film", Runtime: 100 * time.Minute, Libraries: []string{films}},
-			{ID: series, Type: "Series", Path: "/media/tv/Série", Name: "Série"},
-			{ID: episode, Type: "Episode", Path: "/media/tv/Série/S01E01.mkv", Name: "Pilote", SeriesName: "Série", Series: series, Runtime: 24 * time.Minute},
-			{ID: book, Type: "Book", Path: "/media/books/livre.epub", Name: "Livre"},
+			{ID: movie, Type: "Movie", Path: "/media/movies/Movie (2020)/Movie (2020).mkv", Name: "Movie", Runtime: 100 * time.Minute, Libraries: []string{films}},
+			{ID: series, Type: "Series", Path: "/media/tv/Show", Name: "Show"},
+			{ID: episode, Type: "Episode", Path: "/media/tv/Show/S01E01.mkv", Name: "Pilot", SeriesName: "Show", Series: series, Runtime: 24 * time.Minute},
+			{ID: book, Type: "Book", Path: "/media/books/book.epub", Name: "Book"},
 		},
 		UserData: []jellyfintest.UserData{
 			// Two keys for the same item: merged.
@@ -72,7 +72,7 @@ func TestRead(t *testing.T) {
 		leo.MaxScore == nil || *leo.MaxScore != 12 || !leo.BlockUnrated || leo.PasswordHash != "" {
 		t.Errorf("Sam: %+v", leo)
 	}
-	if it := e.Items[norm(episode)]; it.Kind != jellyfin.Episode || it.Series != norm(series) || it.Runtime != 24*time.Minute || it.SeriesName != "Série" {
+	if it := e.Items[norm(episode)]; it.Kind != jellyfin.Episode || it.Series != norm(series) || it.Runtime != 24*time.Minute || it.SeriesName != "Show" {
 		t.Errorf("episode: %+v", it)
 	}
 	if _, ok := e.Items[norm(book)]; ok {
@@ -110,9 +110,9 @@ func TestReadRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, c := range map[string]struct{ path, want string }{
-		"relatif":        {"config", "folder.not_absolute"},
-		"absent":         {filepath.Join(t.TempDir(), "rien"), "folder.not_found"},
-		"vide":           {t.TempDir(), "import.jellyfin_db_not_found"},
+		"relative":       {"config", "folder.not_absolute"},
+		"missing":        {filepath.Join(t.TempDir(), "nothing"), "folder.not_found"},
+		"empty":          {t.TempDir(), "import.jellyfin_db_not_found"},
 		"before 10.11":   {old, "import.jellyfin_too_old"},
 		"not a database": {notDB, "import.jellyfin_copy_inconsistent"},
 	} {

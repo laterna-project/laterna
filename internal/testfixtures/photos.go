@@ -201,21 +201,21 @@ func PNGWithExif(img image.Image, e Exif) []byte {
 // file's is used), a NAS thumbnail folder to ignore.
 func (g *generator) photos(context.Context) error {
 	root := filepath.Join(g.root, "Photos")
-	vacances := filepath.Join(root, "2024", "Vacances")
+	holidays := filepath.Join(root, "2024", "Holidays")
 	files := []struct {
 		path string
 		data []byte
 	}{
-		{filepath.Join(vacances, "IMG_0001.jpg"), JPEGWithExif(PageImage(640, 480, 1), Exif{
-			Orientation: 1, DateTimeOriginal: "2024:07:14 18:32:05", OffsetTime: "+02:00", Make: "Fabricant", Model: "Appareil Test",
-			Lens: "Objectif 4,2 mm", FNumber: [2]uint32{18, 10}, ExposureTime: [2]uint32{1, 250}, ISO: 100,
+		{filepath.Join(holidays, "IMG_0001.jpg"), JPEGWithExif(PageImage(640, 480, 1), Exif{
+			Orientation: 1, DateTimeOriginal: "2024:07:14 18:32:05", OffsetTime: "+02:00", Make: "Maker", Model: "Test Camera",
+			Lens: "4.2 mm lens", FNumber: [2]uint32{18, 10}, ExposureTime: [2]uint32{1, 250}, ISO: 100,
 			FocalLength: [2]uint32{42, 10}, Latitude: 48.3904, Longitude: -4.4861,
 		})},
 		// Stored sideways (640 x 480), to be rotated 90 degrees: 480 x 640 as displayed.
-		{filepath.Join(vacances, "IMG_0002.jpg"), JPEGWithExif(PageImage(640, 480, 2), Exif{
-			BigEndian: true, Orientation: 6, DateTimeOriginal: "2024:07:15 09:00:00", Make: "Fabricant", Model: "Appareil Test",
+		{filepath.Join(holidays, "IMG_0002.jpg"), JPEGWithExif(PageImage(640, 480, 2), Exif{
+			BigEndian: true, Orientation: 6, DateTimeOriginal: "2024:07:15 09:00:00", Make: "Maker", Model: "Test Camera",
 		})},
-		{filepath.Join(root, "2024", "Noël.png"), PNGWithExif(PageImage(320, 240, 3), Exif{DateTimeOriginal: "2024:12:24 20:00:00"})},
+		{filepath.Join(root, "2024", "Christmas.png"), PNGWithExif(PageImage(320, 240, 3), Exif{DateTimeOriginal: "2024:12:24 20:00:00"})},
 		{filepath.Join(root, "2023", "IMG_9999.jpg"), JPEG(PageImage(320, 240, 4))},
 		{filepath.Join(root, "@eaDir", "IMG_0001.jpg", "SYNOPHOTO_THUMB_S.jpg"), JPEG(PageImage(32, 24, 5))},
 	}

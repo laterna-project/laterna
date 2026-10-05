@@ -51,7 +51,7 @@ func TestHistoryAndStats(t *testing.T) {
 	}
 
 	// Offline: counted once, even if the same report is replayed.
-	other := movies["Deux Pistes"]
+	other := movies["Dual Audio"]
 	offline := []OfflinePlay{{ItemID: other.ID, Position: 12 * time.Second, Finished: true, At: a.now().Add(-time.Hour)}}
 	mustNil(t, a.SyncOfflinePlayback(ctx, p, offline))
 	mustNil(t, a.SyncOfflinePlayback(ctx, p, offline))
@@ -68,9 +68,9 @@ func TestHistoryAndStats(t *testing.T) {
 
 	st, err := a.Stats(ctx, p, a.now().Year(), "Europe/Paris")
 	mustNil(t, err)
-	// Offline and finished, "Deux Pistes" counts its whole runtime (one minute according to its
+	// Offline and finished, "Dual Audio" counts its whole runtime (one minute according to its
 	// NFO).
-	if st.Plays != 2 || st.Movies != 2 || st.Total != 72*time.Second || len(st.TopMovies) != 2 || st.TopMovies[0].Name != "Deux Pistes" ||
+	if st.Plays != 2 || st.Movies != 2 || st.Total != 72*time.Second || len(st.TopMovies) != 2 || st.TopMovies[0].Name != "Dual Audio" ||
 		len(st.TopMovies[1].Images) == 0 || len(st.TopGenres) == 0 || len(st.Timeline) != 12 {
 		t.Errorf("statistics: %+v", st)
 	}
