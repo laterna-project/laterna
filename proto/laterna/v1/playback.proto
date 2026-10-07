@@ -91,6 +91,11 @@ message StartPlaybackRequest {
   // unset means none. Only a subtitle the device cannot render changes the playback: it is burned
   // in.
   optional int32 subtitle_index = 5;
+  // When subtitle_index is unset, start with the subtitle the profile's preferences pick
+  // (Profile.subtitle_mode, Profile.subtitle_language): StartPlaybackResponse.subtitle_index says
+  // which. Like a requested one, it is burned in if the device cannot render it. A client sets it
+  // when a playback starts, and leaves it out when it reopens one after a choice of the viewer.
+  bool profile_subtitle = 6;
 }
 
 message StartPlaybackResponse {
@@ -121,6 +126,10 @@ message StartPlaybackResponse {
   bool subtitles_ready = 14;
   // Subtitle burned into the picture (SubtitleTrack.index); unset otherwise.
   optional int32 burned_subtitle_index = 15;
+  // Subtitle to show from the start (SubtitleTrack.index): the requested one, or the one the
+  // profile's preferences picked (profile_subtitle); unset means none. The client shows it itself,
+  // unless it is the burned one.
+  optional int32 subtitle_index = 20;
   // The reasons, for translation: "reason.video_unsupported" (params "codec", "bit_depth",
   // "dynamic_range"), "reason.audio_unsupported", "reason.container_unsupported"...
   repeated Text reason_texts = 19;

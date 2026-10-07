@@ -139,6 +139,12 @@ func Decide(info domain.MediaInfo, dev DeviceProfile, audio int, sub *domain.Sub
 	return p
 }
 
+// AudioStream is the audio stream a playback plays (see pickStreams); nil if the file has none.
+func AudioStream(info domain.MediaInfo, audio int) *domain.Stream {
+	_, sound := pickStreams(info, audio)
+	return sound
+}
+
 // pickStreams picks the video (the first one) and the audio to play: the stream with index audio,
 // or when audio is negative the default one, or else the first.
 func pickStreams(info domain.MediaInfo, audio int) (video, sound *domain.Stream) {

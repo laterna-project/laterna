@@ -165,7 +165,7 @@ func (q *Queries) GetAccountByUsername(ctx context.Context, usernameKey string) 
 }
 
 const getProfile = `-- name: GetProfile :one
-SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language FROM profiles WHERE id = ?
+SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language FROM profiles WHERE id = ?
 `
 
 func (q *Queries) GetProfile(ctx context.Context, id domain.ID) (Profile, error) {
@@ -185,6 +185,8 @@ func (q *Queries) GetProfile(ctx context.Context, id domain.ID) (Profile, error)
 		&i.ThemeID,
 		&i.ThemeMode,
 		&i.Language,
+		&i.SubtitleMode,
+		&i.SubtitleLanguage,
 	)
 	return i, err
 }
@@ -479,7 +481,7 @@ func (q *Queries) ListAllAccountLibraries(ctx context.Context) ([]AccountLibrary
 }
 
 const listProfiles = `-- name: ListProfiles :many
-SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language FROM profiles WHERE account_id = ? ORDER BY created_at, id
+SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language FROM profiles WHERE account_id = ? ORDER BY created_at, id
 `
 
 func (q *Queries) ListProfiles(ctx context.Context, accountID domain.ID) ([]Profile, error) {
@@ -505,6 +507,8 @@ func (q *Queries) ListProfiles(ctx context.Context, accountID domain.ID) ([]Prof
 			&i.ThemeID,
 			&i.ThemeMode,
 			&i.Language,
+			&i.SubtitleMode,
+			&i.SubtitleLanguage,
 		); err != nil {
 			return nil, err
 		}
@@ -652,20 +656,23 @@ func (q *Queries) UpdateAccountPassword(ctx context.Context, arg UpdateAccountPa
 
 const updateProfile = `-- name: UpdateProfile :exec
 UPDATE profiles
-SET name = ?, name_key = ?, pin_hash = ?, kid = ?, max_age = ?, block_unrated = ?, language = ?, updated_at = ?
+SET name = ?, name_key = ?, pin_hash = ?, kid = ?, max_age = ?, block_unrated = ?, language = ?,
+    subtitle_mode = ?, subtitle_language = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateProfileParams struct {
-	Name         string
-	NameKey      string
-	PinHash      sql.NullString
-	Kid          int64
-	MaxAge       sql.NullInt64
-	BlockUnrated int64
-	Language     string
-	UpdatedAt    int64
-	ID           domain.ID
+	Name             string
+	NameKey          string
+	PinHash          sql.NullString
+	Kid              int64
+	MaxAge           sql.NullInt64
+	BlockUnrated     int64
+	Language         string
+	SubtitleMode     string
+	SubtitleLanguage string
+	UpdatedAt        int64
+	ID               domain.ID
 }
 
 func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) error {
@@ -677,6 +684,8 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) er
 		arg.MaxAge,
 		arg.BlockUnrated,
 		arg.Language,
+		arg.SubtitleMode,
+		arg.SubtitleLanguage,
 		arg.UpdatedAt,
 		arg.ID,
 	)

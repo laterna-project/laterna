@@ -27,7 +27,25 @@ func profileMsg(p domain.Profile) *laternav1.Profile {
 	return &laternav1.Profile{
 		Id: p.ID.String(), Name: p.Name, HasPin: p.HasPIN, Kid: p.Kid, CreatedAt: timestamppb.New(p.CreatedAt),
 		Parental: parentalMsg(p.Parental), Language: p.Language,
+		SubtitleMode: subtitleModes[p.SubtitleMode], SubtitleLanguage: p.SubtitleLanguage,
 	}
+}
+
+var subtitleModes = map[domain.SubtitleMode]laternav1.SubtitleMode{
+	domain.SubtitleAuto:   laternav1.SubtitleMode_SUBTITLE_MODE_UNSPECIFIED,
+	domain.SubtitleAlways: laternav1.SubtitleMode_SUBTITLE_MODE_ALWAYS,
+	domain.SubtitleForced: laternav1.SubtitleMode_SUBTITLE_MODE_FORCED,
+	domain.SubtitleOff:    laternav1.SubtitleMode_SUBTITLE_MODE_OFF,
+}
+
+// subtitleModeFromMsg converts a subtitle mode; an unknown value gives one the app refuses.
+func subtitleModeFromMsg(m laternav1.SubtitleMode) domain.SubtitleMode {
+	for mode, msg := range subtitleModes {
+		if msg == m {
+			return mode
+		}
+	}
+	return domain.SubtitleMode(m.String())
 }
 
 func parentalMsg(c domain.ParentalControl) *laternav1.ParentalControl {

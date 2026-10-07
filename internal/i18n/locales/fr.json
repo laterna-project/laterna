@@ -246,6 +246,7 @@
   "error.profile.invalid_language": "Langue « {language} » invalide : une étiquette comme « fr » ou « pt-BR » est attendue",
   "error.profile.invalid_max_age": "L'âge maximal doit être compris entre 0 et {max}",
   "error.profile.invalid_pin": "Le code doit compter 4 à 8 chiffres",
+  "error.profile.invalid_subtitle_mode": "Mode de sous-titres « {mode} » inconnu",
   "error.profile.last_unrestricted": "Le compte doit garder au moins un profil sans restriction",
   "error.profile.name_invalid": "Le nom du profil contient des caractères invalides",
   "error.profile.name_required": "Le nom du profil est obligatoire",
