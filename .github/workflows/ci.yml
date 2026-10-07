@@ -52,7 +52,7 @@ jobs:
       - run: task nilaway
       - run: task vuln
       - name: Shell scripts
-        run: shellcheck -x packaging/*.sh packaging/scripts/*.sh docker/*.sh .github/scripts/*.sh
+        run: shellcheck -x packaging/*.sh packaging/scripts/*.sh docker/*.sh .github/scripts/*.sh deploy/compose/test/*.sh deploy/compose/config/*/*.sh
       - name: Workflows
         run: |
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12

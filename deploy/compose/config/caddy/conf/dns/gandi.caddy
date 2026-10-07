@@ -1,0 +1,1 @@
+dns gandi {env.GANDI_BEARER_TOKEN}

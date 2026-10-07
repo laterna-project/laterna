@@ -1,0 +1,24 @@
+# Nginx Proxy Manager: HTTPS set up in a web page (http://<this machine>:81) instead of files,
+# certificates from Let's Encrypt over HTTP or through a DNS provider. README.md gives the proxy
+# host to create.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+
+  npm:
+    image: jc21/nginx-proxy-manager:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${NPM_ADMIN_PORT:-81}:81"
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+
+volumes:
+  npm-data:
+  npm-letsencrypt:

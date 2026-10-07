@@ -21,3 +21,9 @@ laterna.toml
 
 # FFmpeg builds downloaded for the release bundles
 /packaging/ffmpeg/
+
+# A Compose deployment's own settings and credentials (deploy/compose/README.md)
+/deploy/compose/*.env
+/deploy/compose/root.crt
+/deploy/compose/local.yaml
+!/deploy/compose/config/laterna.toml

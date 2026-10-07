@@ -55,6 +55,7 @@ http://localhost:8096 to set the server up. Media folders can be mounted read-on
 writes into them. To let TVs and apps find the server on the local network, run the container
 with `--network host` (multicast does not cross Docker's bridge network). `latest` is the last
 release; `edge` follows the development branch.
+[`deploy/compose`](deploy/compose/README.md) has ready Compose setups to combine, HTTPS included.
 
 ### Packages and archives
 
@@ -146,6 +147,8 @@ in English or French.
 
 - [`docs/install.md`](docs/install.md): Docker, packages, archives, the web client, reverse proxy,
   upgrades.
+- [`deploy/compose/`](deploy/compose/README.md): Docker Compose setups to combine (NAS media, GPU,
+  HTTPS through Caddy, Traefik, nginx and others, Tailscale).
 - [Laterna Web](https://github.com/laterna-project/laterna-web): the web client.
 - [`docs/design/`](docs/design/README.md): how the server is built and why.
 - [`proto/laterna/v1/`](proto/laterna/v1): the API contract, with comments on every message.

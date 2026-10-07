@@ -1,0 +1,39 @@
+# HTTPS with a real certificate, without opening anything to the Internet: Caddy obtains it from
+# Let's Encrypt through a DNS record (DNS-01) at the provider DNS_PROVIDER, whose credentials go in
+# dns.env (dns.env.example lists them). LATERNA_HOST is a name of that domain pointing at this
+# machine's local address (an A record, or modules/duckdns-updater.yaml for DuckDNS). Devices trust
+# the certificate as is, and browsers offer to install the app.
+services:
+  laterna:
+    environment:
+      # The client address comes from Caddy (X-Forwarded-For), at an address in Docker's default
+      # range (README.md: TRUSTED_PROXIES).
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+
+  caddy:
+    build:
+      context: ./config/caddy
+      args:
+        DNS_PROVIDER: ${DNS_PROVIDER:?set DNS_PROVIDER in .env}
+    image: laterna-caddy-${DNS_PROVIDER}
+    restart: unless-stopped
+    command: caddy run --config /etc/caddy/Caddyfile.dns --adapter caddyfile
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      LATERNA_UPSTREAM: ${LATERNA_UPSTREAM:-laterna:8096}
+      LATERNA_HOST: ${LATERNA_HOST:?set LATERNA_HOST in .env}
+      DNS_PROVIDER: ${DNS_PROVIDER}
+    env_file:
+      - path: ./dns.env
+        required: true
+    volumes:
+      - ./config/caddy/conf:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

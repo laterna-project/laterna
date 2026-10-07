@@ -1,0 +1,17 @@
+# HTTPS for a server reachable from the Internet (modules/https-public.yaml): Let's Encrypt checks
+# each site over ports 80 and 443, which the box forwards to this machine.
+{
+	email {$ACME_EMAIL}
+	import options.caddy
+}
+
+# How every site here gets its certificate, sites of other modules included: Caddy's default.
+(tls) {
+}
+
+{$LATERNA_HOST} {
+	import tls
+	import laterna.caddy
+}
+
+import /etc/caddy-sites/*.caddy

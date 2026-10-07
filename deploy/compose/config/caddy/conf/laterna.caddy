@@ -1,0 +1,6 @@
+# What every Caddy site in front of Laterna does: streams and the server's event stream leave
+# without buffering. LATERNA_UPSTREAM changes where Laterna is: host.docker.internal:8096 for a
+# server on the host network or installed without Docker.
+reverse_proxy {$LATERNA_UPSTREAM:laterna:8096} {
+	flush_interval -1
+}

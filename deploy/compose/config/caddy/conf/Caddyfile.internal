@@ -1,0 +1,17 @@
+# HTTPS with Caddy's own certificate authority (modules/https-internal.yaml): no domain and no
+# Internet, but every device must trust that authority (its root.crt) before the app installs.
+{
+	import options.caddy
+}
+
+# How every site here gets its certificate, sites of other modules included.
+(tls) {
+	tls internal
+}
+
+{$LATERNA_HOST} {
+	import tls
+	import laterna.caddy
+}
+
+import /etc/caddy-sites/*.caddy

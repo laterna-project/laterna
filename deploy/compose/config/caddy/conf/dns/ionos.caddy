@@ -1,0 +1,1 @@
+dns ionos {env.IONOS_API_TOKEN}

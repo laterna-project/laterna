@@ -1,0 +1,11 @@
+# Limits, so that transcoding never takes the whole machine, and log rotation (Docker keeps every
+# line otherwise). The server itself caps simultaneous transcodes (Administration, Settings).
+services:
+  laterna:
+    cpus: ${LATERNA_CPUS:-4}
+    mem_limit: ${LATERNA_MEMORY:-2g}
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

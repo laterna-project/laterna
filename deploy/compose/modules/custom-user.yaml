@@ -1,0 +1,12 @@
+# The server under another user than 1000, for media that only that user can read (NAS shares,
+# Unraid's nobody:users 99:100...). Its data then lives in folders of the host that belong to that
+# user, created beforehand:
+#
+#   mkdir -p "$CONFIG_DIR" "$CACHE_DIR" && sudo chown "$PUID:$PGID" "$CONFIG_DIR" "$CACHE_DIR"
+services:
+  laterna:
+    user: "${PUID:?set PUID in .env}:${PGID:?set PGID in .env}"
+    volumes:
+      # In place of the named volumes.
+      - ${CONFIG_DIR:?set CONFIG_DIR in .env}:/config
+      - ${CACHE_DIR:?set CACHE_DIR in .env}:/cache
