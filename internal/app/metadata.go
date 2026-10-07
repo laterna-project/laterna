@@ -28,6 +28,8 @@ type localSources struct {
 	// names holds the title, sort key, year and IDs taken from the names.
 	names    domain.Metadata
 	duration int64 // ms, runtime of the file (movies, episodes)
+	// file is the first file of a movie or an episode.
+	file *domain.MediaFile
 }
 
 // refreshMetadata reads the metadata of an item again and applies it: what the names say,
@@ -91,10 +93,16 @@ func (a *App) refreshMetadata(ctx context.Context, target string) error {
 			return err
 		}
 	}
-	// An album without a cover next to its tracks: use the one embedded in a track, if any.
+	// An album without a cover next to its tracks: use the one embedded in a track, if any. An
+	// episode without a thumbnail of its own: a frame of its video (stills.go).
 	var embedded []wantedImage
 	if item.Kind == domain.ItemAlbum && !slices.ContainsFunc(art, func(a metadata.Artwork) bool { return a.Kind == domain.ImagePoster }) {
 		if w, ok := a.embeddedCover(ctx, item.ID); ok {
+			embedded = append(embedded, w)
+		}
+	}
+	if item.Kind == domain.ItemEpisode && src.file != nil && a.needsStill(art, nfo) {
+		if w, ok := a.episodeStill(ctx, item.ID, *src.file); ok {
 			embedded = append(embedded, w)
 		}
 	}
@@ -141,7 +149,7 @@ func (a *App) localSources(ctx context.Context, lib domain.Library, item domain.
 		base := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
 		_, rel, _ := relativeTo(lib.Paths, file.Path)
 		src := localSources{
-			nfo: []string{filepath.Join(dir, base+".nfo")}, duration: file.Info.Duration.Milliseconds(),
+			nfo: []string{filepath.Join(dir, base+".nfo")}, duration: file.Info.Duration.Milliseconds(), file: &file,
 			names: domain.Metadata{Title: item.Title, SortTitle: item.SortTitle, Year: item.Year},
 		}
 		if item.Kind == domain.ItemMovie {
