@@ -143,6 +143,9 @@ func Write(dir string, s Server) error {
 		exec("INSERT INTO Preferences (Kind, RowVersion, UserId, Value) VALUES (5, 0, ?, ?)", u.ID, strings.ToLower(strings.Join(u.Libraries, ",")))
 		exec("INSERT INTO Preferences (Kind, RowVersion, UserId, Value) VALUES (10, 0, ?, ?)", u.ID, blocked)
 	}
+	// Jellyfin 10.11 leaves permissions and preferences that belong to no user.
+	exec("INSERT INTO Permissions (Kind, RowVersion, UserId, Value) VALUES (0, 0, NULL, 1)")
+	exec("INSERT INTO Preferences (Kind, RowVersion, UserId, Value) VALUES (5, 0, NULL, '')")
 	for _, l := range s.Libraries {
 		exec("INSERT INTO BaseItems (Id, Type, Path, Name) VALUES (?, 'MediaBrowser.Controller.Entities.CollectionFolder', ?, ?)",
 			l.ID, "/config/root/default/"+l.Name, l.Name)

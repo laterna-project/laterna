@@ -291,7 +291,8 @@ func (r reader) users(ctx context.Context, e *Export) error {
 	for i := range e.Users {
 		byID[e.Users[i].ID] = &e.Users[i]
 	}
-	err = r.each(ctx, "SELECT UserId, Kind, Value FROM Permissions", func(scan func(...any) error) error {
+	// Jellyfin 10.11 keeps rows that belong to no user: skipped.
+	err = r.each(ctx, "SELECT UserId, Kind, Value FROM Permissions WHERE UserId IS NOT NULL", func(scan func(...any) error) error {
 		var user string
 		var kind, value int64
 		if err := scan(&user, &kind, &value); err != nil {
@@ -316,7 +317,7 @@ func (r reader) users(ctx context.Context, e *Export) error {
 	if err != nil {
 		return err
 	}
-	return r.each(ctx, "SELECT UserId, Kind, COALESCE(Value, '') FROM Preferences WHERE Kind IN (?, ?)", func(scan func(...any) error) error {
+	return r.each(ctx, "SELECT UserId, Kind, COALESCE(Value, '') FROM Preferences WHERE UserId IS NOT NULL AND Kind IN (?, ?)", func(scan func(...any) error) error {
 		var user, value string
 		var kind int64
 		if err := scan(&user, &kind, &value); err != nil {
