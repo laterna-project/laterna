@@ -1,0 +1,41 @@
+# Metrics: Prometheus collects the server's every 30 seconds and keeps them 90 days, and Grafana
+# shows them on a ready dashboard, http://<this machine>:3000 (user admin, GRAFANA_PASSWORD).
+# Turn metrics on in Laterna (Administration, Observability) and put the token it shows once in
+# LATERNA_METRICS_TOKEN, then docker compose up -d again.
+services:
+  prometheus:
+    image: prom/prometheus:v3
+    restart: unless-stopped
+    # Prometheus reads the token from a file only: it is written from the variable at start.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        printf %s "$$LATERNA_METRICS_TOKEN" > /tmp/laterna-token &&
+        exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml
+        --storage.tsdb.path=/prometheus --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-90d}
+    environment:
+      LATERNA_METRICS_TOKEN: ${LATERNA_METRICS_TOKEN:-}
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?set GRAFANA_PASSWORD in .env}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/laterna.json
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  prometheus-data:
+  grafana-data:

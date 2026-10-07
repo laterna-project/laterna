@@ -1,0 +1,22 @@
+# Copies the server's data elsewhere every night: its /config (the database, downloaded images,
+# logs, and the database backups unless modules/backups.yaml puts them elsewhere) as a .tar.gz,
+# kept BACKUP_RETENTION_DAYS days. To BACKUP_DIR_OFFSITE (a disk, a mounted NAS share) by default;
+# to S3, Backblaze B2, WebDAV (Nextcloud), SSH or Dropbox with the variables of
+# https://offen.github.io/docker-volume-backup/reference/ in backup-offsite.env. The live database
+# is copied while the server runs: restore from one of the backups the server writes every night.
+services:
+  backup-offsite:
+    image: offen/docker-volume-backup:v2
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      BACKUP_CRON_EXPRESSION: ${BACKUP_SCHEDULE:-30 3 * * *}
+      BACKUP_FILENAME: laterna-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    env_file:
+      - path: ./backup-offsite.env
+        required: false
+    volumes:
+      # The config volume, or CONFIG_DIR with modules/custom-user.yaml.
+      - ${CONFIG_DIR:-config}:/backup/laterna-config:ro
+      - ${BACKUP_DIR_OFFSITE:?set BACKUP_DIR_OFFSITE in .env}:/archive

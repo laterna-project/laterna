@@ -1,0 +1,14 @@
+# Traces: the server sends Jaeger a trace of its requests, jobs and FFmpeg runs, and its page,
+# http://<this machine>:16686, shows where the time goes. Traces stay in memory: a restart empties
+# it. Another collector that takes OTLP over HTTP/JSON (Grafana Tempo, SigNoz, Uptrace) works the
+# same way: OTEL_EXPORTER_OTLP_ENDPOINT in local.yaml, OTEL_EXPORTER_OTLP_HEADERS for a key.
+services:
+  laterna:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+
+  jaeger:
+    image: jaegertracing/jaeger:latest
+    restart: unless-stopped
+    ports:
+      - "${JAEGER_PORT:-16686}:16686"

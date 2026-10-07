@@ -9,7 +9,7 @@ services:
       traefik.enable: "true"
       traefik.http.routers.laterna.rule: Host(`${LATERNA_HOST:?set LATERNA_HOST in .env}`)
       traefik.http.routers.laterna.entrypoints: websecure
-      traefik.http.routers.laterna.tls.certresolver: dns
+      traefik.http.routers.laterna.tls.certresolver: letsencrypt
       traefik.http.services.laterna.loadbalancer.server.port: "8096"
 
   traefik:
@@ -18,10 +18,10 @@ services:
     command:
       - --providers.docker.exposedbydefault=false
       - --entrypoints.websecure.address=:443
-      - --certificatesresolvers.dns.acme.dnschallenge.provider=${TRAEFIK_DNS_PROVIDER:?set TRAEFIK_DNS_PROVIDER in .env}
-      - --certificatesresolvers.dns.acme.dnschallenge.resolvers=1.1.1.1:53,9.9.9.9:53
-      - --certificatesresolvers.dns.acme.caserver=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
-      - --certificatesresolvers.dns.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=${TRAEFIK_DNS_PROVIDER:?set TRAEFIK_DNS_PROVIDER in .env}
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,9.9.9.9:53
+      - --certificatesresolvers.letsencrypt.acme.caserver=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
     ports:
       - "${HTTPS_PORT:-443}:443"
     env_file:

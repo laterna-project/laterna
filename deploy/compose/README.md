@@ -1,14 +1,22 @@
 # Deploying Laterna with Docker Compose
 
 A base file runs the server alone; modules add what a setup needs: media on a NAS, a GPU,
-backups on another disk, HTTPS through one of several reverse proxies, access from outside. Pick
-the modules, list them in `.env`, and `docker compose` combines them.
+backups on another disk, HTTPS through one of several reverse proxies, access from outside, the
+services Laterna works with (single sign-on, monitoring) and the upkeep of it all. Pick the
+modules, list them in `.env`, and `docker compose` combines them.
+
+Sonarr, Radarr, Prowlarr and the download clients behind a VPN are in
+[laterna-stack](https://github.com/laterna-project/laterna-stack), which Laterna started from here
+joins with `external-network` ([Sonarr, Radarr and downloads](#sonarr-radarr-and-downloads)).
 
 - [Starting](#starting)
 - [Combining modules](#combining-modules)
 - [Modules](#modules)
 - [Media and server](#media-and-server)
 - [HTTPS and access](#https-and-access)
+- [Services](#services)
+- [Single sign-on](#single-sign-on)
+- [Upkeep](#upkeep)
 - [Platforms](#platforms)
 - [Checking the files](#checking-the-files)
 
@@ -95,10 +103,25 @@ the CI does not have.
 | `tailscale` | Your devices reach it from anywhere, with HTTPS, no port open | ⚙️ |
 | `cloudflared` | A Cloudflare Tunnel (read the warnings) | ⚙️ |
 | **A proxy that already runs** | | |
-| `external-network` | Joins an existing Docker network (proxy, media stack) | ✅ |
+| `external-network` | Joins an existing Docker network (proxy, laterna-stack) | ✅ |
 | `no-ports` | Publishes no port: only the proxy reaches the server | ✅ |
 | `traefik-labels` | Labels for an existing Traefik | ✅ |
 | `caddy-labels` | Labels for an existing caddy-docker-proxy | ⚙️ |
+| **Services** | | |
+| `prometheus` | Prometheus and Grafana, with a Laterna dashboard | ✅ |
+| `jaeger` | Jaeger, for the server's traces | ✅ |
+| `uptime-kuma` | Uptime Kuma, which warns when the server stops answering | ✅ |
+| `jellyfin-import` | Jellyfin's data, to import its users and what they watched | ✅ |
+| **Single sign-on** | | |
+| `authelia` | Authelia: light, users in a file | ✅ |
+| `authentik` | Authentik: flows, social logins, LDAP | ✅ |
+| `keycloak` | Keycloak: LDAP and Active Directory, fine-grained policies | ✅ |
+| `pocket-id` | Pocket ID: passkeys only | ✅ |
+| `auth-caddy` | The provider over HTTPS through a Caddy module | ✅ |
+| **Upkeep** | | |
+| `diun` | Tells you when a newer image exists | ✅ |
+| `watchtower` | Updates the server by itself (read the warning) | ✅ |
+| `backup-offsite` | Nightly archive of the server's data to a disk, S3, WebDAV, SSH | ✅ |
 
 ## Media and server
 
@@ -165,8 +188,8 @@ network another range, set it:
 docker network inspect laterna_default -f '{{(index .IPAM.Config 0).Subnet}}'
 ```
 
-Then set the server's public address (Administration, Settings) to `https://<LATERNA_HOST>`:
-passkeys, single sign-on and the sign-in links shown on TVs use it.
+Then set the server's public address (Administration, Authentication) to
+`https://<LATERNA_HOST>`: passkeys, single sign-on and the sign-in links shown on TVs use it.
 
 None of the proxies needs HTTP/3: Caddy is told not to announce it, since Docker publishes only
 TCP 443 here.
@@ -307,6 +330,122 @@ add a public hostname whose service is `http://laterna:8096`, and copy the tunne
   (`docker compose up -d caddy`).
 - **Your own VPN** (WireGuard, OpenVPN on the box): the devices connected to it reach the server
   as on the local network, and `https-dns` gives it HTTPS.
+
+## Services
+
+### Sonarr, Radarr and downloads
+
+[laterna-stack](https://github.com/laterna-project/laterna-stack) brings the media: Sonarr,
+Radarr, Prowlarr, qBittorrent behind a VPN, SABnzbd, Bazarr, Lidarr and others, all set up for
+each other and for Laterna. Start it first, then Laterna from here on its network:
+
+```sh
+COMPOSE_FILE=compose.yaml:modules/external-network.yaml
+EXTERNAL_NETWORK=laterna-stack
+MEDIA_DIR=<the stack's DATA_DIR>/media
+```
+
+In Laterna, Administration, Sonarr and Radarr: `http://sonarr:8989` and `http://radarr:7878`
+with their API keys, then let Laterna turn on Kodi metadata and install its webhook at
+`http://laterna:8096`. The CI of each repository starts both together. Sonarr and Radarr that run
+elsewhere work the same way: `external-network` on their network, or their address and the
+server's.
+
+### Monitoring
+
+**`prometheus`.** Turn metrics on in Laterna (Administration, Observability) and copy the token it
+shows once to `LATERNA_METRICS_TOKEN`, then `docker compose up -d`. Grafana,
+http://<this machine>:3000 (user `admin`, `GRAFANA_PASSWORD`), opens on the Laterna dashboard:
+playbacks and transcodes, requests and errors, library, jobs, memory, database size, time since
+the last backup. Prometheus keeps 90 days (`PROMETHEUS_RETENTION`).
+
+**`jaeger`.** The server sends the trace of each request, job and FFmpeg run to Jaeger,
+http://<this machine>:16686: where the time of a slow page or a slow start goes. Traces stay in
+memory until Jaeger restarts. Another collector that takes OTLP over HTTP/JSON works the same way,
+with `OTEL_EXPORTER_OTLP_ENDPOINT` (and `OTEL_EXPORTER_OTLP_HEADERS` for a key) set on the server
+in `local.yaml`.
+
+**`uptime-kuma`.** http://<this machine>:3001: create the account, then an HTTP monitor on
+`http://laterna:8096/health` and a notification (email, Telegram, ntfy, Discord...).
+
+### Moving from Jellyfin
+
+**`jellyfin-import`.** `JELLYFIN_DIR` is Jellyfin's data folder, the one holding
+`data/jellyfin.db` (`/config` in Jellyfin's container: the host folder or volume behind it).
+Then Administration, Jellyfin import, folder `/jellyfin`. Jellyfin can keep running: Laterna
+works on a copy of its database. Jellyfin 10.11 or later.
+
+## Single sign-on
+
+Laterna signs in through an OpenID Connect provider, besides passwords and passkeys. One
+provider module, plus:
+
+1. `AUTH_HOST`: the provider's address, a name of the same domain as `LATERNA_HOST` that points
+   at the same machine (`auth.example.com`). With `https-dns` and DuckDNS,
+   `auth.<DUCKDNS_SUBDOMAIN>.duckdns.org` already points at the same address.
+2. `OIDC_CLIENT_SECRET`: a long random value (`openssl rand -hex 32`), shared by the provider and
+   Laterna.
+3. HTTPS for the provider: `auth-caddy` with `https-dns` or `https-public`; the `traefik` module
+   serves it by itself. Laterna must trust the provider's certificate, so `https-internal` does
+   not work here.
+4. In Laterna, Administration, Authentication: the public address, `https://<LATERNA_HOST>`,
+   then the provider's address below, client `laterna`, the secret, the name of the button, and
+   whether a provider user without a Laterna account gets one. A provider user signs in to the
+   Laterna account of the same name.
+
+| Module | Provider address | Users |
+|---|---|---|
+| `authelia` | `https://<AUTH_HOST>` | `users.yml` in the `authelia-config` volume; the first from `AUTHELIA_USER`, `AUTHELIA_PASSWORD`, `AUTHELIA_EMAIL` |
+| `authentik` | `https://<AUTH_HOST>/application/o/laterna/` | in its pages, https://<AUTH_HOST>, as `akadmin` with `AUTHENTIK_PASSWORD` |
+| `keycloak` | `https://<AUTH_HOST>/realms/laterna` | in the console, https://<AUTH_HOST>/admin, as `KEYCLOAK_ADMIN` with `KEYCLOAK_ADMIN_PASSWORD` |
+| `pocket-id` | `https://<AUTH_HOST>` | in its pages, after https://<AUTH_HOST>/setup |
+
+- **Authelia** makes its keys and the first user on its first start. A second factor (passkey,
+  one-time code) for everyone: `AUTHELIA_POLICY=two_factor`. Its emails (password reset, new
+  device) go to `/config/notifications.txt` in its volume; SMTP is set in `local.yaml`
+  (`AUTHELIA_NOTIFIER_SMTP_*`).
+- **Authentik** creates the provider and the application from
+  [`config/authentik/laterna.yaml`](config/authentik/laterna.yaml). `AUTHENTIK_SECRET_KEY` and
+  `AUTHENTIK_DB_PASSWORD`: long random values, kept forever.
+- **Keycloak** imports the realm `laterna` and its client from
+  [`config/keycloak/laterna-realm.json`](config/keycloak/laterna-realm.json) on its first start;
+  later changes are made in its console. Users need a first name, last name and email, or
+  Keycloak asks for them at their first sign-in.
+- **Pocket ID** has no passwords: each user signs in with a passkey. Create the client in its
+  pages: callback URL `https://<LATERNA_HOST>/auth/oidc/callback`, PKCE on; Laterna then takes the
+  client ID and secret Pocket ID shows. `POCKET_ID_ENCRYPTION_KEY`: `openssl rand -base64 32`,
+  kept forever. A user who lost their passkey gets a one-time sign-in link from
+  `docker compose exec pocket-id /app/pocket-id one-time-access-token <user>`.
+
+## Upkeep
+
+**`diun`.** Checks every 6 hours whether a container of this machine has a newer image, and tells
+you: the release notes come first, then `docker compose pull && docker compose up -d`. Where it
+writes goes in `diun.env`, for instance ntfy:
+
+```sh
+DIUN_NOTIF_NTFY_ENDPOINT=https://ntfy.sh
+DIUN_NOTIF_NTFY_TOPIC=my-secret-topic
+```
+
+The [notifiers](https://crazymax.dev/diun/notif/ntfy/): email, Telegram, Discord, Gotify,
+Matrix, Pushover, Slack, webhooks...
+
+**`watchtower`.** Pulls the image of `LATERNA_VERSION` every night at 4:00 and restarts the server
+when it changed; no other container. It saves a step, but an update then happens without anyone
+reading what it changes, and with `LATERNA_VERSION=latest` a new minor version comes in on its own:
+prefer `diun`. Its notifications go in `watchtower.env`
+(`WATCHTOWER_NOTIFICATION_URL`, [shoutrrr](https://nicholas-fedor.github.io/shoutrrr/) format).
+This is the maintained fork; the original Watchtower is archived.
+
+**`backup-offsite`.** Every night at 3:30, an archive of the server's `/config` (database, images,
+logs, and its own database backups unless `backups` puts them elsewhere) to `BACKUP_DIR_OFFSITE`,
+kept `BACKUP_RETENTION_DAYS` days (14). To send it to S3 or Backblaze B2, WebDAV (Nextcloud), SSH
+or Dropbox instead, put the variables of
+[docker-volume-backup](https://offen.github.io/docker-volume-backup/reference/) in
+`backup-offsite.env`. To restore: stop the server, put the archive's `laterna-config` back in the
+`config` volume, and if the live database inside is damaged, restore one of the backups next to
+it from Administration, Backups.
 
 ## Platforms
 

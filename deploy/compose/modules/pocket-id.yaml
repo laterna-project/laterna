@@ -1,0 +1,37 @@
+# Single sign-on with Pocket ID: passkeys only, no password at all, and a simple administration.
+# Its address, AUTH_HOST, needs HTTPS (passkeys too): with a Caddy module add
+# modules/auth-caddy.yaml; the traefik module serves it by itself. Open https://<AUTH_HOST>/setup
+# to create the administrator and their passkey, then, in Pocket ID, an OIDC client "Laterna"
+# with the callback URL https://<LATERNA_HOST>/auth/oidc/callback and PKCE. In Laterna
+# (Administration, Authentication): provider https://<AUTH_HOST>, and the client ID and secret
+# Pocket ID shows.
+services:
+  pocket-id:
+    image: ghcr.io/pocket-id/pocket-id:v2
+    restart: unless-stopped
+    environment:
+      APP_URL: ${AUTH_URL:-https://${AUTH_HOST:?set AUTH_HOST in .env}}
+      TRUST_PROXY: "true"
+      PORT: "9091"
+      ENCRYPTION_KEY: ${POCKET_ID_ENCRYPTION_KEY:?set POCKET_ID_ENCRYPTION_KEY in .env}
+      # No statistics sent to Pocket ID's authors.
+      ANALYTICS_DISABLED: "true"
+    healthcheck:
+      test: ["CMD", "/app/pocket-id", "healthcheck"]
+      interval: 30s
+      start_period: 10s
+    networks:
+      default:
+        # The name modules/auth-caddy.yaml forwards to, whichever provider it is.
+        aliases: [auth]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.auth.rule: Host(`${AUTH_HOST}`)
+      traefik.http.routers.auth.entrypoints: websecure
+      traefik.http.routers.auth.tls.certresolver: letsencrypt
+      traefik.http.services.auth.loadbalancer.server.port: "9091"
+    volumes:
+      - pocket-id-data:/app/data
+
+volumes:
+  pocket-id-data:

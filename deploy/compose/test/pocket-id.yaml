@@ -1,0 +1,6 @@
+# For the Pocket ID test (test.sh): an API key, to create the user and the client without a
+# browser. A real setup does that in Pocket ID's pages.
+services:
+  pocket-id:
+    environment:
+      STATIC_API_KEY: ${POCKET_ID_API_KEY}
