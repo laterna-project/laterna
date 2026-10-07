@@ -34,7 +34,8 @@ const (
 	ImageLocal ImageSource = "local"
 	// ImageRemote was downloaded from a URL found in an NFO and is kept in the metadata folder.
 	ImageRemote ImageSource = "remote"
-	// ImageEmbedded is a cover pulled out of an audio file and kept in the metadata folder.
+	// ImageEmbedded comes out of a media file and is kept in the metadata folder: the cover of an
+	// audio file, or a frame of an episode without a thumbnail of its own.
 	ImageEmbedded ImageSource = "embedded"
 	// ImageUpload was uploaded by an administrator (theme logo or background) and is kept in the
 	// metadata folder.

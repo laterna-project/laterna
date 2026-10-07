@@ -41,6 +41,15 @@ kind of image with no local file, the one whose address the NFO gives is **downl
 metadata directory. The file is named after the address, so a new address gives a new file. An
 image that is unavailable (4xx, not an image, over 20 MB) is dropped without a failed job.
 
+**Episode stills.** An episode with no thumbnail of its own, neither next to its file nor in its
+NFO, gets a frame of its video. That is the case of an episode that aired the day before, when
+Sonarr writes an empty `<thumb />` because the TV databases have no picture yet. The frame is
+taken at 20% of the runtime, past the recap, the cold open and the opening titles of most
+episodes. FFmpeg keeps the most representative of the 50 frames from there (no black frame or
+blurred cut), 1280 px wide at most, converted to SDR for HDR video. It is extracted once per
+content of the file, after its analysis, and kept in the metadata directory. It is only the last
+resort: a thumbnail that appears later replaces it, and the purge deletes the frame.
+
 **Cast photos** are downloaded from the `<thumb>` of each actor. A person keeps the **first**
 photo obtained: Sonarr and Radarr give different addresses for the same person, who would
 otherwise change face at every refresh.

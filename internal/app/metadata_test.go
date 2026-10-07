@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"image/jpeg"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -227,5 +228,73 @@ func TestSeriesMetadataChanges(t *testing.T) {
 	rescan(t, a, lib.ID)
 	if v, _, _ = series(); v.Item.Title != "Café Stories" || v.Item.OfficialRating != "" {
 		t.Errorf("without an NFO: %+v", v.Item)
+	}
+}
+
+// An episode without a thumbnail of its own shows a frame of its video. A thumbnail that appears
+// next to it later replaces the frame, which the purge then deletes.
+func TestEpisodeStills(t *testing.T) {
+	if testing.Short() {
+		t.Skip("full scan")
+	}
+	a, _ := startMediaApp(t)
+	ctx := context.Background()
+	_, p := setupAdmin(t, a)
+	root := t.TempDir()
+	show := filepath.Join(root, "Café Stories (2022)")
+	copyTree(t, filepath.Join(testfixtures.Root(), "Shows", "Café Stories (2022)"), show)
+	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{root}, "")
+	mustNil(t, err)
+	waitIdle(t, a)
+
+	episodes := func() []domain.ItemView {
+		t.Helper()
+		page, err := a.ListSeries(ctx, p, ListQuery{PageSize: 1})
+		mustNil(t, err)
+		eps, err := a.Episodes(ctx, p, page.Items[0].Item.ID, nil)
+		mustNil(t, err)
+		return eps
+	}
+	thumb := func(v domain.ItemView) domain.Image {
+		t.Helper()
+		for _, img := range v.Images {
+			if img.Kind == domain.ImageThumb {
+				return img
+			}
+		}
+		t.Fatalf("%s: no thumbnail", v.Item.Title)
+		return domain.Image{}
+	}
+	eps := episodes()
+	if len(eps) != 4 {
+		t.Fatalf("%d episodes", len(eps))
+	}
+	for _, ep := range eps {
+		img := thumb(ep)
+		f, err := os.Open(img.Path)
+		mustNil(t, err)
+		cfg, err := jpeg.DecodeConfig(f)
+		_ = f.Close()
+		if img.Source != domain.ImageEmbedded || err != nil || cfg.Width == 0 || cfg.Width > stillWidth {
+			t.Errorf("%s: %s %s, %+v %v", ep.Item.Title, img.Source, img.Path, cfg, err)
+		}
+	}
+	still := thumb(eps[0]).Path
+
+	// Sonarr writes the thumbnail of the first episode.
+	copyTree(t, filepath.Join(show, "poster.jpg"), filepath.Join(show, "Season 01", "Café Stories (2022) S01E01-thumb.jpg"))
+	rescan(t, a, lib.ID)
+	eps = episodes()
+	if img := thumb(eps[0]); img.Source != domain.ImageLocal {
+		t.Errorf("thumbnail written next to the episode: %s %s", img.Source, img.Path)
+	}
+	if img := thumb(eps[1]); img.Source != domain.ImageEmbedded {
+		t.Errorf("other episode: %s", img.Source)
+	}
+	old := time.Now().Add(-2 * time.Hour)
+	mustNil(t, os.Chtimes(still, old, old))
+	mustNil(t, a.purgeMetadata(ctx, ""))
+	if _, err := os.Stat(still); !os.IsNotExist(err) {
+		t.Errorf("replaced frame kept: %v", err)
 	}
 }
