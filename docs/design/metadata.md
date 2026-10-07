@@ -48,7 +48,9 @@ taken at 20% of the runtime, past the recap, the cold open and the opening title
 episodes. FFmpeg keeps the most representative of the 50 frames from there (no black frame or
 blurred cut), 1280 px wide at most, converted to SDR for HDR video. It is extracted once per
 content of the file, after its analysis, and kept in the metadata directory. It is only the last
-resort: a thumbnail that appears later replaces it, and the purge deletes the frame.
+resort: a thumbnail that appears later replaces it, and the purge deletes the frame. The episodes
+already in a library when the server is updated have their metadata read again once, in the
+background, after any other waiting work (migration 26).
 
 **Cast photos** are downloaded from the `<thumb>` of each actor. A person keeps the **first**
 photo obtained: Sonarr and Radarr give different addresses for the same person, who would

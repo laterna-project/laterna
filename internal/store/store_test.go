@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -244,5 +246,51 @@ func TestThemesMigrationRoundTrip(t *testing.T) {
 	}
 	if themes, err := st.Read().Themes(ctx); err != nil || len(themes) != 0 {
 		t.Fatalf("themes after migrating up again: %v %v", themes, err)
+	}
+}
+
+// Upgrading to episode stills reads again the metadata of the episodes without a thumbnail, once,
+// at the lowest priority.
+func TestEpisodeStillsMigration(t *testing.T) {
+	f := newCatalogFixture(t)
+	ctx := context.Background()
+	mustWrite(t, f.st, func(q Q) error {
+		_, _, err := q.SetItemImage(ctx, f.eps[0].ID, domain.ImageThumb, domain.ImageLocal, "/m/show/1-1-thumb.jpg", "", t0)
+		return err
+	})
+	provider, err := goose.NewProvider(database.DialectSQLite3, f.st.writer, migrations.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.DownTo(ctx, 25); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := f.st.writer.QueryContext(ctx, `SELECT target, class, priority, state FROM jobs WHERE kind = 'item.metadata' ORDER BY target`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	var got []string
+	for rows.Next() {
+		var target, class, state string
+		var priority int
+		if err := rows.Scan(&target, &class, &priority, &state); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, fmt.Sprintf("%s %s %d %s", target, class, priority, state))
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{}
+	for _, ep := range f.eps[1:] {
+		want = append(want, ep.ID.String()+" io -1 pending")
+	}
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Errorf("jobs:\n%v\nwant\n%v", got, want)
 	}
 }
