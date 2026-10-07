@@ -22,6 +22,7 @@ import (
 	"github.com/laterna-project/laterna/internal/media/remux"
 	"github.com/laterna-project/laterna/internal/media/subtitles"
 	"github.com/laterna-project/laterna/internal/media/transcode"
+	"github.com/laterna-project/laterna/internal/naming"
 	"github.com/laterna-project/laterna/internal/playback"
 	"github.com/laterna-project/laterna/internal/store"
 	"github.com/laterna-project/laterna/internal/telemetry"
@@ -60,6 +61,11 @@ type PlayRequest struct {
 	// Subtitle is the subtitle shown from the start (domain.Subtitle.Position); nil for none. It
 	// only changes playback if the device cannot render it (burn-in).
 	Subtitle *int
+	// ProfileSubtitle asks, when Subtitle is nil, for the subtitle the profile's preferences pick.
+	ProfileSubtitle bool
+	// Language is the device's language (Accept-Language): the subtitles' when the profile names
+	// none.
+	Language string
 }
 
 // PlayInfo describes an open playback.
@@ -83,10 +89,12 @@ type PlayInfo struct {
 	GPU                  bool
 	// Subtitles and Fonts are the subtitles of the file, served on the side, and the fonts of its
 	// ASS subtitles. SubtitlesReady is false until they are extracted (their URLs wait for it).
-	// Burned is the subtitle burned into the picture, nil otherwise.
+	// Subtitle is the one shown from the start (requested, or picked by the profile's
+	// preferences), nil for none. Burned is the subtitle burned into the picture, nil otherwise.
 	Subtitles      []domain.Subtitle
 	Fonts          []domain.Font
 	SubtitlesReady bool
+	Subtitle       *int
 	Burned         *int
 }
 
@@ -263,6 +271,9 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		}
 		chosen = &subs[*req.Subtitle]
 	}
+	if chosen == nil && req.ProfileSubtitle && !music && p.Profile != nil {
+		chosen = profileSubtitle(*p.Profile, req.Language, file.Info, req.Audio, subs)
+	}
 	plan := playback.Decide(file.Info, req.Device, req.Audio, chosen)
 	var encoder transcode.Encoder
 	var toneMap *transcode.ToneMapper
@@ -351,7 +362,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	a.log.InfoContext(ctx, "playback started", "session", s.id, "item", it.ID, "title", it.Title,
 		"method", plan.Method, "copy_video", plan.CopyVideo, "copy_audio", plan.CopyAudio,
 		"encoder", encoder.Name, "gpu", gpu, "tonemap", toneMapName(toneMap, gpu), "reasons", plan.Reasons, "segments", len(s.segs),
-		"subtitles", len(subs), "subtitles_ready", subsReady, "burn", plan.Burn)
+		"subtitles", len(subs), "subtitles_ready", subsReady, "subtitle", subtitleLog(chosen), "burn", plan.Burn)
 	started := domain.T("activity.playback_started", "profile", s.who.profileName, "title", s.who.title, "device", s.who.device, []domain.Text{methodText(plan)})
 	if music {
 		started.Key = "activity.listening_started"
@@ -366,8 +377,49 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		Duration: file.Info.Duration, Resume: view.UserData.Position,
 		Reasons: plan.Reasons, CopyVideo: plan.CopyVideo, CopyAudio: plan.CopyAudio, Encoder: encoder.Name, ToneMap: toneMapName(toneMap, gpu),
 		GPU:       gpu,
-		Subtitles: subs, Fonts: fonts, SubtitlesReady: subsReady, Burned: burned,
+		Subtitles: subs, Fonts: fonts, SubtitlesReady: subsReady, Subtitle: subtitlePosition(chosen), Burned: burned,
 	}, nil
+}
+
+// profileSubtitle is the subtitle a playback starts with by the profile's preferences, nil for
+// none (playback.PickSubtitle). Its language is the one the profile names for subtitles, then the
+// profile's, then the device's. Every language is brought to its ISO 639-2/B code: the file says
+// "fra" or "fre", the profile "fr" or "fr-CA".
+func profileSubtitle(profile domain.Profile, device string, info domain.MediaInfo, audio int, subs []domain.Subtitle) *domain.Subtitle {
+	lang := ""
+	for _, tag := range []string{profile.SubtitleLanguage, profile.Language, device} {
+		if lang = naming.Language(tag); lang != "" {
+			break
+		}
+	}
+	audioLang := ""
+	if s := playback.AudioStream(info, audio); s != nil {
+		audioLang = naming.Language(s.Language)
+	}
+	candidates := make([]domain.Subtitle, len(subs))
+	for i, s := range subs {
+		s.Language = naming.Language(s.Language)
+		candidates[i] = s
+	}
+	pos, ok := playback.PickSubtitle(candidates, profile.SubtitleMode, lang, audioLang)
+	if !ok || pos >= len(subs) {
+		return nil
+	}
+	return &subs[pos]
+}
+
+func subtitlePosition(s *domain.Subtitle) *int {
+	if s == nil {
+		return nil
+	}
+	return &s.Position
+}
+
+func subtitleLog(s *domain.Subtitle) int {
+	if s == nil {
+		return -1
+	}
+	return s.Position
 }
 
 func newToken() string {

@@ -265,3 +265,73 @@ func TestPlaybackBurnsSubtitles(t *testing.T) {
 		t.Errorf("subtitle 42: %v", err)
 	}
 }
+
+// The profile's preferences pick the subtitle a playback starts with (Japanese audio; French ASS,
+// English SRT, French PGS, then external German PGS, forced English SRT and French SRT).
+func TestPlaybackPicksProfileSubtitle(t *testing.T) {
+	a, p, movie, _, _ := subtitledMovie(t)
+	ctx := context.Background()
+	web := browser
+	web.SubtitleFormats = []string{"vtt", "ass"}
+	start := func(req PlayRequest) PlayInfo {
+		t.Helper()
+		req.ItemID, req.Audio, req.Device = movie.ID, -1, web
+		info, err := a.StartPlayback(ctx, p, req)
+		mustNil(t, err)
+		mustNil(t, a.StopPlayback(ctx, p, info.SessionID, 0))
+		return info
+	}
+	prefer := func(mode domain.SubtitleMode, lang string) {
+		t.Helper()
+		profile, err := a.SetSubtitlePreferences(ctx, p, mode, lang)
+		mustNil(t, err)
+		p.Profile = &profile
+	}
+	picked := func(info PlayInfo) int {
+		if info.Subtitle == nil {
+			return -1
+		}
+		return *info.Subtitle
+	}
+
+	// Nothing asked: nothing shown, as before.
+	if got := picked(start(PlayRequest{Language: "fr"})); got != -1 {
+		t.Errorf("without profile_subtitle: %d", got)
+	}
+	// Automatic, French device, Japanese audio: a whole French subtitle in text, not the PGS.
+	info := start(PlayRequest{ProfileSubtitle: true, Language: "fr-FR"})
+	if got := picked(info); got != 0 && got != 5 || info.Burned != nil {
+		t.Errorf("automatic, French: %d (burned %v)", got, info.Burned)
+	}
+	// The profile's own subtitle language wins over the device's.
+	prefer(domain.SubtitleAlways, "en")
+	if got := picked(start(PlayRequest{ProfileSubtitle: true, Language: "fr"})); got != 1 {
+		t.Errorf("always, English: %d", got)
+	}
+	prefer(domain.SubtitleForced, "en")
+	if got := picked(start(PlayRequest{ProfileSubtitle: true})); got != 4 {
+		t.Errorf("forced, English: %d", got)
+	}
+	prefer(domain.SubtitleOff, "en")
+	if got := picked(start(PlayRequest{ProfileSubtitle: true})); got != -1 {
+		t.Errorf("off: %d", got)
+	}
+	// A requested subtitle wins and comes back as is.
+	sub := 1
+	if got := picked(start(PlayRequest{ProfileSubtitle: true, Subtitle: &sub})); got != 1 {
+		t.Errorf("requested: %d", got)
+	}
+	// German only exists as PGS: a device that cannot draw it gets it burned in.
+	prefer(domain.SubtitleAuto, "de")
+	info = start(PlayRequest{ProfileSubtitle: true})
+	if picked(info) != 3 || info.Burned == nil || *info.Burned != 3 || info.Method != playback.Transcode {
+		t.Errorf("German PGS: %d, burned %v, %s", picked(info), info.Burned, info.Method)
+	}
+
+	if _, err := a.SetSubtitlePreferences(ctx, p, "sometimes", ""); !isKind(err, domain.ErrInvalid) {
+		t.Errorf("unknown mode: %v", err)
+	}
+	if _, err := a.SetSubtitlePreferences(ctx, p, domain.SubtitleAuto, "not a tag!"); !isKind(err, domain.ErrInvalid) {
+		t.Errorf("bad language: %v", err)
+	}
+}

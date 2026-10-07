@@ -96,6 +96,10 @@ func describeSidecar(tokens []string) Sidecar {
 	return s
 }
 
+// Language brings a language code (ISO 639-1 or 639-2, B or T, region included: "pt-BR", "fra")
+// or a language name in English or French to its ISO 639-2/B code; "" if it does not know it.
+func Language(tag string) string { return language(strings.ToLower(strings.TrimSpace(tag))) }
+
 // language recognizes a code (ISO 639-1 or 639-2, region included: "pt-BR") or a language name in
 // English or French, and returns the ISO 639-2/B code.
 func language(tok string) string {

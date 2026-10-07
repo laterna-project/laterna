@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -79,7 +80,10 @@ func (s *PlaybackService) StartPlayback(ctx context.Context, req *connect.Reques
 		n := int(m.GetSubtitleIndex())
 		subtitle = &n
 	}
-	info, err := s.app.StartPlayback(ctx, principal(ctx), app.PlayRequest{ItemID: item, FileID: file, Audio: audio, Device: profile, Subtitle: subtitle})
+	info, err := s.app.StartPlayback(ctx, principal(ctx), app.PlayRequest{
+		ItemID: item, FileID: file, Audio: audio, Device: profile, Subtitle: subtitle,
+		ProfileSubtitle: m.GetProfileSubtitle(), Language: firstLanguage(req.Header().Get("Accept-Language")),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +93,10 @@ func (s *PlaybackService) StartPlayback(ctx context.Context, req *connect.Reques
 		Reasons: renderAll(ctx, info.Reasons), ReasonTexts: textsMsg(ctx, info.Reasons), VideoTranscoded: !info.CopyVideo, AudioTranscoded: !info.CopyAudio, VideoEncoder: info.Encoder,
 		SubtitlesReady: info.SubtitlesReady, Subtitles: subtitleTracks(info), Fonts: fonts(info.Fonts),
 		ToneMapping: info.ToneMap, Gpu: info.GPU, Segments: mediaSegments(info.File.Segments),
+	}
+	if info.Subtitle != nil {
+		n := clampInt32(*info.Subtitle)
+		resp.SubtitleIndex = &n
 	}
 	if info.Burned != nil {
 		b := clampInt32(*info.Burned)
@@ -165,4 +173,15 @@ func (s *PlaybackService) StopPlayback(ctx context.Context, req *connect.Request
 		return nil, err
 	}
 	return connect.NewResponse(&laternav1.StopPlaybackResponse{}), nil
+}
+
+// firstLanguage is the first language of an Accept-Language header ("fr-FR,fr;q=0.9" gives
+// "fr-FR"), the one the device prefers; "" without one.
+func firstLanguage(header string) string {
+	first, _, _ := strings.Cut(header, ",")
+	tag, _, _ := strings.Cut(first, ";")
+	if tag = strings.TrimSpace(tag); tag == "*" {
+		return ""
+	}
+	return tag
 }

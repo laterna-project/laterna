@@ -246,6 +246,7 @@
   "error.profile.invalid_language": "Invalid language \"{language}\": a tag such as \"fr\" or \"pt-BR\" is expected",
   "error.profile.invalid_max_age": "The maximum age must be between 0 and {max}",
   "error.profile.invalid_pin": "The PIN must be 4 to 8 digits",
+  "error.profile.invalid_subtitle_mode": "Unknown subtitle mode \"{mode}\"",
   "error.profile.last_unrestricted": "The account must keep at least one unrestricted profile",
   "error.profile.name_invalid": "The profile name contains invalid characters",
   "error.profile.name_required": "A profile name is required",

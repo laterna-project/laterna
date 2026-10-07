@@ -38,6 +38,9 @@ service ProfileService {
   // SetLanguage changes the language of the picked profile. Everyone sets their own, even from a
   // restricted profile.
   rpc SetLanguage(SetLanguageRequest) returns (SetLanguageResponse);
+  // SetSubtitlePreferences changes when playback starts with a subtitle, for the picked profile.
+  // Everyone sets their own, even from a restricted profile.
+  rpc SetSubtitlePreferences(SetSubtitlePreferencesRequest) returns (SetSubtitlePreferencesResponse);
 }
 
 message Profile {
@@ -55,6 +58,24 @@ message Profile {
   // profile from one device to another. The server uses it for the texts it writes when the request
   // asks for no language (no Accept-Language header).
   string language = 7;
+  // When playback starts with a subtitle (StartPlaybackRequest.profile_subtitle).
+  SubtitleMode subtitle_mode = 8;
+  // Language of those subtitles (BCP 47 tag); empty means the profile's language, then the
+  // device's (Accept-Language).
+  string subtitle_language = 9;
+}
+
+// SubtitleMode says when a playback starts with a subtitle in the language of the profile.
+enum SubtitleMode {
+  // Automatic, the default: a whole subtitle when the audio is in another language; when it is in
+  // that language or says none, only a forced one (signs, lines in a foreign language).
+  SUBTITLE_MODE_UNSPECIFIED = 0;
+  // A subtitle whenever the file has one in that language.
+  SUBTITLE_MODE_ALWAYS = 1;
+  // Only forced subtitles.
+  SUBTITLE_MODE_FORCED = 2;
+  // Never a subtitle at the start.
+  SUBTITLE_MODE_OFF = 3;
 }
 
 // ParentalControl hides content by its rating: the "mpaa" field of NFO files (TV-14, PG-13, -12,
@@ -131,5 +152,15 @@ message SetLanguageRequest {
 }
 
 message SetLanguageResponse {
+  Profile profile = 1;
+}
+
+message SetSubtitlePreferencesRequest {
+  SubtitleMode mode = 1;
+  // BCP 47 tag; empty means the profile's language.
+  string language = 2;
+}
+
+message SetSubtitlePreferencesResponse {
   Profile profile = 1;
 }

@@ -243,8 +243,13 @@ type StartPlaybackRequest struct {
 	// unset means none. Only a subtitle the device cannot render changes the playback: it is burned
 	// in.
 	SubtitleIndex *int32 `protobuf:"varint,5,opt,name=subtitle_index,json=subtitleIndex,proto3,oneof" json:"subtitle_index,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// When subtitle_index is unset, start with the subtitle the profile's preferences pick
+	// (Profile.subtitle_mode, Profile.subtitle_language): StartPlaybackResponse.subtitle_index says
+	// which. Like a requested one, it is burned in if the device cannot render it. A client sets it
+	// when a playback starts, and leaves it out when it reopens one after a choice of the viewer.
+	ProfileSubtitle bool `protobuf:"varint,6,opt,name=profile_subtitle,json=profileSubtitle,proto3" json:"profile_subtitle,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *StartPlaybackRequest) Reset() {
@@ -312,6 +317,13 @@ func (x *StartPlaybackRequest) GetSubtitleIndex() int32 {
 	return 0
 }
 
+func (x *StartPlaybackRequest) GetProfileSubtitle() bool {
+	if x != nil {
+		return x.ProfileSubtitle
+	}
+	return false
+}
+
 type StartPlaybackResponse struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -341,6 +353,10 @@ type StartPlaybackResponse struct {
 	SubtitlesReady bool `protobuf:"varint,14,opt,name=subtitles_ready,json=subtitlesReady,proto3" json:"subtitles_ready,omitempty"`
 	// Subtitle burned into the picture (SubtitleTrack.index); unset otherwise.
 	BurnedSubtitleIndex *int32 `protobuf:"varint,15,opt,name=burned_subtitle_index,json=burnedSubtitleIndex,proto3,oneof" json:"burned_subtitle_index,omitempty"`
+	// Subtitle to show from the start (SubtitleTrack.index): the requested one, or the one the
+	// profile's preferences picked (profile_subtitle); unset means none. The client shows it itself,
+	// unless it is the burned one.
+	SubtitleIndex *int32 `protobuf:"varint,20,opt,name=subtitle_index,json=subtitleIndex,proto3,oneof" json:"subtitle_index,omitempty"`
 	// The reasons, for translation: "reason.video_unsupported" (params "codec", "bit_depth",
 	// "dynamic_range"), "reason.audio_unsupported", "reason.container_unsupported"...
 	ReasonTexts []*Text `protobuf:"bytes,19,rep,name=reason_texts,json=reasonTexts,proto3" json:"reason_texts,omitempty"`
@@ -486,6 +502,13 @@ func (x *StartPlaybackResponse) GetSubtitlesReady() bool {
 func (x *StartPlaybackResponse) GetBurnedSubtitleIndex() int32 {
 	if x != nil && x.BurnedSubtitleIndex != nil {
 		return *x.BurnedSubtitleIndex
+	}
+	return 0
+}
+
+func (x *StartPlaybackResponse) GetSubtitleIndex() int32 {
+	if x != nil && x.SubtitleIndex != nil {
+		return *x.SubtitleIndex
 	}
 	return 0
 }
@@ -1067,15 +1090,16 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\fVideoSupport\x12\x14\n" +
 	"\x05codec\x18\x01 \x01(\tR\x05codec\x12\"\n" +
 	"\rmax_bit_depth\x18\x02 \x01(\x05R\vmaxBitDepth\x12\x10\n" +
-	"\x03hdr\x18\x03 \x01(\bR\x03hdr\"\x84\x02\n" +
+	"\x03hdr\x18\x03 \x01(\bR\x03hdr\"\xaf\x02\n" +
 	"\x14StartPlaybackRequest\x12\x17\n" +
 	"\aitem_id\x18\x01 \x01(\tR\x06itemId\x12\x17\n" +
 	"\afile_id\x18\x02 \x01(\tR\x06fileId\x121\n" +
 	"\x12audio_stream_index\x18\x03 \x01(\x05H\x00R\x10audioStreamIndex\x88\x01\x01\x121\n" +
 	"\x06device\x18\x04 \x01(\v2\x19.laterna.v1.DeviceProfileR\x06device\x12*\n" +
-	"\x0esubtitle_index\x18\x05 \x01(\x05H\x01R\rsubtitleIndex\x88\x01\x01B\x15\n" +
+	"\x0esubtitle_index\x18\x05 \x01(\x05H\x01R\rsubtitleIndex\x88\x01\x01\x12)\n" +
+	"\x10profile_subtitle\x18\x06 \x01(\bR\x0fprofileSubtitleB\x15\n" +
 	"\x13_audio_stream_indexB\x11\n" +
-	"\x0f_subtitle_index\"\xec\x06\n" +
+	"\x0f_subtitle_index\"\xab\a\n" +
 	"\x15StartPlaybackResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x122\n" +
@@ -1093,13 +1117,15 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\tsubtitles\x18\f \x03(\v2\x19.laterna.v1.SubtitleTrackR\tsubtitles\x12&\n" +
 	"\x05fonts\x18\r \x03(\v2\x10.laterna.v1.FontR\x05fonts\x12'\n" +
 	"\x0fsubtitles_ready\x18\x0e \x01(\bR\x0esubtitlesReady\x127\n" +
-	"\x15burned_subtitle_index\x18\x0f \x01(\x05H\x01R\x13burnedSubtitleIndex\x88\x01\x01\x123\n" +
+	"\x15burned_subtitle_index\x18\x0f \x01(\x05H\x01R\x13burnedSubtitleIndex\x88\x01\x01\x12*\n" +
+	"\x0esubtitle_index\x18\x14 \x01(\x05H\x02R\rsubtitleIndex\x88\x01\x01\x123\n" +
 	"\freason_texts\x18\x13 \x03(\v2\x10.laterna.v1.TextR\vreasonTexts\x12!\n" +
 	"\ftone_mapping\x18\x10 \x01(\tR\vtoneMapping\x12\x10\n" +
 	"\x03gpu\x18\x11 \x01(\bR\x03gpu\x124\n" +
 	"\bsegments\x18\x12 \x03(\v2\x18.laterna.v1.MediaSegmentR\bsegmentsB\x15\n" +
 	"\x13_audio_stream_indexB\x18\n" +
-	"\x16_burned_subtitle_index\"\xac\x02\n" +
+	"\x16_burned_subtitle_indexB\x11\n" +
+	"\x0f_subtitle_index\"\xac\x02\n" +
 	"\rSubtitleTrack\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x1a\n" +
 	"\blanguage\x18\x02 \x01(\tR\blanguage\x12\x14\n" +

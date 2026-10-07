@@ -372,19 +372,21 @@ type PlaylistEntry struct {
 }
 
 type Profile struct {
-	ID           domain.ID
-	AccountID    domain.ID
-	Name         string
-	NameKey      string
-	PinHash      sql.NullString
-	Kid          int64
-	CreatedAt    int64
-	UpdatedAt    int64
-	MaxAge       sql.NullInt64
-	BlockUnrated int64
-	ThemeID      *domain.ID
-	ThemeMode    string
-	Language     string
+	ID               domain.ID
+	AccountID        domain.ID
+	Name             string
+	NameKey          string
+	PinHash          sql.NullString
+	Kid              int64
+	CreatedAt        int64
+	UpdatedAt        int64
+	MaxAge           sql.NullInt64
+	BlockUnrated     int64
+	ThemeID          *domain.ID
+	ThemeMode        string
+	Language         string
+	SubtitleMode     string
+	SubtitleLanguage string
 }
 
 type ProviderID struct {

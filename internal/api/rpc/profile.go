@@ -53,6 +53,15 @@ func (s *ProfileService) UpdateProfile(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&laternav1.UpdateProfileResponse{Profile: profileMsg(p)}), nil
 }
 
+// SetSubtitlePreferences changes when playback starts with a subtitle, for the picked profile.
+func (s *ProfileService) SetSubtitlePreferences(ctx context.Context, req *connect.Request[laternav1.SetSubtitlePreferencesRequest]) (*connect.Response[laternav1.SetSubtitlePreferencesResponse], error) {
+	p, err := s.app.SetSubtitlePreferences(ctx, principal(ctx), subtitleModeFromMsg(req.Msg.GetMode()), req.Msg.GetLanguage())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.SetSubtitlePreferencesResponse{Profile: profileMsg(p)}), nil
+}
+
 // SetLanguage changes the language of the picked profile.
 func (s *ProfileService) SetLanguage(ctx context.Context, req *connect.Request[laternav1.SetLanguageRequest]) (*connect.Response[laternav1.SetLanguageResponse], error) {
 	p, err := s.app.SetLanguage(ctx, principal(ctx), req.Msg.GetLanguage())
