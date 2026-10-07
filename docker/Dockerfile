@@ -30,10 +30,16 @@ RUN sh /packaging/fetch-web.sh /opt/laterna-web
 # Final image. CI never takes this stage from the build cache, so every image that is pushed has
 # the security updates of the day it was built.
 FROM debian:trixie-slim AS runtime
-# Hardware acceleration drivers (VAAPI/QSV) are not installed yet: they need to be validated
-# on real hardware first.
+ARG TARGETARCH
+# On amd64, the VAAPI driver of Intel GPUs (iHD: Broadwell and later) for h264_vaapi, and libva
+# itself, which the static FFmpeg loads at run time. The container gets the card with
+# --device /dev/dri and the host's render group (docs/install.md); without one, the server falls
+# back to the CPU. AMD's driver (mesa, about 190 MB with LLVM) waits for a test on an AMD card.
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends ca-certificates tzdata \
+    && if [ "$TARGETARCH" = amd64 ]; then \
+         apt-get install -y --no-install-recommends libva2 libva-drm2 intel-media-va-driver; \
+       fi \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /config /cache && chown 1000:1000 /config /cache
 COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
