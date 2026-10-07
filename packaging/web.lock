@@ -1,5 +1,5 @@
 # The web client the Docker image serves: a release of https://github.com/laterna-project/laterna-web,
 # pinned by version and checked by SHA-256 (from the release's checksums.txt).
 # Read by packaging/fetch-web.sh; packaging/update-web.sh moves the pin.
-WEB_VERSION=0.2.0
-WEB_SHA256=dcb0d1c7b054eff4917cc47e69f4eda662f84748e66368fc4e026badabba1b5e
+WEB_VERSION=0.3.0
+WEB_SHA256=7517ad49005e8e7a65ee312ae1f384bb5f02de9309acb4553279e9b671c3ec80
