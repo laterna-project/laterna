@@ -381,7 +381,8 @@ test_keycloak() {
 signin_authentik() {
   login=$(browser -o /dev/null -w '%{redirect_url}' "$1")
   executor="https://auth.test/api/v3/flows/executor/default-authentication-flow/?query=$(jq -rn --arg q "${login#*\?}" '$q|@uri')"
-  browser -f -o /dev/null "$executor"
+  # Just after the first start, Authentik may still be creating its default flows.
+  retry 120 browser -f -o /dev/null "$executor"
   browser -f -L -o /dev/null -H 'Content-Type: application/json' \
     -d '{"component":"ak-stage-identification","uid_field":"akadmin"}' "$executor"
   next=$(browser -f -L -H 'Content-Type: application/json' \
