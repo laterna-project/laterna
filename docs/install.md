@@ -63,11 +63,38 @@ volumes:
 - The server runs as user 1000. Media can be mounted read-only; Laterna never writes there.
 - To let TVs and apps find the server on the local network, use `network_mode: host` (or
   `--network host`). Multicast does not cross Docker's bridge network.
-- The image ships no VAAPI or QSV drivers yet: Intel and AMD GPUs are not used, and the server
-  falls back to `libx264`.
+- Video transcoding uses the CPU (`libx264`) unless the container gets a GPU: see below for
+  Intel graphics.
 - The image serves the web client (from version 0.2.0): open http://localhost:8096 to set the
   server up. The version it carries is pinned in
   [`packaging/web.lock`](../packaging/web.lock).
+
+### Intel graphics (VAAPI)
+
+From version 0.5.0, the amd64 image carries the VAAPI driver of Intel GPUs (Broadwell, 2014, and
+later, integrated graphics and Arc). Give the container the card and the host group that may use
+it, `render` (its number varies from one system to another):
+
+```sh
+docker run -d --name laterna -p 8096:8096 \
+  --device /dev/dri:/dev/dri --group-add "$(getent group render | cut -d: -f3)" \
+  -v laterna-config:/config -v laterna-cache:/cache \
+  -v /path/to/media:/media:ro \
+  ghcr.io/laterna-project/laterna:latest
+```
+
+With Compose, under the service: `devices: ["/dev/dri:/dev/dri"]` and `group_add: ["<number>"]`,
+the number given by `getent group render | cut -d: -f3`.
+
+At startup the server tries each encoder: the log line `usable H.264 encoders` then starts with
+`h264_vaapi`. Measured on an Alder Lake laptop (Iris Xe), a 1080p 10-bit HEVC video transcoded
+to H.264 takes 3.6 times less CPU time than with `libx264`, and the first segment comes in about
+a second.
+
+- Without the card, or without the group, the server falls back to `libx264`.
+- The image has no driver for AMD cards yet (it waits for a test on one), and QSV is not needed:
+  VAAPI uses the same Intel hardware.
+- Docker Desktop (Windows, macOS) gives containers no access to Intel or AMD graphics.
 
 ## Debian, Ubuntu, Fedora and other systemd distributions
 
