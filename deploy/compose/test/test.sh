@@ -31,6 +31,8 @@ cleanup() {
   fi
   docker rm -f laterna-test-jellyfin >/dev/null 2>&1 || true
   docker network rm laterna-test-external >/dev/null 2>&1 || true
+  # Some files there belong to the containers' users.
+  docker run --rm -v "$work:/work" alpine rm -rf /work/test >/dev/null 2>&1 || true
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -282,8 +284,10 @@ jellyfin() {
 }
 
 test_jellyfin() {
-  # A Jellyfin whose wizard created a user, in the folder the module mounts.
-  docker run -d --name laterna-test-jellyfin --user "$(id -u):$(id -g)" -e JELLYFIN_CACHE_DIR=/config/cache \
+  # A Jellyfin whose wizard created a user, in the folder the module mounts. It runs as the
+  # server's user, 1000, as a Jellyfin next to Laterna would: its database is private to its user.
+  chmod 777 test/jellyfin
+  docker run -d --name laterna-test-jellyfin --user 1000:1000 -e JELLYFIN_CACHE_DIR=/config/cache \
     -v "$PWD/test/jellyfin:/config" jellyfin/jellyfin:10.11 >/dev/null
   retry 120 jellyfin GET '' /Startup/User >/dev/null
   jellyfin POST '{"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}' /Startup/Configuration
@@ -331,6 +335,8 @@ env_value() {
 trust_caddy() {
   # shellcheck disable=SC2086
   compose $current -- cp caddy:/data/caddy/pki/authorities/local/root.crt test/ca/root.crt >/dev/null 2>&1
+  # Caddy keeps it private (0600): the server runs as another user than the tests.
+  chmod 644 test/ca/root.crt
   # shellcheck disable=SC2086
   compose $current -- restart laterna >/dev/null 2>&1
   wait_for http://127.0.0.1:18096/health
