@@ -2,8 +2,12 @@
 
 A base file runs the server alone; modules add what a setup needs: media on a NAS, a GPU,
 backups on another disk, HTTPS through one of several reverse proxies, access from outside, the
-services Laterna works with (Sonarr and Radarr, single sign-on, monitoring) and the upkeep of it
-all. Pick the modules, list them in `.env`, and `docker compose` combines them.
+services Laterna works with (single sign-on, monitoring) and the upkeep of it all. Pick the
+modules, list them in `.env`, and `docker compose` combines them.
+
+Sonarr, Radarr, Prowlarr and the download clients behind a VPN are in
+[laterna-stack](https://github.com/laterna-project/laterna-stack), which Laterna started from here
+joins with `external-network` ([Sonarr, Radarr and downloads](#sonarr-radarr-and-downloads)).
 
 - [Starting](#starting)
 - [Combining modules](#combining-modules)
@@ -99,12 +103,11 @@ the CI does not have.
 | `tailscale` | Your devices reach it from anywhere, with HTTPS, no port open | ⚙️ |
 | `cloudflared` | A Cloudflare Tunnel (read the warnings) | ⚙️ |
 | **A proxy that already runs** | | |
-| `external-network` | Joins an existing Docker network (proxy, media stack) | ✅ |
+| `external-network` | Joins an existing Docker network (proxy, laterna-stack) | ✅ |
 | `no-ports` | Publishes no port: only the proxy reaches the server | ✅ |
 | `traefik-labels` | Labels for an existing Traefik | ✅ |
 | `caddy-labels` | Labels for an existing caddy-docker-proxy | ⚙️ |
 | **Services** | | |
-| `arr` | Sonarr and Radarr, which name files and write the NFO files | ✅ |
 | `prometheus` | Prometheus and Grafana, with a Laterna dashboard | ✅ |
 | `jaeger` | Jaeger, for the server's traces | ✅ |
 | `uptime-kuma` | Uptime Kuma, which warns when the server stops answering | ✅ |
@@ -330,15 +333,25 @@ add a public hostname whose service is `http://laterna:8096`, and copy the tunne
 
 ## Services
 
-**`arr`.** Sonarr (series, http://<this machine>:8989) and Radarr (movies, :7878) see `MEDIA_DIR`
-at `/media`, like the server, so paths match without any mapping. After setting each up (its
-root folder under `/media`), in Laterna, Administration, Sonarr and Radarr: the address
-`http://sonarr:8989` or `http://radarr:7878`, the API key (Settings, General in each), then let
-Laterna turn on Kodi metadata and install its webhook at `http://laterna:8096`. Laterna hears
-about every import at once. Their download clients are not here: the
-[laterna-stack](https://github.com/laterna-project/laterna-stack) repository has a complete
-media stack. With Sonarr and Radarr that already run elsewhere, `external-network` lets them reach
-`http://laterna:8096`.
+### Sonarr, Radarr and downloads
+
+[laterna-stack](https://github.com/laterna-project/laterna-stack) brings the media: Sonarr,
+Radarr, Prowlarr, qBittorrent behind a VPN, SABnzbd, Bazarr, Lidarr and others, all set up for
+each other and for Laterna. Start it first, then Laterna from here on its network:
+
+```sh
+COMPOSE_FILE=compose.yaml:modules/external-network.yaml
+EXTERNAL_NETWORK=laterna-stack
+MEDIA_DIR=<the stack's DATA_DIR>/media
+```
+
+In Laterna, Administration, Sonarr and Radarr: `http://sonarr:8989` and `http://radarr:7878`
+with their API keys, then let Laterna turn on Kodi metadata and install its webhook at
+`http://laterna:8096`. The CI of each repository starts both together. Sonarr and Radarr that run
+elsewhere work the same way: `external-network` on their network, or their address and the
+server's.
+
+### Monitoring
 
 **`prometheus`.** Turn metrics on in Laterna (Administration, Observability) and copy the token it
 shows once to `LATERNA_METRICS_TOKEN`, then `docker compose up -d`. Grafana,
@@ -354,6 +367,8 @@ in `local.yaml`.
 
 **`uptime-kuma`.** http://<this machine>:3001: create the account, then an HTTP monitor on
 `http://laterna:8096/health` and a notification (email, Telegram, ntfy, Discord...).
+
+### Moving from Jellyfin
 
 **`jellyfin-import`.** `JELLYFIN_DIR` is Jellyfin's data folder, the one holding
 `data/jellyfin.db` (`/config` in Jellyfin's container: the host folder or volume behind it).

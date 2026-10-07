@@ -109,7 +109,7 @@ config() {
   check_config https-internal auth-caddy pocket-id
   check_config traefik keycloak
   check_config custom-user backup-offsite backups
-  check_config arr prometheus jaeger uptime-kuma diun
+  check_config prometheus jaeger uptime-kuma diun
 }
 
 # wait_for <url> [curl options...]: waits up to 60 s for the URL to answer.
@@ -220,28 +220,6 @@ test_folders() {
   done
   # The server writes its data to the host's folder.
   test -d test/config/data
-}
-
-# arr_key <service>: the API key Sonarr or Radarr wrote to its configuration.
-arr_key() {
-  compose arr -- exec -T "$1" sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' /config/config.xml 2>/dev/null
-}
-
-test_arr() {
-  setup_admin
-  for arr in sonarr:8989:SONARR radarr:7878:RADARR; do
-    name=${arr%%:*}
-    kind=${arr##*:}
-    retry 60 arr_key "$name" >/dev/null
-    key=$(arr_key "$name")
-    url="http://$(echo "$arr" | cut -d: -f1,2)"
-    api IntegrationService/SetIntegration \
-      "{\"kind\":\"INTEGRATION_KIND_$kind\",\"url\":\"$url\",\"apiKey\":\"$key\"}" >/dev/null
-    # Laterna turns Kodi metadata on and installs its webhook, which the instance tries at once.
-    api IntegrationService/ConfigureIntegration \
-      "{\"kind\":\"INTEGRATION_KIND_$kind\",\"kodiMetadata\":true,\"webhookUrl\":\"http://laterna:8096\"}" |
-      jq -e '.integration | .reachable and .kodiMetadata and .webhook' >/dev/null
-  done
 }
 
 prometheus_up() {
@@ -463,7 +441,6 @@ runs() {
   run nginx nginx no-ports
   docker network create laterna-test-external >/dev/null
   run labels external-network no-ports traefik-labels
-  run arr arr
   run monitoring prometheus jaeger uptime-kuma
   run jellyfin jellyfin-import
   # Without modules/custom-user.yaml, whose CONFIG_DIR test.env sets: the config volume.
