@@ -1,0 +1,6 @@
+# The single sign-on provider (modules/auth-caddy.yaml): whichever module provides it, it answers
+# at auth:9091.
+{$AUTH_HOST} {
+	import tls
+	reverse_proxy auth:9091
+}

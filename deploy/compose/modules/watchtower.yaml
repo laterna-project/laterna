@@ -1,0 +1,25 @@
+# Watchtower updates Laterna by itself: every night it pulls the image of LATERNA_VERSION and
+# restarts the server when it changed. Only the server: other containers are left alone. Prefer
+# modules/diun.yaml, which only tells you: an update you did not choose can change behavior, and
+# with LATERNA_VERSION=latest, a new minor version arrives without its release notes being read.
+# The server backs its database up before migrating it. This is the maintained fork of Watchtower
+# (the original is archived).
+services:
+  laterna:
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  watchtower:
+    image: nickfedor/watchtower:1
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_SCHEDULE: ${WATCHTOWER_SCHEDULE:-0 0 4 * * *}
+      WATCHTOWER_CLEANUP: "true"
+    env_file:
+      - path: ./watchtower.env
+        required: false
+    volumes:
+      # Watchtower restarts containers through the Docker socket, which gives control over Docker.
+      - /var/run/docker.sock:/var/run/docker.sock

@@ -1,0 +1,13 @@
+# Uptime Kuma watches the server and warns when it stops answering (email, Telegram, ntfy,
+# Discord...): http://<this machine>:3001, then an HTTP monitor on http://laterna:8096/health.
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:2
+    restart: unless-stopped
+    ports:
+      - "${UPTIME_KUMA_PORT:-3001}:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+
+volumes:
+  uptime-kuma-data:

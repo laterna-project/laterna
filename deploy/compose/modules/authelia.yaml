@@ -1,0 +1,55 @@
+# Single sign-on with Authelia: a light OpenID Connect provider, users in a file, passkeys and
+# one-time codes as a second factor. Its address, AUTH_HOST, needs HTTPS: with a Caddy module add
+# modules/auth-caddy.yaml; the traefik module serves it by itself. Then, in Laterna
+# (Administration, Authentication): provider https://<AUTH_HOST>, client laterna, secret
+# OIDC_CLIENT_SECRET. The first user comes from AUTHELIA_USER and AUTHELIA_PASSWORD.
+services:
+  authelia-init:
+    image: authelia/authelia:4
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET in .env}
+      AUTHELIA_USER: ${AUTHELIA_USER:?set AUTHELIA_USER in .env}
+      AUTHELIA_PASSWORD: ${AUTHELIA_PASSWORD:?set AUTHELIA_PASSWORD in .env}
+      AUTHELIA_EMAIL: ${AUTHELIA_EMAIL:?set AUTHELIA_EMAIL in .env}
+    volumes:
+      - ./config/authelia/init.sh:/init.sh:ro
+      - authelia-config:/config
+      - authelia-secrets:/secrets
+
+  authelia:
+    image: authelia/authelia:4
+    restart: unless-stopped
+    depends_on:
+      authelia-init:
+        condition: service_completed_successfully
+    environment:
+      TZ: ${TZ:-UTC}
+      X_AUTHELIA_CONFIG: /etc/authelia/configuration.yml
+      X_AUTHELIA_CONFIG_FILTERS: template
+      AUTH_HOST: ${AUTH_HOST:?set AUTH_HOST in .env}
+      AUTH_URL: ${AUTH_URL:-https://${AUTH_HOST}}
+      LATERNA_URL: ${LATERNA_URL:-https://${LATERNA_HOST:?set LATERNA_HOST in .env}}
+      ACCESS_POLICY: ${AUTHELIA_POLICY:-one_factor}
+      AUTHELIA_SESSION_SECRET_FILE: /secrets/session
+      AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /secrets/storage
+      AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE: /secrets/reset-password
+      AUTHELIA_IDENTITY_PROVIDERS_OIDC_HMAC_SECRET_FILE: /secrets/oidc-hmac
+    networks:
+      default:
+        # The name modules/auth-caddy.yaml forwards to, whichever provider it is.
+        aliases: [auth]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.auth.rule: Host(`${AUTH_HOST}`)
+      traefik.http.routers.auth.entrypoints: websecure
+      traefik.http.routers.auth.tls.certresolver: letsencrypt
+      traefik.http.services.auth.loadbalancer.server.port: "9091"
+    volumes:
+      - ./config/authelia/configuration.yml:/etc/authelia/configuration.yml:ro
+      - authelia-config:/config
+      - authelia-secrets:/secrets:ro
+
+volumes:
+  authelia-config:
+  authelia-secrets:

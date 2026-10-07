@@ -1,0 +1,54 @@
+# Authelia for modules/authelia.yaml: an OpenID Connect provider for Laterna. The file is a
+# template, filled in when Authelia starts: env reads a variable of the container, secret a file
+# that init.sh created. Users are in /config/users.yml of the authelia-config volume.
+theme: auto
+
+server:
+  address: tcp://:9091/
+
+log:
+  level: info
+
+authentication_backend:
+  file:
+    path: /config/users.yml
+    watch: true
+
+access_control:
+  default_policy: '{{ env "ACCESS_POLICY" }}'
+
+session:
+  cookies:
+    - domain: '{{ env "AUTH_HOST" }}'
+      authelia_url: '{{ env "AUTH_URL" }}'
+
+storage:
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /config/notifications.txt
+
+identity_providers:
+  oidc:
+    jwks:
+      - key: {{ secret "/secrets/oidc.pem" | mindent 10 "|" | msquote }}
+    claims_policies:
+      laterna:
+        # Laterna reads who signed in from the ID token itself.
+        id_token: [preferred_username, email, email_verified, name]
+    clients:
+      - client_id: laterna
+        client_name: Laterna
+        client_secret: '{{ secret "/secrets/laterna-client.digest" }}'
+        authorization_policy: '{{ env "ACCESS_POLICY" }}'
+        # Laterna is your own application: no consent screen.
+        consent_mode: implicit
+        claims_policy: laterna
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - '{{ env "LATERNA_URL" }}/auth/oidc/callback'
+        scopes: [openid, profile, email]
+        token_endpoint_auth_method: client_secret_basic

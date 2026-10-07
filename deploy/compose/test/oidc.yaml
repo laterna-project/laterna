@@ -1,0 +1,13 @@
+# For the single sign-on tests (test.sh): inside Docker, the test names lead to Caddy, and the
+# server trusts Caddy's own authority, which test.sh copies to test/ca.
+services:
+  caddy:
+    networks:
+      default:
+        aliases: [laterna.test, auth.test]
+
+  laterna:
+    environment:
+      SSL_CERT_DIR: /etc/ssl/certs:/test-ca
+    volumes:
+      - ./test/ca:/test-ca:ro

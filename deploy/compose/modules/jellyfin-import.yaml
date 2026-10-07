@@ -1,0 +1,9 @@
+# Moving from Jellyfin (10.11 or later): the server reads Jellyfin's data folder, read only, so that
+# Administration, Jellyfin import brings its users, what they watched, their positions and
+# favorites. JELLYFIN_DIR is the folder that holds data/jellyfin.db (/config in Jellyfin's
+# container); enter /jellyfin in Laterna. Laterna works on a copy of the database: Jellyfin can keep
+# running. Items are matched by file path, whatever the folder names on each side.
+services:
+  laterna:
+    volumes:
+      - ${JELLYFIN_DIR:?set JELLYFIN_DIR in .env}:/jellyfin:ro
