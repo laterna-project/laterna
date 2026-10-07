@@ -1,0 +1,12 @@
+# Joins a Docker network that already exists, besides this project's own: a reverse proxy, Sonarr,
+# Radarr or a media stack started elsewhere then reach the server at http://laterna:8096.
+services:
+  laterna:
+    networks:
+      - default
+      - external
+
+networks:
+  external:
+    name: ${EXTERNAL_NETWORK:?set EXTERNAL_NETWORK in .env}
+    external: true

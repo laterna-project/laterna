@@ -1,0 +1,7 @@
+dns azure {
+	subscription_id {env.AZURE_SUBSCRIPTION_ID}
+	resource_group_name {env.AZURE_RESOURCE_GROUP_NAME}
+	tenant_id {env.AZURE_TENANT_ID}
+	client_id {env.AZURE_CLIENT_ID}
+	client_secret {env.AZURE_CLIENT_SECRET}
+}

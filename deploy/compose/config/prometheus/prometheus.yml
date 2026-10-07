@@ -1,0 +1,12 @@
+# Prometheus for modules/prometheus.yaml: Laterna's metrics, with the token Laterna gave
+# (LATERNA_METRICS_TOKEN, written to /tmp/laterna-token at start).
+global:
+  scrape_interval: 30s
+
+scrape_configs:
+  - job_name: laterna
+    metrics_path: /metrics
+    authorization:
+      credentials_file: /tmp/laterna-token
+    static_configs:
+      - targets: ["laterna:8096"]

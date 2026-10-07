@@ -1,0 +1,31 @@
+# HTTPS for a server reachable from the Internet: the box forwards ports 80 and 443 to this machine,
+# LATERNA_HOST (a domain of yours) points at the box's public address, and Caddy gets the
+# certificate from Let's Encrypt over HTTP. Opening a server to the Internet exposes it to
+# everyone: keep it up to date, use strong passwords or passkeys, and consider
+# modules/https-dns.yaml (local only) or modules/tailscale.yaml instead.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    command: caddy run --config /etc/caddy/Caddyfile.public --adapter caddyfile
+    ports:
+      - "80:80"
+      - "443:443"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      LATERNA_UPSTREAM: ${LATERNA_UPSTREAM:-laterna:8096}
+      LATERNA_HOST: ${LATERNA_HOST:?set LATERNA_HOST in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./config/caddy/conf:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

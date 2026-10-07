@@ -1,0 +1,5 @@
+# HTTP/3 goes over UDP, which these modules do not publish (and Docker Desktop and many firewalls
+# would drop): Caddy does not announce it, so browsers never wait for it.
+servers {
+	protocols h1 h2
+}

@@ -1,0 +1,1 @@
+dns duckdns {env.DUCKDNS_TOKEN}

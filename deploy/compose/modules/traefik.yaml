@@ -1,0 +1,37 @@
+# HTTPS with Traefik: a certificate through DNS-01 at any provider lego supports (about 150,
+# https://go-acme.github.io/lego/dns/), with nothing to build. TRAEFIK_DNS_PROVIDER is the
+# provider's code on that page, and traefik-dns.env holds the variables the page lists.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.laterna.rule: Host(`${LATERNA_HOST:?set LATERNA_HOST in .env}`)
+      traefik.http.routers.laterna.entrypoints: websecure
+      traefik.http.routers.laterna.tls.certresolver: letsencrypt
+      traefik.http.services.laterna.loadbalancer.server.port: "8096"
+
+  traefik:
+    image: traefik:v3
+    restart: unless-stopped
+    command:
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=${TRAEFIK_DNS_PROVIDER:?set TRAEFIK_DNS_PROVIDER in .env}
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,9.9.9.9:53
+      - --certificatesresolvers.letsencrypt.acme.caserver=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+    env_file:
+      - path: ./traefik-dns.env
+        required: true
+    volumes:
+      # Traefik reads the labels through the Docker socket, which gives control over Docker: only
+      # this container gets it, read-only.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-acme:/letsencrypt
+
+volumes:
+  traefik-acme:

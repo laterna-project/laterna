@@ -1,0 +1,22 @@
+# HTTPS with nginx and a certificate you already have (from your router, certbot, a company
+# authority): CERT_DIR holds fullchain.pem and privkey.pem. nginx reads them at start: restart it
+# after renewing them.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+
+  nginx:
+    image: nginx:stable
+    restart: unless-stopped
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      LATERNA_UPSTREAM: ${LATERNA_UPSTREAM:-laterna:8096}
+      LATERNA_HOST: ${LATERNA_HOST:?set LATERNA_HOST in .env}
+    volumes:
+      # The image fills ${LATERNA_HOST} in the templates when it starts.
+      - ./config/nginx/laterna.conf.template:/etc/nginx/templates/laterna.conf.template:ro
+      - ${CERT_DIR:?set CERT_DIR in .env}:/etc/nginx/certs:ro

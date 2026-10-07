@@ -1,0 +1,3 @@
+dns desec {
+	token {env.DESEC_TOKEN}
+}

@@ -1,0 +1,13 @@
+# Transcoding on Intel graphics (VAAPI: Broadwell and later, Arc included), from image 0.5.0. The
+# server tries every encoder at startup; its log line "usable H.264 encoders" then starts with
+# h264_vaapi. RENDER_GID is the number of the host's render group:
+#
+#   getent group render | cut -d: -f3
+#
+# Linux only: Docker Desktop (Windows, macOS) gives containers no access to the card.
+services:
+  laterna:
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${RENDER_GID:?set RENDER_GID in .env}"

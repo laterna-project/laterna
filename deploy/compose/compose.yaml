@@ -1,0 +1,28 @@
+# Laterna alone: the base every module of this folder builds on (README.md).
+#
+#   cp .env.example .env    # then set MEDIA_DIR, and COMPOSE_FILE to add modules
+#   docker compose up -d
+#
+# The server answers on http://<this machine>:8096 and serves the web client: open it to set the
+# server up.
+name: laterna
+
+services:
+  laterna:
+    image: ${LATERNA_IMAGE:-ghcr.io/laterna-project/laterna}:${LATERNA_VERSION:-0.6}
+    restart: unless-stopped
+    ports:
+      - "${LATERNA_PORT:-8096}:8096"
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      # The database, logs, downloaded images and backups: the volume to keep.
+      - config:/config
+      # Transcoding segments and other temporary files: can be thrown away.
+      - cache:/cache
+      # The media, read only: Laterna never writes there. Libraries are created under /media.
+      - ${MEDIA_DIR:-./empty}:/media:ro
+
+volumes:
+  config:
+  cache:

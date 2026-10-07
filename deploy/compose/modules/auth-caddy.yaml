@@ -1,0 +1,10 @@
+# Serves the single sign-on provider (modules/authelia.yaml, authentik.yaml, keycloak.yaml or
+# pocket-id.yaml) at https://<AUTH_HOST>, through the Caddy of modules/https-dns.yaml,
+# https-public.yaml or https-internal.yaml. AUTH_HOST is a name of the same domain as
+# LATERNA_HOST, pointing at the same machine.
+services:
+  caddy:
+    environment:
+      AUTH_HOST: ${AUTH_HOST:?set AUTH_HOST in .env}
+    volumes:
+      - ./config/caddy/sites/auth.caddy:/etc/caddy-sites/auth.caddy:ro

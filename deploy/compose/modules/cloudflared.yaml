@@ -1,0 +1,16 @@
+# Access from the Internet through a Cloudflare Tunnel, without opening a port. Read the warnings in
+# README.md first: Cloudflare's terms forbid serving video through its network outside its paid
+# video products, it sees all the traffic in clear, and an account can be cut off for it. Create
+# the tunnel in the Cloudflare dashboard (Zero Trust, Networks, Tunnels), with a public hostname
+# whose service is http://laterna:8096, and copy its token to CLOUDFLARE_TUNNEL_TOKEN.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}

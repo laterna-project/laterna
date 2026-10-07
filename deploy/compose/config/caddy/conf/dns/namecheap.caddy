@@ -1,0 +1,4 @@
+dns namecheap {
+	api_key {env.NAMECHEAP_API_KEY}
+	user {env.NAMECHEAP_API_USER}
+}

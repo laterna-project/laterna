@@ -1,0 +1,21 @@
+# Startup configuration of the server in the container (modules/config-file.yaml). The image already
+# sets its folders and the log format through environment variables, which win over this file:
+# only the options below are left to set here. Everything else (server name, scans, public
+# address...) is a setting changed from the administration screens.
+
+[server]
+# Reverse proxies whose X-Forwarded-For header is trusted (addresses or CIDR ranges). The modules
+# that put a proxy in front of the server set it already (LATERNA_TRUSTED_PROXIES).
+# trusted_proxies = ["172.16.0.0/12"]
+# Web origins allowed to call the API from a browser ("*": all, the default).
+# cors_origins = ["https://media.example.com"]
+# Announce the server on the local network (mDNS): only useful with modules/host-network.yaml.
+# discovery = true
+
+[log]
+# debug, info, warn or error.
+level = "info"
+
+[ffmpeg]
+# Force the H.264 encoder instead of the best one detected at startup.
+# encoder = "libx264"

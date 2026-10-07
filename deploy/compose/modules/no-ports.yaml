@@ -1,0 +1,5 @@
+# Publishes no port: the server is only reached through the reverse proxy of another module, or
+# over the network of modules/external-network.yaml.
+services:
+  laterna:
+    ports: !reset []

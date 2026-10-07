@@ -1,0 +1,11 @@
+# Labels for a caddy-docker-proxy that already runs (https://github.com/lucaslorentz/caddy-docker-proxy),
+# with modules/external-network.yaml on its network.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+    labels:
+      caddy: ${LATERNA_HOST:?set LATERNA_HOST in .env}
+      caddy.reverse_proxy: "{{upstreams 8096}}"
+      # Streams and the event stream leave without buffering.
+      caddy.reverse_proxy.flush_interval: "-1"

@@ -1,0 +1,7 @@
+# The server on the network of the machine, so that TVs and apps find it by themselves (mDNS,
+# _laterna._tcp): multicast does not cross Docker's bridge network. Linux only: Docker Desktop
+# (Windows, macOS) has no such network. The server keeps port 8096 of the machine.
+services:
+  laterna:
+    network_mode: host
+    ports: !reset []

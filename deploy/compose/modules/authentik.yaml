@@ -1,0 +1,65 @@
+# Single sign-on with Authentik: an identity server with flows to build in its pages, social
+# logins, LDAP and enrollment, with its PostgreSQL. Its address, AUTH_HOST, needs HTTPS: with a
+# Caddy module add modules/auth-caddy.yaml; the traefik module serves it by itself. The provider
+# and the application "Laterna" come from config/authentik/laterna.yaml. Sign in at
+# https://<AUTH_HOST> as akadmin with AUTHENTIK_PASSWORD, then add users. In Laterna
+# (Administration, Authentication): provider https://<AUTH_HOST>/application/o/laterna/, client
+# laterna, secret OIDC_CLIENT_SECRET.
+x-authentik: &authentik
+  image: ghcr.io/goauthentik/server:2026.8
+  restart: unless-stopped
+  depends_on:
+    authentik-db:
+      condition: service_healthy
+  environment:
+    AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?set AUTHENTIK_SECRET_KEY in .env}
+    AUTHENTIK_POSTGRESQL__HOST: authentik-db
+    AUTHENTIK_POSTGRESQL__NAME: authentik
+    AUTHENTIK_POSTGRESQL__USER: authentik
+    AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_DB_PASSWORD:?set AUTHENTIK_DB_PASSWORD in .env}
+    AUTHENTIK_LISTEN__HTTP: 0.0.0.0:9091
+    # The administrator akadmin, created at the first start.
+    AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_PASSWORD:?set AUTHENTIK_PASSWORD in .env}
+    AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTHENTIK_EMAIL:-admin@example.com}
+    # Read by the blueprint.
+    OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET in .env}
+    LATERNA_URL: ${LATERNA_URL:-https://${LATERNA_HOST:?set LATERNA_HOST in .env}}
+  volumes:
+    - authentik-data:/data
+    - ./config/authentik/laterna.yaml:/blueprints/custom/laterna.yaml:ro
+
+services:
+  authentik:
+    <<: *authentik
+    command: server
+    networks:
+      default:
+        # The name modules/auth-caddy.yaml forwards to, whichever provider it is.
+        aliases: [auth]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.auth.rule: Host(`${AUTH_HOST:?set AUTH_HOST in .env}`)
+      traefik.http.routers.auth.entrypoints: websecure
+      traefik.http.routers.auth.tls.certresolver: letsencrypt
+      traefik.http.services.auth.loadbalancer.server.port: "9091"
+
+  authentik-worker:
+    <<: *authentik
+    command: worker
+
+  authentik-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: ${AUTHENTIK_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "authentik"]
+      interval: 5s
+    volumes:
+      - authentik-db:/var/lib/postgresql/data
+
+volumes:
+  authentik-data:
+  authentik-db:

@@ -1,0 +1,8 @@
+# Database backups on another disk than /config: a dead disk then loses no data. BACKUP_DIR must be
+# writable by the server's user (1000 by default: chown 1000:1000).
+services:
+  laterna:
+    environment:
+      LATERNA_BACKUP_DIR: /backups
+    volumes:
+      - ${BACKUP_DIR:?set BACKUP_DIR in .env}:/backups

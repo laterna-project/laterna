@@ -1,0 +1,74 @@
+name: Compose
+
+# Checks the Compose deployment in deploy/compose: every module and the usual combinations parse,
+# the ones that need no outside account start and work with Laterna (proxies, services, single
+# sign-on, laterna-stack), and Caddy still builds with each DNS provider's module. Weekly too, since those modules
+# and the images of the other services change on their own.
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - deploy/compose/**
+      - .github/workflows/compose.yml
+  pull_request:
+    paths:
+      - deploy/compose/**
+      - .github/workflows/compose.yml
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  config:
+    name: Configurations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: sh deploy/compose/test/test.sh config
+
+  run:
+    name: Runs (${{ matrix.group }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: proxies
+            runs: base folders caddy traefik nginx labels
+          - group: services
+            runs: monitoring jellyfin operations
+          - group: single sign-on
+            runs: authelia keycloak authentik pocket_id
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: sh deploy/compose/test/test.sh run
+        env:
+          RUNS: ${{ matrix.runs }}
+          # The image of develop: these files must work with what comes next.
+          LATERNA_VERSION: edge
+
+  stack:
+    # laterna-stack (Sonarr, Radarr, downloads behind a VPN) starts Laterna from these files and
+    # checks that they work together.
+    name: Media stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: laterna-project/laterna-stack
+          path: laterna-stack
+      - run: sh laterna-stack/test/test.sh run
+        env:
+          LATERNA_COMPOSE: ${{ github.workspace }}/deploy/compose
+          LATERNA_VERSION: edge
+
+  dns:
+    name: Caddy DNS providers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: sh deploy/compose/test/test.sh dns

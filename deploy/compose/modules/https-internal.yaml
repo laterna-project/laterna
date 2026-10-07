@@ -1,0 +1,31 @@
+# HTTPS without a domain or the Internet: Caddy signs the certificate with its own authority. Every
+# device must trust that authority before browsers accept the site and offer to install the app:
+#
+#   docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt .
+#
+# then install root.crt on each device (README.md says how). LATERNA_HOST is any name the devices
+# resolve to this machine (laterna.lan, laterna.home.arpa), or its IP address.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    command: caddy run --config /etc/caddy/Caddyfile.internal --adapter caddyfile
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      LATERNA_UPSTREAM: ${LATERNA_UPSTREAM:-laterna:8096}
+      LATERNA_HOST: ${LATERNA_HOST:?set LATERNA_HOST in .env}
+    volumes:
+      - ./config/caddy/conf:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

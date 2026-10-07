@@ -1,0 +1,33 @@
+# SWAG (linuxserver.io): nginx with certbot and fail2ban. Certificates through a DNS provider, so
+# nothing is opened to the Internet: SWAG_DNS_PLUGIN is the certbot plugin
+# (https://docs.linuxserver.io/general/swag/), whose credentials go in the file SWAG creates on its
+# first start, /config/dns-conf/<plugin>.ini in the swag-config volume. LATERNA_HOST must be
+# laterna.<SWAG_DOMAIN>.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+
+  swag:
+    image: lscr.io/linuxserver/swag:latest
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      URL: ${SWAG_DOMAIN:?set SWAG_DOMAIN in .env}
+      SUBDOMAINS: laterna
+      ONLY_SUBDOMAINS: "true"
+      VALIDATION: dns
+      DNSPLUGIN: ${SWAG_DNS_PLUGIN:?set SWAG_DNS_PLUGIN in .env}
+      EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - swag-config:/config
+      - ./config/swag/laterna.subdomain.conf:/config/nginx/proxy-confs/laterna.subdomain.conf:ro
+
+volumes:
+  swag-config:

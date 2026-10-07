@@ -44,10 +44,11 @@ func TestDownloadsOverHTTP(t *testing.T) {
 		direct.GetMovie().GetTitle() != "Big Test Movie" || direct.GetUrl() == "" || direct.GetExpiresAt() == nil {
 		t.Fatalf("direct download: %v", direct)
 	}
-	if remux.GetMethod() != laternav1.DownloadMethod_DOWNLOAD_METHOD_REMUX || remux.GetUrl() != "" || remux.GetEstimatedSize() == 0 {
+	// Prepared in the background, which can be over before CreateDownloads answers.
+	if remux.GetMethod() != laternav1.DownloadMethod_DOWNLOAD_METHOD_REMUX || remux.GetEstimatedSize() == 0 ||
+		(remux.GetState() != laternav1.DownloadState_DOWNLOAD_STATE_READY && remux.GetUrl() != "") {
 		t.Fatalf("download to prepare: %v", remux)
 	}
-	// Prepared in the background.
 	for deadline := time.Now().Add(60 * time.Second); ; time.Sleep(50 * time.Millisecond) {
 		got, err := downloads.GetDownload(ctx, authed(&laternav1.GetDownloadRequest{DownloadId: remux.GetId()}, token))
 		if err != nil {

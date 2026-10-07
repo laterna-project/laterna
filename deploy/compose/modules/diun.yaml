@@ -1,0 +1,25 @@
+# Diun tells you when a newer image exists for a container of this machine (Laterna and the
+# others), without updating anything: you read the release notes, then pull. It checks every 6
+# hours. Where it writes, ntfy, email, Telegram, Discord, Gotify, Matrix and more, goes in diun.env
+# (https://crazymax.dev/diun/notif/ntfy/ and the pages next to it); without it, it only logs.
+services:
+  diun:
+    image: crazymax/diun:4
+    restart: unless-stopped
+    command: serve
+    environment:
+      TZ: ${TZ:-UTC}
+      DIUN_WATCH_SCHEDULE: ${DIUN_SCHEDULE:-0 */6 * * *}
+      DIUN_WATCH_FIRSTCHECKNOTIF: "false"
+      DIUN_PROVIDERS_DOCKER: "true"
+      DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT: "true"
+    env_file:
+      - path: ./diun.env
+        required: false
+    volumes:
+      # Diun reads the containers through the Docker socket, which gives control over Docker.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - diun-data:/data
+
+volumes:
+  diun-data:
