@@ -25,7 +25,7 @@ joins with `external-network` ([Sonarr, Radarr and downloads](#sonarr-radarr-and
 Docker with Compose 2.24.4 or later (`docker compose version`), or Docker Desktop.
 
 ```sh
-git clone --depth 1 https://github.com/laterna-project/laterna
+git clone --depth 1 --branch main https://github.com/laterna-project/laterna
 cd laterna/deploy/compose
 cp .env.example .env
 ```
@@ -39,11 +39,11 @@ docker compose up -d
 Open http://localhost:8096 (or `http://<this machine's address>:8096` from another device) to set
 the server up. `docker compose logs -f laterna` shows what it does.
 
-- **Upgrading:** `docker compose pull && docker compose up -d`. `LATERNA_VERSION=0.5` follows the
-  patches of 0.5.x; set the next minor version yourself after reading its release notes. The
+- **Upgrading:** `docker compose pull && docker compose up -d`. `LATERNA_VERSION=0.6` follows the
+  patches of 0.6.x; set the next minor version yourself after reading its release notes. The
   server backs its database up before migrating it.
-- **These files:** `git pull` brings the latest ones. `git clone --branch <tag>` keeps those of a
-  release.
+- **These files:** `main` holds those of the latest release, and `git pull` brings the next
+  release's. `--branch v0.6.0` keeps those of one release; `develop` has the ones being written.
 - **Data:** the `config` volume holds the database, logs, images and backups: it is the one to
   keep. `cache` can be thrown away. `docker compose down` keeps both; `down -v` deletes them.
 
