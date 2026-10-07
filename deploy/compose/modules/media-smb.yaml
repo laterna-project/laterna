@@ -1,0 +1,15 @@
+# Media on a NAS shared over SMB (Windows sharing, Synology, QNAP...), mounted by Docker itself.
+# Read only. The files appear as owned by user 1000, the server's. SMB_SHARE is //nas/share.
+services:
+  laterna:
+    volumes:
+      # Replaces MEDIA_DIR.
+      - media:/media:ro
+
+volumes:
+  media:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: ${SMB_SHARE:?set SMB_SHARE in .env}
+      o: username=${SMB_USER:?set SMB_USER in .env},password=${SMB_PASSWORD:?set SMB_PASSWORD in .env},ro,uid=1000,gid=1000,vers=${SMB_VERSION:-3.0}

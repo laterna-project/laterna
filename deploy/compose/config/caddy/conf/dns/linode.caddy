@@ -1,0 +1,1 @@
+dns linode {env.LINODE_PERSONAL_ACCESS_TOKEN}

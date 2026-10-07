@@ -1,0 +1,14 @@
+# Labels for a Traefik that already runs (another Compose project), with
+# modules/external-network.yaml on Traefik's network. TRAEFIK_ENTRYPOINT and TRAEFIK_CERTRESOLVER
+# are the names that Traefik's configuration uses.
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${EXTERNAL_NETWORK:?set EXTERNAL_NETWORK in .env}
+      traefik.http.routers.laterna.rule: Host(`${LATERNA_HOST:?set LATERNA_HOST in .env}`)
+      traefik.http.routers.laterna.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.laterna.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.services.laterna.loadbalancer.server.port: "8096"

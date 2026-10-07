@@ -1,0 +1,21 @@
+# HTTPS through a DNS provider (modules/https-dns.yaml): certificates from Let's Encrypt obtained by
+# a DNS record, so the server can stay unreachable from the Internet.
+{
+	import options.caddy
+}
+
+# How every site here gets its certificate, sites of other modules included.
+(tls) {
+	tls {
+		import dns/{$DNS_PROVIDER}.caddy
+		# The challenge is checked against public resolvers, not the local network's.
+		resolvers 1.1.1.1 9.9.9.9
+	}
+}
+
+{$LATERNA_HOST} {
+	import tls
+	import laterna.caddy
+}
+
+import /etc/caddy-sites/*.caddy

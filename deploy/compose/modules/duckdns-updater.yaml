@@ -1,0 +1,17 @@
+# Keeps a DuckDNS name pointing at this machine's address on the local network (with
+# modules/https-dns.yaml and DNS_PROVIDER=duckdns). Under Docker Desktop (Windows, macOS) the
+# container only sees Docker's virtual machine: set LOCAL_IP to the computer's address.
+services:
+  duckdns:
+    image: alpine:3
+    restart: unless-stopped
+    network_mode: host
+    command: ["/bin/sh", "/update.sh"]
+    environment:
+      DUCKDNS_SUBDOMAIN: ${DUCKDNS_SUBDOMAIN:?set DUCKDNS_SUBDOMAIN in .env}
+      LOCAL_IP: ${LOCAL_IP:-}
+    env_file:
+      - path: ./dns.env
+        required: true
+    volumes:
+      - ./config/duckdns/update.sh:/update.sh:ro

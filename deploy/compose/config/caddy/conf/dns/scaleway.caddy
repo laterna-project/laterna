@@ -1,0 +1,4 @@
+dns scaleway {
+	secret_key {env.SCW_SECRET_KEY}
+	organization_id {env.SCW_ORGANIZATION_ID}
+}

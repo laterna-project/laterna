@@ -32,6 +32,7 @@ On Windows: `winget install GoLang.Go Task.Task Gyan.FFmpeg`.
 | `task perf` | Measure the performance budgets on a synthetic catalog. Run it before touching a list query, the home screen or startup. |
 | `task docker:build` | Build the local image `laterna:dev`. |
 | `sh docker/smoke-test.sh laterna:dev` | Start that image and check the server and FFmpeg answer. |
+| `sh deploy/compose/test/test.sh` | Check the Compose modules of `deploy/compose` with the published image; `LATERNA_IMAGE=laterna LATERNA_VERSION=dev` for that local one. |
 
 Development tools:
 

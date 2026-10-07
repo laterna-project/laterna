@@ -1,0 +1,1 @@
+dns hetzner {env.HETZNER_API_TOKEN}

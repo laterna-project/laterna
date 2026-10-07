@@ -1,0 +1,13 @@
+# One folder per kind of media instead of MEDIA_DIR, each read only, for media spread over several
+# disks: create one library per folder under /media. A folder left unset shows up empty.
+services:
+  laterna:
+    volumes:
+      # Replaces MEDIA_DIR: the folders below are all /media holds.
+      - type: tmpfs
+        target: /media
+      - ${MOVIES_DIR:-./empty}:/media/movies:ro
+      - ${SHOWS_DIR:-./empty}:/media/shows:ro
+      - ${MUSIC_DIR:-./empty}:/media/music:ro
+      - ${BOOKS_DIR:-./empty}:/media/books:ro
+      - ${PHOTOS_DIR:-./empty}:/media/photos:ro

@@ -1,0 +1,15 @@
+# Media on a NAS shared over NFS, mounted by Docker itself (nothing to mount on the host). Read
+# only. NFS_SERVER is the NAS (name or address), NFS_PATH the exported folder.
+services:
+  laterna:
+    volumes:
+      # Replaces MEDIA_DIR.
+      - media:/media:ro
+
+volumes:
+  media:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NFS_SERVER:?set NFS_SERVER in .env},ro,nfsvers=${NFS_VERSION:-4},soft
+      device: ":${NFS_PATH:?set NFS_PATH in .env}"

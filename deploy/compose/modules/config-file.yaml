@@ -1,0 +1,8 @@
+# Startup configuration from a TOML file instead of environment variables (the server's options:
+# docs/install.md). config/laterna.toml is a starting point; variables still win over the file.
+services:
+  laterna:
+    environment:
+      LATERNA_CONFIG: /etc/laterna/laterna.toml
+    volumes:
+      - ./config/laterna.toml:/etc/laterna/laterna.toml:ro

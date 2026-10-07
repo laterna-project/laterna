@@ -1,0 +1,5 @@
+# A site another module would add, to check that it gets its certificate like Laterna's.
+{$LATERNA_HOST}.example {
+	import tls
+	respond "ok"
+}

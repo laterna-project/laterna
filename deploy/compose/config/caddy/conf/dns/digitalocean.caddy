@@ -1,0 +1,1 @@
+dns digitalocean {env.DIGITALOCEAN_API_TOKEN}

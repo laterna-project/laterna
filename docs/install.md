@@ -56,6 +56,10 @@ volumes:
   laterna-cache:
 ```
 
+[`deploy/compose`](../deploy/compose/README.md) goes further: modules to add to this file for media
+on a NAS, Intel graphics, backups on another disk, HTTPS with Caddy, Traefik, nginx and others,
+Tailscale, each documented and checked by the CI.
+
 - Tags: `latest` and `X.Y.Z` are releases, `X.Y` follows the patches of a minor version, `edge`
   follows the `develop` branch.
 - `/config` holds the database, the logs, downloaded images and backups: this is the volume to
@@ -248,6 +252,8 @@ trusted_proxies = ["127.0.0.1"]
 
 Streams are long-lived: turn off response buffering and do not set a short read timeout on the
 proxy. HTTP/2 to the server is optional; the Connect protocol works over HTTP/1.1.
+[`deploy/compose`](../deploy/compose/README.md#https-and-access) has working setups for Caddy,
+Traefik, nginx, Nginx Proxy Manager, SWAG, Tailscale and Cloudflare Tunnel.
 
 ## Upgrading and going back
 

@@ -1,0 +1,24 @@
+# Access from anywhere through Tailscale, without opening a port: the server joins your tailnet as
+# TS_HOSTNAME and answers at https://<TS_HOSTNAME>.<tailnet>.ts.net with a real certificate, so
+# browsers offer to install the app. Turn on MagicDNS and HTTPS certificates in the tailnet's DNS
+# settings first. TAILSCALE_SERVE=funnel also opens it to the whole Internet (Tailscale Funnel).
+services:
+  laterna:
+    environment:
+      LATERNA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+
+  tailscale:
+    image: tailscale/tailscale:stable
+    restart: unless-stopped
+    hostname: ${TS_HOSTNAME:-laterna}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_HOSTNAME: ${TS_HOSTNAME:-laterna}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - ./config/tailscale/${TAILSCALE_SERVE:-serve}.json:/config/serve.json:ro
+
+volumes:
+  tailscale-state:

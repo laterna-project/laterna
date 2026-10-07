@@ -1,0 +1,37 @@
+name: Compose
+
+# Checks the Compose deployment in deploy/compose against the published image: every module and
+# the usual combinations parse, the ones that need no outside account start and serve Laterna, and
+# Caddy still builds with each DNS provider's module. Weekly too, since those modules and the
+# images of the other services change on their own.
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - deploy/compose/**
+      - .github/workflows/compose.yml
+  pull_request:
+    paths:
+      - deploy/compose/**
+      - .github/workflows/compose.yml
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    name: Modules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: sh deploy/compose/test/test.sh config run
+
+  dns:
+    name: Caddy DNS providers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: sh deploy/compose/test/test.sh dns
