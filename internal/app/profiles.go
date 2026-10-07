@@ -158,6 +158,34 @@ func (a *App) SetLanguage(ctx context.Context, p domain.Principal, language stri
 	return profile, err
 }
 
+// SetSubtitlePreferences changes when playback starts with a subtitle, and in which language, for
+// the picked profile. Everyone sets their own, including a restricted profile.
+func (a *App) SetSubtitlePreferences(ctx context.Context, p domain.Principal, mode domain.SubtitleMode, language string) (domain.Profile, error) {
+	if p.Profile == nil {
+		return domain.Profile{}, domain.Precondition("profile.required")
+	}
+	switch mode {
+	case domain.SubtitleAuto, domain.SubtitleAlways, domain.SubtitleForced, domain.SubtitleOff:
+	default:
+		return domain.Profile{}, domain.Invalid("profile.invalid_subtitle_mode", "mode", string(mode))
+	}
+	language, err := profileLanguage(language)
+	if err != nil {
+		return domain.Profile{}, err
+	}
+	var profile domain.Profile
+	err = a.store.Write(ctx, func(q store.Q) error {
+		var pinHash string
+		var err error
+		if profile, pinHash, err = q.Profile(ctx, p.Profile.ID); err != nil {
+			return err
+		}
+		profile.SubtitleMode, profile.SubtitleLanguage, profile.UpdatedAt = mode, language, a.now()
+		return q.UpdateProfile(ctx, profile, pinHash)
+	})
+	return profile, err
+}
+
 // profileLanguage validates the language of a profile: a well-formed tag, whether the server has a
 // catalog for it or not (the client may have one). Empty means none.
 func profileLanguage(tag string) (string, error) {

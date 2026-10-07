@@ -210,6 +210,7 @@ func (q Q) UpdateProfile(ctx context.Context, p domain.Profile, pinHash string) 
 	return translate(q.q.UpdateProfile(ctx, sqlc.UpdateProfileParams{
 		Name: p.Name, NameKey: NameKey(p.Name), PinHash: nullString(pinHash), Kid: toInt(p.Kid),
 		MaxAge: nullAge(p.Parental.MaxAge), BlockUnrated: toInt(p.Parental.BlockUnrated), Language: p.Language,
+		SubtitleMode: string(p.SubtitleMode), SubtitleLanguage: p.SubtitleLanguage,
 		UpdatedAt: toMillis(p.UpdatedAt), ID: p.ID,
 	}))
 }
@@ -222,6 +223,7 @@ func profileFromRow(r sqlc.Profile) domain.Profile {
 		ID: r.ID, AccountID: r.AccountID, Name: r.Name, HasPIN: r.PinHash.Valid, Kid: r.Kid == 1,
 		Parental: domain.ParentalControl{MaxAge: optAge(r.MaxAge), BlockUnrated: r.BlockUnrated == 1},
 		ThemeID:  r.ThemeID, ThemeMode: domain.ThemeMode(r.ThemeMode), Language: r.Language,
+		SubtitleMode: domain.SubtitleMode(r.SubtitleMode), SubtitleLanguage: r.SubtitleLanguage,
 		CreatedAt: fromMillis(r.CreatedAt), UpdatedAt: fromMillis(r.UpdatedAt),
 	}
 }

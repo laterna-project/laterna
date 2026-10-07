@@ -35,10 +35,30 @@ type Profile struct {
 	ThemeMode ThemeMode
 	// Language is a BCP 47 tag ("fr", "pt-BR"). Empty means the device's language, then the
 	// server's.
-	Language  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Language string
+	// SubtitleMode says when a playback starts with a subtitle, in SubtitleLanguage (a BCP 47 tag;
+	// empty means Language, then the device's).
+	SubtitleMode     SubtitleMode
+	SubtitleLanguage string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
+
+// SubtitleMode says when a playback starts with a subtitle in the language of the profile.
+type SubtitleMode string
+
+// Subtitle modes.
+const (
+	// SubtitleAuto, the default: a whole subtitle when the audio is in another language; when it
+	// is in that language or says none, only a forced one.
+	SubtitleAuto SubtitleMode = ""
+	// SubtitleAlways: a subtitle whenever the file has one in that language.
+	SubtitleAlways SubtitleMode = "always"
+	// SubtitleForced: only forced subtitles (signs, lines in a foreign language).
+	SubtitleForced SubtitleMode = "forced"
+	// SubtitleOff: never a subtitle at the start.
+	SubtitleOff SubtitleMode = "off"
+)
 
 // Restricted reports a kid profile or one under parental control. Such a profile cannot manage
 // profiles, devices, the password or the server.

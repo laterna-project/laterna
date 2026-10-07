@@ -94,8 +94,35 @@ A chosen subtitle that the device cannot display is burned in, and the video is 
 longer used, folders of forgotten files, leftovers of an interrupted extraction. Daily, and after
 a scan that forgot files.
 
+## The subtitle a playback starts with
+
+Each profile says when a playback starts with a subtitle (`SubtitleMode`) and in which language
+(`Profile.subtitle_language`; empty means the profile's language, then the device's, from
+`Accept-Language`). A client asks for it with `StartPlaybackRequest.profile_subtitle` when a
+playback starts, and `StartPlaybackResponse.subtitle_index` says which one was picked
+(`internal/playback/subtitles.go`).
+
+| Mode | Audio in another language | Audio in that language, or saying none |
+|---|---|---|
+| Automatic (the default) | a whole subtitle | a forced one only |
+| Always | a whole subtitle | a whole subtitle |
+| Forced | a forced one only | a forced one only |
+| Off | none | none |
+
+- Languages are compared by their ISO 639-2/B code: a file says `fra` or `fre`, a profile `fr`
+  or `fr-CA`.
+- Untagged audio counts as the viewer's own language. Showing whole subtitles over a film in
+  one's own language is the worse mistake.
+- Among the candidates: a whole subtitle before a forced one when a whole one is wanted, then one
+  without hearing-impaired notes, the one the file marks as default, text before images, then the
+  file's order.
+- A picked subtitle the device cannot draw is burned in, like a requested one. Wanting
+  subtitles in one's language is worth a transcode.
+- A client leaves `profile_subtitle` out when it reopens a playback after the viewer chose a
+  subtitle (or none): the viewer's choice wins.
+
 ## Not done
 
 - WebVTT renditions inside the HLS playlist for native players (AVPlayer).
 - OCR of image subtitles (not planned).
-- Picking a subtitle automatically from the profile's languages.
+- A preferred audio language per profile: the audio is the file's default stream.
