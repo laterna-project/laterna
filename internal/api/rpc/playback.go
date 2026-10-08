@@ -92,7 +92,7 @@ func (s *PlaybackService) StartPlayback(ctx context.Context, req *connect.Reques
 		FileId: info.File.ID.String(), Duration: durationMsg(info.Duration),
 		Reasons: renderAll(ctx, info.Reasons), ReasonTexts: textsMsg(ctx, info.Reasons), VideoTranscoded: !info.CopyVideo, AudioTranscoded: !info.CopyAudio, VideoEncoder: info.Encoder,
 		SubtitlesReady: info.SubtitlesReady, Subtitles: subtitleTracks(info), Fonts: fonts(info.Fonts),
-		ToneMapping: info.ToneMap, Gpu: info.GPU, Segments: mediaSegments(info.File.Segments),
+		ToneMapping: info.ToneMap, Gpu: info.GPU, Decoder: info.Decoder, Segments: mediaSegments(info.File.Segments),
 	}
 	if info.Subtitle != nil {
 		n := clampInt32(*info.Subtitle)

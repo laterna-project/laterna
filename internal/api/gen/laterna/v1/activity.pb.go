@@ -657,7 +657,10 @@ type ActivePlayback struct {
 	Position *durationpb.Duration `protobuf:"bytes,16,opt,name=position,proto3" json:"position,omitempty"`
 	Duration *durationpb.Duration `protobuf:"bytes,17,opt,name=duration,proto3" json:"duration,omitempty"`
 	// An FFmpeg process is working for this playback right now.
-	Transcoding   bool `protobuf:"varint,18,opt,name=transcoding,proto3" json:"transcoding,omitempty"`
+	Transcoding bool `protobuf:"varint,18,opt,name=transcoding,proto3" json:"transcoding,omitempty"`
+	// Hardware decoder of the re-encoded video when it is not on the graphics card's chain (gpu);
+	// empty if it is decoded on the CPU.
+	Decoder       string `protobuf:"bytes,19,opt,name=decoder,proto3" json:"decoder,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -816,6 +819,13 @@ func (x *ActivePlayback) GetTranscoding() bool {
 		return x.Transcoding
 	}
 	return false
+}
+
+func (x *ActivePlayback) GetDecoder() string {
+	if x != nil {
+		return x.Decoder
+	}
+	return ""
 }
 
 type ListPlaybacksRequest struct {
@@ -1026,7 +1036,7 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x13RevokeDeviceRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\x16\n" +
-	"\x14RevokeDeviceResponse\"\xcc\x04\n" +
+	"\x14RevokeDeviceResponse\"\xe6\x04\n" +
 	"\x0eActivePlayback\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1051,7 +1061,8 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"started_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
 	"\bposition\x18\x10 \x01(\v2\x19.google.protobuf.DurationR\bposition\x125\n" +
 	"\bduration\x18\x11 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12 \n" +
-	"\vtranscoding\x18\x12 \x01(\bR\vtranscoding\"\x16\n" +
+	"\vtranscoding\x18\x12 \x01(\bR\vtranscoding\x12\x18\n" +
+	"\adecoder\x18\x13 \x01(\tR\adecoder\"\x16\n" +
 	"\x14ListPlaybacksRequest\"Q\n" +
 	"\x15ListPlaybacksResponse\x128\n" +
 	"\tplaybacks\x18\x01 \x03(\v2\x1a.laterna.v1.ActivePlaybackR\tplaybacks\"5\n" +

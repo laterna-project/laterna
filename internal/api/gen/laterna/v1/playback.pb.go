@@ -365,6 +365,9 @@ type StartPlaybackResponse struct {
 	ToneMapping string `protobuf:"bytes,16,opt,name=tone_mapping,json=toneMapping,proto3" json:"tone_mapping,omitempty"`
 	// Re-encoded video decoded and processed on the graphics card (Vulkan).
 	Gpu bool `protobuf:"varint,17,opt,name=gpu,proto3" json:"gpu,omitempty"`
+	// Otherwise, the hardware decoder of the re-encoded video ("cuda"); empty if it is decoded on
+	// the CPU.
+	Decoder string `protobuf:"bytes,21,opt,name=decoder,proto3" json:"decoder,omitempty"`
 	// Segments to offer to skip (intro, credits, recap, preview) in the file played.
 	Segments      []*MediaSegment `protobuf:"bytes,18,rep,name=segments,proto3" json:"segments,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -532,6 +535,13 @@ func (x *StartPlaybackResponse) GetGpu() bool {
 		return x.Gpu
 	}
 	return false
+}
+
+func (x *StartPlaybackResponse) GetDecoder() string {
+	if x != nil {
+		return x.Decoder
+	}
+	return ""
 }
 
 func (x *StartPlaybackResponse) GetSegments() []*MediaSegment {
@@ -1099,7 +1109,7 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\x0esubtitle_index\x18\x05 \x01(\x05H\x01R\rsubtitleIndex\x88\x01\x01\x12)\n" +
 	"\x10profile_subtitle\x18\x06 \x01(\bR\x0fprofileSubtitleB\x15\n" +
 	"\x13_audio_stream_indexB\x11\n" +
-	"\x0f_subtitle_index\"\xab\a\n" +
+	"\x0f_subtitle_index\"\xc5\a\n" +
 	"\x15StartPlaybackResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x122\n" +
@@ -1121,7 +1131,8 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\x0esubtitle_index\x18\x14 \x01(\x05H\x02R\rsubtitleIndex\x88\x01\x01\x123\n" +
 	"\freason_texts\x18\x13 \x03(\v2\x10.laterna.v1.TextR\vreasonTexts\x12!\n" +
 	"\ftone_mapping\x18\x10 \x01(\tR\vtoneMapping\x12\x10\n" +
-	"\x03gpu\x18\x11 \x01(\bR\x03gpu\x124\n" +
+	"\x03gpu\x18\x11 \x01(\bR\x03gpu\x12\x18\n" +
+	"\adecoder\x18\x15 \x01(\tR\adecoder\x124\n" +
 	"\bsegments\x18\x12 \x03(\v2\x18.laterna.v1.MediaSegmentR\bsegmentsB\x15\n" +
 	"\x13_audio_stream_indexB\x18\n" +
 	"\x16_burned_subtitle_indexB\x11\n" +

@@ -680,6 +680,9 @@ func (a *App) prepareVideo(ctx context.Context, d domain.Download, f domain.Medi
 			return "", jobs.Permanent(fmt.Errorf("no usable H.264 encoder: %w", err))
 		}
 		o.Encoder, o.GPU = best, caps.GPU
+		if !o.GPU {
+			o.Decoder = caps.Decoder
+		}
 		if plan.ToneMap {
 			tm, ok := caps.BestToneMapper()
 			if !ok && !o.GPU {
@@ -689,9 +692,9 @@ func (a *App) prepareVideo(ctx context.Context, d domain.Download, f domain.Medi
 		}
 	}
 	err := a.runFile(ctx, d, f, o)
-	if err != nil && o.GPU && ctx.Err() == nil {
+	if err != nil && (o.GPU || o.Decoder != nil) && ctx.Err() == nil {
 		a.log.WarnContext(ctx, "download: GPU failed, falling back to the CPU", "download", d.ID, "err", err)
-		o.GPU = false
+		o.GPU, o.Decoder = false, nil
 		if plan.ToneMap {
 			tm, ok := caps.BestToneMapper()
 			if !ok {
