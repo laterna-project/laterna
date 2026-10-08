@@ -119,10 +119,12 @@ docker run -d --name laterna -p 8096:8096 \
 (`libnvidia-encode`) is not brought into the container and NVENC cannot start. With Compose, the
 [`nvidia-gpu`](../deploy/compose/README.md#media-and-server) module sets both.
 
-The log line `usable H.264 encoders` then starts with `h264_nvenc`. Measured with Docker Desktop on
-an RTX 4060, a 1080p 10-bit HEVC video transcoded to H.264 takes 2.5 times less CPU time than with
-`libx264` and runs ten times faster than real time; most of what remains is decoding the source,
-which stays on the CPU. Converting HDR to SDR also stays on the CPU (`zscale`).
+The log line `usable H.264 encoders` then starts with `h264_nvenc`, with `decoder` set to `cuda`:
+NVDEC decodes, NVENC encodes, and scaling and HDR to SDR conversion (`zscale`) stay on the CPU.
+Docker Desktop has no Vulkan for NVIDIA cards, so `gpu` (the chain that keeps every step on the
+card) stays false there. Measured with Docker Desktop on an RTX 4060, a 1080p 10-bit HEVC video
+transcoded to 1080p H.264 takes 6 times less CPU time than with `libx264` (14 s instead of 91 s
+for a minute of video) and runs nine times faster than real time.
 
 ## Debian, Ubuntu, Fedora and other systemd distributions
 
