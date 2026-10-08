@@ -57,7 +57,7 @@ volumes:
 ```
 
 [`deploy/compose`](../deploy/compose/README.md) goes further: modules to add to this file for media
-on a NAS, Intel graphics, backups on another disk, HTTPS with Caddy, Traefik, nginx and others,
+on a NAS, Intel graphics or an NVIDIA card, backups on another disk, HTTPS with Caddy, Traefik, nginx and others,
 Tailscale, each documented and checked by the CI.
 
 - Tags: `latest` and `X.Y.Z` are releases, `X.Y` follows the patches of a minor version, `edge`
@@ -68,7 +68,7 @@ Tailscale, each documented and checked by the CI.
 - To let TVs and apps find the server on the local network, use `network_mode: host` (or
   `--network host`). Multicast does not cross Docker's bridge network.
 - Video transcoding uses the CPU (`libx264`) unless the container gets a GPU: see below for
-  Intel graphics.
+  Intel graphics and NVIDIA cards.
 - The image serves the web client (from version 0.2.0): open http://localhost:8096 to set the
   server up. The version it carries is pinned in
   [`packaging/web.lock`](../packaging/web.lock).
@@ -99,6 +99,30 @@ a second.
 - The image has no driver for AMD cards yet (it waits for a test on one), and QSV is not needed:
   VAAPI uses the same Intel hardware.
 - Docker Desktop (Windows, macOS) gives containers no access to Intel or AMD graphics.
+
+### NVIDIA cards (NVENC)
+
+The image's FFmpeg includes NVENC; the NVIDIA driver libraries come from the host when the
+container gets the card. On Linux, install the NVIDIA driver and the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html);
+on Windows, Docker Desktop with the WSL 2 backend and the usual NVIDIA driver are enough. Then:
+
+```sh
+docker run -d --name laterna -p 8096:8096 \
+  --gpus all -e NVIDIA_DRIVER_CAPABILITIES=compute,video,utility \
+  -v laterna-config:/config -v laterna-cache:/cache \
+  -v /path/to/media:/media:ro \
+  ghcr.io/laterna-project/laterna:latest
+```
+
+`NVIDIA_DRIVER_CAPABILITIES` must include `video`: without it the encoder library
+(`libnvidia-encode`) is not brought into the container and NVENC cannot start. With Compose, the
+[`nvidia-gpu`](../deploy/compose/README.md#media-and-server) module sets both.
+
+The log line `usable H.264 encoders` then starts with `h264_nvenc`. Measured with Docker Desktop on
+an RTX 4060, a 1080p 10-bit HEVC video transcoded to H.264 takes 2.5 times less CPU time than with
+`libx264` and runs ten times faster than real time; most of what remains is decoding the source,
+which stays on the CPU. Converting HDR to SDR also stays on the CPU (`zscale`).
 
 ## Debian, Ubuntu, Fedora and other systemd distributions
 

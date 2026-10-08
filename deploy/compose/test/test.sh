@@ -95,6 +95,7 @@ config() {
   done
   # The combinations README.md describes.
   check_config intel-gpu backups resources https-dns duckdns-updater
+  check_config nvidia-gpu resources tailscale
   check_config custom-user config-file https-internal
   check_config media-split https-public
   check_config media-nfs traefik
