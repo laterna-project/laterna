@@ -37,7 +37,7 @@ jobs:
       matrix:
         include:
           - group: proxies
-            runs: base folders caddy traefik nginx labels
+            runs: base folders caddy traefik nginx labels tailscale
           - group: services
             runs: monitoring jellyfin operations
           - group: single sign-on

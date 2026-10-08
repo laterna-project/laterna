@@ -439,6 +439,13 @@ test_labels() {
   docker run --rm --network laterna-test-external curlimages/curl -fsS -o /dev/null http://laterna:8096/health
 }
 
+# Signing in to Tailscale takes an account, so the tunnel is not tried: only that the tailscale
+# container reaches the server under the name Serve and Funnel forward to.
+test_tailscale() {
+  wait_for http://127.0.0.1:18096/health
+  retry 30 compose tailscale -- exec -T tailscale wget -qO /dev/null http://laterna:8096/health
+}
+
 runs() {
   run base
   run folders media-split custom-user backups config-file resources
@@ -452,6 +459,7 @@ runs() {
   docker network create laterna-test-external >/dev/null
   run labels external-network no-ports traefik-labels
   run monitoring prometheus jaeger uptime-kuma
+  run tailscale tailscale
   run jellyfin jellyfin-import
   # Without modules/custom-user.yaml, whose CONFIG_DIR test.env sets: the config volume.
   CONFIG_DIR="" run operations diun watchtower backup-offsite
