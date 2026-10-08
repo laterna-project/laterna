@@ -204,6 +204,7 @@ func New(ctx context.Context, st *store.Store, opts Options) (*App, error) {
 		best, _ := caps.Best()
 		caps.ToneMappers = transcode.DetectToneMappers(ctx, a.ffmpeg, best)
 		caps.GPU = transcode.DetectGPU(ctx, a.ffmpeg, best)
+		caps.Decoder = transcode.DetectDecoder(ctx, a.ffmpeg, best)
 		if ctx.Err() != nil {
 			return transcode.Caps{}, ctx.Err()
 		}
@@ -211,7 +212,8 @@ func New(ctx context.Context, st *store.Store, opts Options) (*App, error) {
 		for _, tm := range caps.ToneMappers {
 			tms = append(tms, tm.Name)
 		}
-		a.log.Info("usable H.264 encoders", "encoders", caps.Names(), "hdr_to_sdr", tms, "gpu", caps.GPU)
+		a.log.Info("usable H.264 encoders", "encoders", caps.Names(), "hdr_to_sdr", tms, "gpu", caps.GPU,
+			"decoder", decoderName(caps.Decoder))
 		return caps, nil
 	})
 	if a.cacheDir == "" {

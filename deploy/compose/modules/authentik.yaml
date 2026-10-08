@@ -46,6 +46,13 @@ services:
   authentik-worker:
     <<: *authentik
     command: worker
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+      # Created after the server: on the first start, Docker copies the image's /data into the
+      # shared volume, and two containers doing it at once collide ("file exists").
+      authentik:
+        condition: service_started
 
   authentik-db:
     image: postgres:17-alpine

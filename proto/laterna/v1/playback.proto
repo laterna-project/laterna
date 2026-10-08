@@ -138,6 +138,9 @@ message StartPlaybackResponse {
   string tone_mapping = 16;
   // Re-encoded video decoded and processed on the graphics card (Vulkan).
   bool gpu = 17;
+  // Otherwise, the hardware decoder of the re-encoded video ("cuda"); empty if it is decoded on
+  // the CPU.
+  string decoder = 21;
   // Segments to offer to skip (intro, credits, recap, preview) in the file played.
   repeated MediaSegment segments = 18;
 }
