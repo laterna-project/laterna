@@ -121,6 +121,7 @@ the CI does not have.
 | `backups` | Database backups on another disk | ✅ |
 | `resources` | CPU and memory limits, log rotation | ✅ |
 | `intel-gpu` | Transcoding on Intel graphics (VAAPI) | ⚙️ |
+| `nvidia-gpu` | Transcoding on an NVIDIA card (NVENC) | ⚙️ |
 | `host-network` | The host's network, so TVs and apps find the server | ⚙️ |
 | **HTTPS** | | |
 | `https-dns` | Caddy, certificate through a DNS provider; nothing open to the Internet | ⚙️ |
@@ -190,8 +191,15 @@ stops the server.
 **`intel-gpu`.** Gives the server `/dev/dri` and the host's `render` group, whose number goes in
 `RENDER_GID` (`getent group render | cut -d: -f3`). The log line `usable H.264 encoders` then
 starts with `h264_vaapi`. Intel Broadwell (2014) and later, Arc included; Linux only (Docker
-Desktop gives containers no GPU). [docs/install.md](../../docs/install.md#intel-graphics-vaapi)
-has the details.
+Desktop gives containers no access to Intel graphics).
+[docs/install.md](../../docs/install.md#intel-graphics-vaapi) has the details.
+
+**`nvidia-gpu`.** Gives the server the NVIDIA cards of the host, with the driver libraries NVENC
+needs. On Linux, install the NVIDIA driver and the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+first; on Windows, Docker Desktop with the WSL 2 backend and the usual NVIDIA driver are enough.
+The log line `usable H.264 encoders` then starts with `h264_nvenc`.
+[docs/install.md](../../docs/install.md#nvidia-cards-nvenc) has the details.
 
 **`host-network`.** The server shares the host's network, so that TVs and apps find it by
 themselves (mDNS); Linux only. Port 8096 of the host is then the server's. With one of the Caddy
@@ -487,9 +495,9 @@ it from Administration, Backups.
 ## Platforms
 
 - **Linux:** everything here. Docker Engine with the Compose plugin.
-- **Windows, macOS (Docker Desktop):** everything but `host-network` and `intel-gpu`. Paths in
-  `.env` are those of the computer (`C:/Users/Me/Videos` or `/Users/me/Movies`), and `COMPOSE_FILE`
-  is separated by `;` on Windows.
+- **Windows, macOS (Docker Desktop):** everything but `host-network` and `intel-gpu`, and
+  `nvidia-gpu` on Windows only. Paths in `.env` are those of the computer (`C:/Users/Me/Videos` or
+  `/Users/me/Movies`), and `COMPOSE_FILE` is separated by `;` on Windows.
 - **NAS and web consoles** (Synology Container Manager, TrueNAS SCALE, OpenMediaVault, Unraid's
   Compose Manager, Portainer): those that run a Compose project from a folder take these files
   and `.env` as they are. For those that take a single pasted file, flatten the combination on a
