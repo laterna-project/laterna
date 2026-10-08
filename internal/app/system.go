@@ -34,6 +34,8 @@ type SystemStatus struct {
 	Encoders    []string
 	ToneMappers []string
 	GPU         bool
+	// Decoder is the hardware decoder used when the chain on the card is not; empty if none.
+	Decoder string
 	// Server folders.
 	DataDir, CacheDir, MetadataDir, LogDir string
 	// Playbacks counts the playbacks in progress, FFmpegRunning the playback FFmpeg processes
@@ -55,7 +57,7 @@ func (a *App) SystemStatus(ctx context.Context) (SystemStatus, error) {
 		FFmpegRunning: fmp4.Running(), Transcodes: a.activeTranscodes(), TranscodeLimit: a.transcodeLimit(),
 	}
 	if caps, err := a.encoders(); err == nil {
-		st.Encoders, st.GPU = caps.Names(), caps.GPU
+		st.Encoders, st.GPU, st.Decoder = caps.Names(), caps.GPU, decoderName(caps.Decoder)
 		for _, tm := range caps.ToneMappers {
 			st.ToneMappers = append(st.ToneMappers, tm.Name)
 		}
@@ -371,8 +373,10 @@ type Playback struct {
 	CopyVideo, CopyAudio  bool
 	Encoder, ToneMap      string
 	GPU                   bool
-	StartedAt             time.Time
-	Position, Duration    time.Duration
+	// Decoder is the hardware decoder at work, empty if none.
+	Decoder            string
+	StartedAt          time.Time
+	Position, Duration time.Duration
 	// Transcoding means an FFmpeg run is working for this playback right now.
 	Transcoding bool
 }
@@ -386,7 +390,7 @@ func (a *App) Playbacks() []Playback {
 			ID: s.id, AccountID: s.who.accountID, ProfileID: s.profile, Username: s.who.username, ProfileName: s.who.profileName,
 			Device: s.who.device, ItemID: s.item, Title: s.who.title, Method: string(s.plan.Method),
 			CopyVideo: s.plan.CopyVideo, CopyAudio: s.plan.CopyAudio, Encoder: s.encoder.Name, ToneMap: toneMapName(s.toneMap, s.gpu),
-			GPU: s.gpu, StartedAt: s.who.startedAt, Position: s.position, Duration: s.file.Info.Duration,
+			GPU: s.gpu, Decoder: decoderName(s.decoder), StartedAt: s.who.startedAt, Position: s.position, Duration: s.file.Info.Duration,
 			Transcoding: s.run != nil && !s.run.done,
 		}
 		s.mu.Unlock()

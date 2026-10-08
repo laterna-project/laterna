@@ -83,10 +83,12 @@ type PlayInfo struct {
 	Reasons []domain.Text
 	// CopyVideo and CopyAudio tell which streams are copied (re-encoded otherwise). Encoder is the
 	// video encoder, ToneMap the HDR to SDR conversion (empty if none), GPU says the picture is
-	// decoded and processed on the card.
+	// decoded and processed on the card, Decoder names the hardware decoder used otherwise (empty
+	// if none).
 	CopyVideo, CopyAudio bool
 	Encoder, ToneMap     string
 	GPU                  bool
+	Decoder              string
 	// Subtitles and Fonts are the subtitles of the file, served on the side, and the fonts of its
 	// ASS subtitles. SubtitlesReady is false until they are extracted (their URLs wait for it).
 	// Subtitle is the one shown from the start (requested, or picked by the profile's
@@ -115,11 +117,12 @@ type playSession struct {
 	// conversion, nil otherwise.
 	burn    *transcode.Burn
 	toneMap *transcode.ToneMapper
-	// gpu means the picture is decoded and processed on the card. It is given up if the card fails
-	// (s.mu).
-	gpu  bool
-	segs []playback.Segment
-	dir  string
+	// gpu means the picture is decoded and processed on the card; otherwise decoder, if set,
+	// decodes it there. Both are given up if the card fails (s.mu).
+	gpu     bool
+	decoder *transcode.Decoder
+	segs    []playback.Segment
+	dir     string
 	// conv is the audio conversion of a converted playback, nil otherwise. music marks a music
 	// track (never a resume point).
 	conv  *conversion
@@ -278,6 +281,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	var encoder transcode.Encoder
 	var toneMap *transcode.ToneMapper
 	gpu := false
+	var decoder *transcode.Decoder
 	switch {
 	case plan.Method == playback.Unplayable:
 		return PlayInfo{}, domain.Precondition("playback.unplayable", plan.Reasons)
@@ -294,8 +298,11 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		}
 		encoder = best
 		// On the card, unless a subtitle has to be burned in (overlay in memory). The CPU
-		// conversion stays ready as a fallback.
+		// conversion stays ready as a fallback. Without that chain, the card may still decode.
 		gpu = caps.GPU && !plan.Burn
+		if !gpu {
+			decoder = caps.Decoder
+		}
 		if plan.ToneMap {
 			tm, ok := caps.BestToneMapper()
 			if !ok && !gpu {
@@ -305,7 +312,8 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		}
 	}
 	s := &playSession{
-		id: domain.NewID(), token: newToken(), profile: profile, item: it.ID, file: *file, plan: plan, encoder: encoder, toneMap: toneMap, gpu: gpu,
+		id: domain.NewID(), token: newToken(), profile: profile, item: it.ID, file: *file, plan: plan, encoder: encoder, toneMap: toneMap,
+		gpu: gpu, decoder: decoder,
 		changed: make(chan struct{}), ready: map[int]bool{}, lastSeen: a.now(), savedAt: a.now(),
 		position: view.UserData.Position, music: music,
 		play: playOf(profile, view, file.Info.Duration, a.now()), lastPos: view.UserData.Position, lastAt: a.now(),
@@ -361,7 +369,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	a.plays.mu.Unlock()
 	a.log.InfoContext(ctx, "playback started", "session", s.id, "item", it.ID, "title", it.Title,
 		"method", plan.Method, "copy_video", plan.CopyVideo, "copy_audio", plan.CopyAudio,
-		"encoder", encoder.Name, "gpu", gpu, "tonemap", toneMapName(toneMap, gpu), "reasons", plan.Reasons, "segments", len(s.segs),
+		"encoder", encoder.Name, "gpu", gpu, "decoder", decoderName(decoder), "tonemap", toneMapName(toneMap, gpu), "reasons", plan.Reasons, "segments", len(s.segs),
 		"subtitles", len(subs), "subtitles_ready", subsReady, "subtitle", subtitleLog(chosen), "burn", plan.Burn)
 	started := domain.T("activity.playback_started", "profile", s.who.profileName, "title", s.who.title, "device", s.who.device, []domain.Text{methodText(plan)})
 	if music {
@@ -376,7 +384,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		SessionID: s.id, Token: s.token, Method: plan.Method, File: *file, Audio: plan.Audio,
 		Duration: file.Info.Duration, Resume: view.UserData.Position,
 		Reasons: plan.Reasons, CopyVideo: plan.CopyVideo, CopyAudio: plan.CopyAudio, Encoder: encoder.Name, ToneMap: toneMapName(toneMap, gpu),
-		GPU:       gpu,
+		GPU: gpu, Decoder: decoderName(decoder),
 		Subtitles: subs, Fonts: fonts, SubtitlesReady: subsReady, Subtitle: subtitlePosition(chosen), Burned: burned,
 	}, nil
 }
@@ -716,12 +724,12 @@ func (a *App) produceRun(ctx context.Context, s *playSession, c *ffmpegRun) {
 	s.mu.Unlock()
 }
 
-// dropGPU gives up the chain on the card for the session; false if it was not using it.
+// dropGPU gives up the card for the session, chain or decoder; false if it was not using it.
 func (a *App) dropGPU(s *playSession) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	was := s.gpu
-	s.gpu = false
+	was := s.gpu || s.decoder != nil
+	s.gpu, s.decoder = false, nil
 	return was
 }
 
@@ -742,18 +750,26 @@ func (a *App) runCommand(s *playSession, k int) fmp4.Command {
 		return fmp4.Command{Bin: a.ffmpeg, Args: remux.Args(remux.Options{Path: s.file.Path, Start: start, Audio: s.plan.Audio, VideoTag: videoTag})}
 	}
 	s.mu.Lock()
-	gpu := s.gpu
+	gpu, decoder := s.gpu, s.decoder
 	s.mu.Unlock()
 	cmd := fmp4.Command{Bin: a.ffmpeg, Args: transcode.Args(transcode.Options{
 		Path: s.file.Path, Start: start, Audio: s.plan.Audio,
 		CopyVideo: s.plan.CopyVideo, VideoTag: videoTag, Encoder: s.encoder, MaxHeight: maxTranscodeHeight,
 		Segment: playback.TargetSegment, CopyAudio: s.plan.CopyAudio, Channels: channels, Burn: s.burn, ToneMap: s.toneMap,
-		GPU: gpu,
+		GPU: gpu, Decoder: decoder,
 	})}
 	if s.burn != nil && s.burn.Text != "" {
 		cmd.Dir = s.dir // the subtitle and its fonts are copied there (relative paths)
 	}
 	return cmd
+}
+
+// decoderName is the name of the hardware decoder, empty for none.
+func decoderName(d *transcode.Decoder) string {
+	if d == nil {
+		return ""
+	}
+	return d.Name
 }
 
 // toneMapName is the HDR to SDR conversion applied (libplacebo on the card).

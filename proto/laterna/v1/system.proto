@@ -123,6 +123,9 @@ message SystemStatus {
   repeated string tone_mappers = 9;
   // The chain on the graphics card (decoding and scaling) is usable.
   bool gpu = 10;
+  // Hardware decoder used when that chain is not ("cuda"): the card decodes, the rest happens in
+  // memory. Empty if none.
+  string decoder = 22;
   string data_dir = 11;
   string cache_dir = 12;
   string metadata_dir = 13;

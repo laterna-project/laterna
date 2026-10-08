@@ -27,7 +27,7 @@ func (s *SystemService) GetSystemStatus(ctx context.Context, _ *connect.Request[
 	return connect.NewResponse(&laternav1.GetSystemStatusResponse{Status: &laternav1.SystemStatus{
 		Version: st.Version, Commit: st.Commit, StartedAt: timestamppb.New(st.StartedAt),
 		Os: st.OS, Arch: st.Arch, GoVersion: st.GoVersion, Ffmpeg: st.FFmpeg,
-		Encoders: st.Encoders, ToneMappers: st.ToneMappers, Gpu: st.GPU,
+		Encoders: st.Encoders, ToneMappers: st.ToneMappers, Gpu: st.GPU, Decoder: st.Decoder,
 		DataDir: st.DataDir, CacheDir: st.CacheDir, MetadataDir: st.MetadataDir, LogDir: st.LogDir,
 		Playbacks: clampInt32(st.Playbacks), FfmpegRunning: clampInt32(st.FFmpegRunning),
 		Transcodes: clampInt32(st.Transcodes), TranscodeLimit: clampInt32(st.TranscodeLimit),
