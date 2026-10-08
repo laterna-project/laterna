@@ -380,6 +380,13 @@ test_keycloak() {
 # Authentik signs in through its flow executor, the API its pages use.
 signin_authentik() {
   login=$(browser -o /dev/null -w '%{redirect_url}' "$1")
+  case $login in
+  *client_id=*) ;;
+  *)
+    echo "Authentik sent the sign-in to $login, without Laterna's request" >&2
+    return 1
+    ;;
+  esac
   executor="https://auth.test/api/v3/flows/executor/default-authentication-flow/?query=$(jq -rn --arg q "${login#*\?}" '$q|@uri')"
   browser -f -o /dev/null "$executor"
   browser -f -L -o /dev/null -H 'Content-Type: application/json' \
@@ -391,6 +398,9 @@ signin_authentik() {
 
 test_authentik() {
   trust_caddy
+  # Just after its first start, Authentik may still be creating its default flows; a sign-in
+  # started before then loses where it was going.
+  retry 180 browser -f -o /dev/null https://auth.test/api/v3/flows/executor/default-authentication-flow/
   sso https://auth.test/application/o/laterna/ laterna "$(env_value OIDC_CLIENT_SECRET)" signin_authentik akadmin
 }
 
