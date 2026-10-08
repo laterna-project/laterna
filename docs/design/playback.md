@@ -13,7 +13,7 @@ declares what it can play, and the server decides from that profile and the sour
 - FFmpeg and ffprobe run as **child processes**, never linked into the binary. A crash in FFmpeg
   does not take the server down, and its GPL license stays on its side of the process boundary.
 - **Capabilities are probed at startup with real attempts** (encoders, tone mappers, the GPU
-  chain), each with a fallback. What a build *announces* is not trusted.
+  chain, the hardware decoder), each with a fallback. What a build *announces* is not trusted.
 - Arguments are built by typed code and passed as an array, never through a shell. Inputs are
   prefixed with `file:` so a file name cannot be read as a protocol.
 
@@ -165,6 +165,20 @@ Measured on a desktop with a mid-range NVIDIA card, on a 4K AV1 HDR10 film: firs
 3 s, seeks in 2.3 to 2.4 s, and a 6 s segment produced in 0.55 s once running. A 1080p 10-bit
 HEVC source transcodes with seeks in 1.3 to 1.8 s. Remux seeks take under a second. Most of the
 time of a transcoded seek is decoding from the previous source keyframe, which can be 10 s back.
+
+**Hardware decoding** covers the machines where the GPU chain does not pass its test but the card
+can still decode: in a container under Docker Desktop (WSL 2), the NVIDIA driver brings CUDA and
+NVENC but no Vulkan. NVDEC (`-hwaccel cuda`) then decodes, and the frames come back to memory for
+the usual CPU filters: scaling, tone mapping, burn-in. Its startup test keeps the frames on the
+card (`-hwaccel_output_format cuda`, then `hwdownload`), so that a decoder that does not work fails
+instead of quietly falling back to the CPU; in playback the frames are not kept there, so a stream
+the card cannot decode (10-bit H.264) is decoded on the CPU as before. It is used whenever the GPU
+chain is not, burn-in included, and given up with it if a run fails before its first frame.
+
+Measured with Docker Desktop on an RTX 4060, 60 s of a 1080p 10-bit HEVC film transcoded to 720p
+H.264 with NVENC: 35.5 s of CPU time decoding on the CPU, 11.6 s with NVDEC, 7.7 s with every
+filter on the card as well. Decoding is the bulk of the work; moving the rest would save little
+more and would need a CUDA version of every filter.
 
 ## Sessions
 

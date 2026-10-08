@@ -20,9 +20,10 @@ type FileOptions struct {
 	// without leaving their quality mode; 0 means no cap.
 	VideoRate int
 	// ToneMap is the HDR to SDR conversion (nil for an SDR source). GPU runs the chain on the
-	// graphics card.
+	// graphics card; otherwise Decoder, if set, decodes on the card.
 	ToneMap *ToneMapper
 	GPU     bool
+	Decoder *Decoder
 	// CopyAudio means the audio is copied as is; otherwise it is re-encoded to AAC.
 	CopyAudio bool
 	// Channels of the source stream. Re-encoded audio keeps 6 at most.
@@ -46,6 +47,9 @@ func FileArgs(o FileOptions) []string {
 			args = append(args, gpuDevice...)
 		case o.ToneMap != nil:
 			args = append(args, o.ToneMap.device...)
+		}
+		if !gpu && o.Decoder != nil {
+			args = append(args, o.Decoder.args...)
 		}
 	}
 	args = append(args, "-i", "file:"+o.Path, "-map", "0:V:0")

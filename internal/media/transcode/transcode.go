@@ -58,6 +58,9 @@ type Caps struct {
 	ToneMappers []ToneMapper
 	// GPU means the chain on the card passed the test with the best encoder (DetectGPU).
 	GPU bool
+	// Decoder is the hardware decoder that passed the test with the best encoder (DetectDecoder),
+	// used whenever the chain on the card is not; nil if none.
+	Decoder *Decoder
 }
 
 // BestToneMapper returns the preferred HDR to SDR conversion; false if none works.
@@ -201,6 +204,9 @@ type Options struct {
 	// GPU means the picture is decoded, scaled (and converted to SDR) on the card. ToneMap then
 	// only says a conversion is needed and libplacebo does it. No effect with Burn.
 	GPU bool
+	// Decoder decodes the picture on the card when the chain on the card is not used (Burn
+	// included); nil decodes it on the CPU.
+	Decoder *Decoder
 }
 
 // Burn describes a subtitle to burn in.
@@ -258,6 +264,9 @@ func Args(o Options) []string {
 			args = append(args, gpuDevice...)
 		case o.ToneMap != nil:
 			args = append(args, o.ToneMap.device...)
+		}
+		if !gpu && o.Decoder != nil {
+			args = append(args, o.Decoder.args...)
 		}
 	}
 	args = append(args, "-copyts", "-ss", seconds(o.Start), "-i", "file:"+o.Path)

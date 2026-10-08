@@ -207,7 +207,10 @@ type SystemStatus struct {
 	// Usable HDR to SDR conversions.
 	ToneMappers []string `protobuf:"bytes,9,rep,name=tone_mappers,json=toneMappers,proto3" json:"tone_mappers,omitempty"`
 	// The chain on the graphics card (decoding and scaling) is usable.
-	Gpu         bool   `protobuf:"varint,10,opt,name=gpu,proto3" json:"gpu,omitempty"`
+	Gpu bool `protobuf:"varint,10,opt,name=gpu,proto3" json:"gpu,omitempty"`
+	// Hardware decoder used when that chain is not ("cuda"): the card decodes, the rest happens in
+	// memory. Empty if none.
+	Decoder     string `protobuf:"bytes,22,opt,name=decoder,proto3" json:"decoder,omitempty"`
 	DataDir     string `protobuf:"bytes,11,opt,name=data_dir,json=dataDir,proto3" json:"data_dir,omitempty"`
 	CacheDir    string `protobuf:"bytes,12,opt,name=cache_dir,json=cacheDir,proto3" json:"cache_dir,omitempty"`
 	MetadataDir string `protobuf:"bytes,13,opt,name=metadata_dir,json=metadataDir,proto3" json:"metadata_dir,omitempty"`
@@ -324,6 +327,13 @@ func (x *SystemStatus) GetGpu() bool {
 		return x.Gpu
 	}
 	return false
+}
+
+func (x *SystemStatus) GetDecoder() string {
+	if x != nil {
+		return x.Decoder
+	}
+	return ""
 }
 
 func (x *SystemStatus) GetDataDir() string {
@@ -2869,7 +2879,7 @@ var File_laterna_v1_system_proto protoreflect.FileDescriptor
 const file_laterna_v1_system_proto_rawDesc = "" +
 	"\n" +
 	"\x17laterna/v1/system.proto\x12\n" +
-	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\"\x90\x05\n" +
+	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\"\xaa\x05\n" +
 	"\fSystemStatus\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x16\n" +
 	"\x06commit\x18\x02 \x01(\tR\x06commit\x129\n" +
@@ -2883,7 +2893,8 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\bencoders\x18\b \x03(\tR\bencoders\x12!\n" +
 	"\ftone_mappers\x18\t \x03(\tR\vtoneMappers\x12\x10\n" +
 	"\x03gpu\x18\n" +
-	" \x01(\bR\x03gpu\x12\x19\n" +
+	" \x01(\bR\x03gpu\x12\x18\n" +
+	"\adecoder\x18\x16 \x01(\tR\adecoder\x12\x19\n" +
 	"\bdata_dir\x18\v \x01(\tR\adataDir\x12\x1b\n" +
 	"\tcache_dir\x18\f \x01(\tR\bcacheDir\x12!\n" +
 	"\fmetadata_dir\x18\r \x01(\tR\vmetadataDir\x12\x17\n" +
