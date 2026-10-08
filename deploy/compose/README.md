@@ -40,8 +40,8 @@ docker compose up -d
 Open http://localhost:8096 (or `http://<this machine's address>:8096` from another device) to set
 the server up. `docker compose logs -f laterna` shows what it does.
 
-- **Upgrading:** `docker compose pull && docker compose up -d`. `LATERNA_VERSION=0.6` follows the
-  patches of 0.6.x; set the next minor version yourself after reading its release notes. The
+- **Upgrading:** `docker compose pull && docker compose up -d`. `LATERNA_VERSION=0.7` follows the
+  patches of 0.7.x; set the next minor version yourself after reading its release notes. The
   server backs its database up before migrating it.
 - **These files:** `main` holds those of the latest release, and `git pull` brings the next
   release's. `--branch v0.6.0` keeps those of one release; `develop` has the ones being written.
