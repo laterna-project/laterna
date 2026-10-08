@@ -1,0 +1,17 @@
+# Transcoding on an NVIDIA card (NVENC). On Linux, the host needs the NVIDIA driver and the NVIDIA
+# Container Toolkit; on Windows, Docker Desktop with the WSL 2 backend and the Windows NVIDIA driver
+# is enough. The server tries every encoder at startup; its log line "usable H.264 encoders" then
+# starts with h264_nvenc.
+services:
+  laterna:
+    environment:
+      # "video" is the one that brings libnvidia-encode into the container: without it, NVENC
+      # cannot start.
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

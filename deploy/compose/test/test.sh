@@ -95,6 +95,7 @@ config() {
   done
   # The combinations README.md describes.
   check_config intel-gpu backups resources https-dns duckdns-updater
+  check_config nvidia-gpu resources tailscale
   check_config custom-user config-file https-internal
   check_config media-split https-public
   check_config media-nfs traefik
@@ -380,6 +381,13 @@ test_keycloak() {
 # Authentik signs in through its flow executor, the API its pages use.
 signin_authentik() {
   login=$(browser -o /dev/null -w '%{redirect_url}' "$1")
+  case $login in
+  *client_id=*) ;;
+  *)
+    echo "Authentik sent the sign-in to $login, without Laterna's request" >&2
+    return 1
+    ;;
+  esac
   executor="https://auth.test/api/v3/flows/executor/default-authentication-flow/?query=$(jq -rn --arg q "${login#*\?}" '$q|@uri')"
   browser -f -o /dev/null "$executor"
   browser -f -L -o /dev/null -H 'Content-Type: application/json' \
@@ -391,6 +399,9 @@ signin_authentik() {
 
 test_authentik() {
   trust_caddy
+  # Just after its first start, Authentik may still be creating its default flows; a sign-in
+  # started before then loses where it was going.
+  retry 180 browser -f -o /dev/null https://auth.test/api/v3/flows/executor/default-authentication-flow/
   sso https://auth.test/application/o/laterna/ laterna "$(env_value OIDC_CLIENT_SECRET)" signin_authentik akadmin
 }
 
@@ -429,6 +440,13 @@ test_labels() {
   docker run --rm --network laterna-test-external curlimages/curl -fsS -o /dev/null http://laterna:8096/health
 }
 
+# Signing in to Tailscale takes an account, so the tunnel is not tried: only that the tailscale
+# container reaches the server under the name Serve and Funnel forward to.
+test_tailscale() {
+  wait_for http://127.0.0.1:18096/health
+  retry 30 compose tailscale -- exec -T tailscale wget -qO /dev/null http://laterna:8096/health
+}
+
 runs() {
   run base
   run folders media-split custom-user backups config-file resources
@@ -442,6 +460,7 @@ runs() {
   docker network create laterna-test-external >/dev/null
   run labels external-network no-ports traefik-labels
   run monitoring prometheus jaeger uptime-kuma
+  run tailscale tailscale
   run jellyfin jellyfin-import
   # Without modules/custom-user.yaml, whose CONFIG_DIR test.env sets: the config volume.
   CONFIG_DIR="" run operations diun watchtower backup-offsite

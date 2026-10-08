@@ -149,6 +149,9 @@ message ActivePlayback {
   google.protobuf.Duration duration = 17;
   // An FFmpeg process is working for this playback right now.
   bool transcoding = 18;
+  // Hardware decoder of the re-encoded video when it is not on the graphics card's chain (gpu);
+  // empty if it is decoded on the CPU.
+  string decoder = 19;
 }
 
 message ListPlaybacksRequest {}
