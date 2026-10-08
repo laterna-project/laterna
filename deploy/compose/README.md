@@ -334,13 +334,18 @@ proxy configuration.
 
 1. In the [Tailscale admin console](https://login.tailscale.com/admin/dns), turn on MagicDNS and
    HTTPS certificates.
-2. `TS_AUTHKEY`: an auth key (Settings, Keys), or leave it empty and open the link that
-   `docker compose logs tailscale` prints.
+2. `TS_AUTHKEY`: an auth key (Settings, Keys, Generate auth key; it starts with `tskey-auth-`, an
+   API access token is refused). Or leave it empty and open the link that
+   `docker compose logs tailscale` prints within 10 minutes (`TS_BOOT_TIMEOUT`); after that the
+   container restarts with a new link.
 3. The server answers at `https://<TS_HOSTNAME>.<your tailnet>.ts.net` on every device of the
    tailnet, from anywhere, with a certificate browsers trust.
 
 `TAILSCALE_SERVE=funnel` opens that address to the whole Internet (Tailscale Funnel), with the
-same care as `https-public`.
+same care as `https-public`. The tailnet's policy has to allow it first: in
+[Access controls](https://login.tailscale.com/admin/acls), Funnel, Add Funnel to policy. The name
+can then take up to 10 minutes to resolve. Tailscale limits Funnel's bandwidth without giving a
+figure; devices with the Tailscale app connect directly instead.
 
 ### `cloudflared`: Cloudflare Tunnel
 

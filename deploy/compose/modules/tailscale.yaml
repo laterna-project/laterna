@@ -1,7 +1,8 @@
 # Access from anywhere through Tailscale, without opening a port: the server joins your tailnet as
 # TS_HOSTNAME and answers at https://<TS_HOSTNAME>.<tailnet>.ts.net with a real certificate, so
 # browsers offer to install the app. Turn on MagicDNS and HTTPS certificates in the tailnet's DNS
-# settings first. TAILSCALE_SERVE=funnel also opens it to the whole Internet (Tailscale Funnel).
+# settings first. TAILSCALE_SERVE=funnel also opens it to the whole Internet (Tailscale Funnel),
+# once the tailnet's policy allows Funnel.
 services:
   laterna:
     environment:
@@ -10,12 +11,16 @@ services:
   tailscale:
     image: tailscale/tailscale:stable
     restart: unless-stopped
-    hostname: ${TS_HOSTNAME:-laterna}
+    # No hostname here: a container named "laterna" answers for that name itself, and the proxy to
+    # http://laterna:8096 would reach this container. The node's name comes from TS_HOSTNAME.
     environment:
       TS_AUTHKEY: ${TS_AUTHKEY:-}
       TS_HOSTNAME: ${TS_HOSTNAME:-laterna}
       TS_STATE_DIR: /var/lib/tailscale
       TS_SERVE_CONFIG: /config/serve.json
+      # Without TS_AUTHKEY, the time left to open the sign-in link before the container restarts
+      # with a new one (60 seconds by default in the image).
+      TS_BOOT_TIMEOUT: ${TS_BOOT_TIMEOUT:-10m}
     volumes:
       - tailscale-state:/var/lib/tailscale
       - ./config/tailscale/${TAILSCALE_SERVE:-serve}.json:/config/serve.json:ro
