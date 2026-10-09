@@ -61,6 +61,8 @@ enum ActivityKind {
   ACTIVITY_KIND_PARTY_STARTED = 17;
   // Data imported from another server (ImportService).
   ACTIVITY_KIND_IMPORT = 18;
+  // A request created, approved, declined or available (RequestService).
+  ACTIVITY_KIND_REQUEST = 19;
 }
 
 message ActivityEntry {

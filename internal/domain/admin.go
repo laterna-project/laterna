@@ -65,6 +65,7 @@ const (
 	ActivityJobFailed       ActivityKind = "job.failed"
 	ActivityPartyStarted    ActivityKind = "party.started"
 	ActivityImport          ActivityKind = "import"
+	ActivityRequest         ActivityKind = "request"
 )
 
 // Activity is one entry of the activity log: what happened, who did it, to what.

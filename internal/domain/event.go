@@ -50,8 +50,16 @@ type ThemesChanged struct {
 	ProfileID *ID
 }
 
+// RequestsChanged is sent when requests change (created, approved, declined, downloading,
+// available, removed): to the profile that made them and to the administrators.
+type RequestsChanged struct {
+	ProfileID  ID
+	RequestIDs []ID
+}
+
 func (Resync) isEvent()           {}
 func (ThemesChanged) isEvent()    {}
+func (RequestsChanged) isEvent()  {}
 func (DownloadsChanged) isEvent() {}
 func (LibrariesChanged) isEvent() {}
 func (LibraryScanned) isEvent()   {}

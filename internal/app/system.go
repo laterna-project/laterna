@@ -158,6 +158,10 @@ func (a *App) jobLabel(ctx context.Context, kind, target string) string {
 		if l, err := read.Library(ctx, id); err == nil {
 			return l.Name
 		}
+	case kind == jobSubmitRequest:
+		if r, err := read.Request(ctx, id); err == nil {
+			return r.Title
+		}
 	case strings.HasPrefix(kind, "image."):
 		if img, err := read.Image(ctx, id); err == nil {
 			if img.RemoteURL != "" {

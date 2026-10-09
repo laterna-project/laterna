@@ -408,7 +408,7 @@ func (a *App) jellyfinAccount(ctx context.Context, run *jellyfinRun, u jellyfin.
 	now := a.now()
 	account := domain.Account{
 		ID: domain.NewID(), Username: username, IsAdmin: u.Admin, Disabled: u.Disabled, Libraries: domain.AllLibraries(),
-		DenyDownloads: !u.Admin && u.DenyDownloads, CreatedAt: now, UpdatedAt: now,
+		DenyDownloads: !u.Admin && u.DenyDownloads, RequestQuota: domain.DefaultRequestQuota, CreatedAt: now, UpdatedAt: now,
 	}
 	if !u.Admin {
 		account.Parental = jellyfinParental(u)

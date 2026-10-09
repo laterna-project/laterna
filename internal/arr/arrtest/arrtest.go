@@ -36,6 +36,42 @@ type Server struct {
 	// Refreshes counts the refreshes asked for. A command finishes the second time it is read.
 	Refreshes int
 	reads     map[int]int
+	// Commands lists the names of the commands received, in order.
+	Commands []string
+	// Catalog is what a search finds (TVDB or TMDB as the instance sees it).
+	Catalog []Entry
+	// Titles are the series or movies the instance has, by their ID there.
+	Titles map[int]*Title
+	// Roots and Profiles are the root folders and quality profiles of the instance.
+	Roots    []arr.RootFolder
+	Profiles []arr.QualityProfile
+	// Queue is what the instance is downloading.
+	Queue []arr.Download
+}
+
+// Entry is a title a search can find.
+type Entry struct {
+	ExternalID int64
+	Title      string
+	Year       int
+	Seasons    []int
+	Poster     string
+}
+
+// Title is a series or a movie the instance has.
+type Title struct {
+	Entry
+	ID               int
+	Monitored        bool
+	MonitoredSeasons []int
+	RootFolder       string
+	QualityProfileID int
+	SeriesType       string
+	// Monitor is the addOptions.monitor it was added with.
+	Monitor        string
+	EpisodeFiles   int
+	EpisodesWanted int
+	HasFile        bool
 }
 
 // Hook is a saved webhook.
@@ -48,7 +84,11 @@ type Hook struct {
 // New starts a fake Sonarr or Radarr that is stopped when the test ends.
 func New(t *testing.T, kind arr.Kind) *Server {
 	t.Helper()
-	s := &Server{kind: kind, KodiOptions: map[string]bool{}, reads: map[int]int{}}
+	s := &Server{
+		kind: kind, KodiOptions: map[string]bool{}, reads: map[int]int{}, Titles: map[int]*Title{},
+		Roots:    []arr.RootFolder{{Path: "/data/media/" + map[arr.Kind]string{arr.Sonarr: "shows", arr.Radarr: "movies"}[kind], FreeSpace: 1 << 40}},
+		Profiles: []arr.QualityProfile{{ID: 1, Name: "Any"}, {ID: 7, Name: "HD Bluray + WEB"}},
+	}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(s.Close)
 	return s
@@ -74,6 +114,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	write := func(v any) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(v)
+	}
+	if s.serveTitles(w, r, path, body, write) {
+		return
 	}
 	switch {
 	case path == "/system/status":
@@ -124,6 +167,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(path, "/notification/") && r.Method == http.MethodDelete:
 		s.Hook = nil
 	case path == "/command" && r.Method == http.MethodPost:
+		name, _ := body["name"].(string)
+		s.Commands = append(s.Commands, name)
 		s.Refreshes++
 		write(map[string]any{"id": 100 + s.Refreshes, "name": body["name"], "status": "queued"})
 	case strings.HasPrefix(path, "/command/"):

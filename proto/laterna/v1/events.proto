@@ -36,6 +36,7 @@ message Event {
     UserDataChanged user_data_changed = 7;
     DownloadsChanged downloads_changed = 8;
     ThemesChanged themes_changed = 9;
+    RequestsChanged requests_changed = 10;
   }
 }
 
@@ -87,3 +88,10 @@ message DownloadsChanged {
 // ThemesChanged: the theme to show may have changed (theme edited or deleted, server theme changed,
 // or the profile's choice changed from another device); call ThemeService.GetMyTheme again.
 message ThemesChanged {}
+
+// RequestsChanged: requests changed (created, approved, declined, downloading, available,
+// removed). Sent to the profile that made them and to the administrators; reload them
+// (RequestService).
+message RequestsChanged {
+  repeated string request_ids = 1;
+}

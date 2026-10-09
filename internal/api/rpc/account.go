@@ -41,6 +41,7 @@ func (s *AccountService) CreateAccount(ctx context.Context, req *connect.Request
 	a, err := s.app.CreateAccount(ctx, principal(ctx), app.NewAccount{
 		Username: m.GetUsername(), Password: m.GetPassword(), IsAdmin: m.GetIsAdmin(),
 		Libraries: libs, Parental: parentalFromMsg(m.GetParental()), DenyDownloads: m.GetDenyDownloads(),
+		DenyRequests: m.GetDenyRequests(), AutoApproveRequests: m.GetAutoApproveRequests(), RequestQuota: optInt(m.RequestQuota),
 	})
 	if err != nil {
 		return nil, err
@@ -62,6 +63,7 @@ func (s *AccountService) UpdateAccount(ctx context.Context, req *connect.Request
 	a, err := s.app.UpdateAccount(ctx, principal(ctx), id, app.AccountChanges{
 		Username: m.Username, Password: m.Password, IsAdmin: m.IsAdmin, Disabled: m.Disabled,
 		Libraries: libs, Parental: parentalFromMsg(m.GetParental()), DenyDownloads: m.DenyDownloads,
+		DenyRequests: m.DenyRequests, AutoApproveRequests: m.AutoApproveRequests, RequestQuota: optInt(m.RequestQuota),
 	})
 	if err != nil {
 		return nil, err

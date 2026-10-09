@@ -412,7 +412,10 @@ func (a *App) oidcAccount(ctx context.Context, cfg domain.OIDCProvider, c oidc.C
 	if err != nil {
 		return domain.Account{}, err
 	}
-	account = domain.Account{ID: domain.NewID(), Username: username, Libraries: domain.AllLibraries(), CreatedAt: now, UpdatedAt: now}
+	account = domain.Account{
+		ID: domain.NewID(), Username: username, Libraries: domain.AllLibraries(), RequestQuota: domain.DefaultRequestQuota,
+		CreatedAt: now, UpdatedAt: now,
+	}
 	profile := domain.Profile{ID: domain.NewID(), AccountID: account.ID, Name: username, CreatedAt: now, UpdatedAt: now}
 	err = a.store.Write(ctx, func(q store.Q) error {
 		if err := accountWriteError(q.CreateAccount(ctx, account, hash), username); err != nil {

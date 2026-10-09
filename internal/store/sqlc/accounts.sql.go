@@ -117,7 +117,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id domain.ID) error {
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, username, username_key, password_hash, is_admin, disabled, created_at, updated_at, all_libraries, max_age, block_unrated, deny_downloads FROM accounts WHERE id = ?
+SELECT id, username, username_key, password_hash, is_admin, disabled, created_at, updated_at, all_libraries, max_age, block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota FROM accounts WHERE id = ?
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id domain.ID) (Account, error) {
@@ -136,12 +136,15 @@ func (q *Queries) GetAccount(ctx context.Context, id domain.ID) (Account, error)
 		&i.MaxAge,
 		&i.BlockUnrated,
 		&i.DenyDownloads,
+		&i.DenyRequests,
+		&i.AutoApproveRequests,
+		&i.RequestQuota,
 	)
 	return i, err
 }
 
 const getAccountByUsername = `-- name: GetAccountByUsername :one
-SELECT id, username, username_key, password_hash, is_admin, disabled, created_at, updated_at, all_libraries, max_age, block_unrated, deny_downloads FROM accounts WHERE username_key = ?
+SELECT id, username, username_key, password_hash, is_admin, disabled, created_at, updated_at, all_libraries, max_age, block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota FROM accounts WHERE username_key = ?
 `
 
 func (q *Queries) GetAccountByUsername(ctx context.Context, usernameKey string) (Account, error) {
@@ -160,6 +163,9 @@ func (q *Queries) GetAccountByUsername(ctx context.Context, usernameKey string) 
 		&i.MaxAge,
 		&i.BlockUnrated,
 		&i.DenyDownloads,
+		&i.DenyRequests,
+		&i.AutoApproveRequests,
+		&i.RequestQuota,
 	)
 	return i, err
 }
@@ -241,22 +247,26 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 
 const insertAccount = `-- name: InsertAccount :exec
 INSERT INTO accounts (id, username, username_key, password_hash, is_admin, disabled, all_libraries, max_age,
-                      block_unrated, deny_downloads, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+                      block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota, created_at,
+                      updated_at)
+VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAccountParams struct {
-	ID            domain.ID
-	Username      string
-	UsernameKey   string
-	PasswordHash  string
-	IsAdmin       int64
-	AllLibraries  int64
-	MaxAge        sql.NullInt64
-	BlockUnrated  int64
-	DenyDownloads int64
-	CreatedAt     int64
-	UpdatedAt     int64
+	ID                  domain.ID
+	Username            string
+	UsernameKey         string
+	PasswordHash        string
+	IsAdmin             int64
+	AllLibraries        int64
+	MaxAge              sql.NullInt64
+	BlockUnrated        int64
+	DenyDownloads       int64
+	DenyRequests        int64
+	AutoApproveRequests int64
+	RequestQuota        int64
+	CreatedAt           int64
+	UpdatedAt           int64
 }
 
 func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) error {
@@ -270,6 +280,9 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) er
 		arg.MaxAge,
 		arg.BlockUnrated,
 		arg.DenyDownloads,
+		arg.DenyRequests,
+		arg.AutoApproveRequests,
+		arg.RequestQuota,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -391,7 +404,7 @@ func (q *Queries) ListAccountLibraries(ctx context.Context, accountID domain.ID)
 }
 
 const listAccountSummaries = `-- name: ListAccountSummaries :many
-SELECT a.id, a.username, a.username_key, a.password_hash, a.is_admin, a.disabled, a.created_at, a.updated_at, a.all_libraries, a.max_age, a.block_unrated, a.deny_downloads,
+SELECT a.id, a.username, a.username_key, a.password_hash, a.is_admin, a.disabled, a.created_at, a.updated_at, a.all_libraries, a.max_age, a.block_unrated, a.deny_downloads, a.deny_requests, a.auto_approve_requests, a.request_quota,
        (SELECT count(*) FROM profiles p WHERE p.account_id = a.id) AS profile_count,
        CAST(coalesce((SELECT max(s.last_used_at) FROM sessions s WHERE s.account_id = a.id), 0) AS INTEGER) AS last_active
 FROM accounts a
@@ -399,20 +412,23 @@ ORDER BY a.created_at, a.id
 `
 
 type ListAccountSummariesRow struct {
-	ID            domain.ID
-	Username      string
-	UsernameKey   string
-	PasswordHash  string
-	IsAdmin       int64
-	Disabled      int64
-	CreatedAt     int64
-	UpdatedAt     int64
-	AllLibraries  int64
-	MaxAge        sql.NullInt64
-	BlockUnrated  int64
-	DenyDownloads int64
-	ProfileCount  int64
-	LastActive    int64
+	ID                  domain.ID
+	Username            string
+	UsernameKey         string
+	PasswordHash        string
+	IsAdmin             int64
+	Disabled            int64
+	CreatedAt           int64
+	UpdatedAt           int64
+	AllLibraries        int64
+	MaxAge              sql.NullInt64
+	BlockUnrated        int64
+	DenyDownloads       int64
+	DenyRequests        int64
+	AutoApproveRequests int64
+	RequestQuota        int64
+	ProfileCount        int64
+	LastActive          int64
 }
 
 func (q *Queries) ListAccountSummaries(ctx context.Context) ([]ListAccountSummariesRow, error) {
@@ -437,6 +453,9 @@ func (q *Queries) ListAccountSummaries(ctx context.Context) ([]ListAccountSummar
 			&i.MaxAge,
 			&i.BlockUnrated,
 			&i.DenyDownloads,
+			&i.DenyRequests,
+			&i.AutoApproveRequests,
+			&i.RequestQuota,
 			&i.ProfileCount,
 			&i.LastActive,
 		); err != nil {
@@ -606,21 +625,24 @@ func (q *Queries) TouchSession(ctx context.Context, arg TouchSessionParams) erro
 const updateAccount = `-- name: UpdateAccount :exec
 UPDATE accounts
 SET username = ?, username_key = ?, is_admin = ?, disabled = ?, all_libraries = ?, max_age = ?, block_unrated = ?,
-    deny_downloads = ?, updated_at = ?
+    deny_downloads = ?, deny_requests = ?, auto_approve_requests = ?, request_quota = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateAccountParams struct {
-	Username      string
-	UsernameKey   string
-	IsAdmin       int64
-	Disabled      int64
-	AllLibraries  int64
-	MaxAge        sql.NullInt64
-	BlockUnrated  int64
-	DenyDownloads int64
-	UpdatedAt     int64
-	ID            domain.ID
+	Username            string
+	UsernameKey         string
+	IsAdmin             int64
+	Disabled            int64
+	AllLibraries        int64
+	MaxAge              sql.NullInt64
+	BlockUnrated        int64
+	DenyDownloads       int64
+	DenyRequests        int64
+	AutoApproveRequests int64
+	RequestQuota        int64
+	UpdatedAt           int64
+	ID                  domain.ID
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) error {
@@ -633,6 +655,9 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) er
 		arg.MaxAge,
 		arg.BlockUnrated,
 		arg.DenyDownloads,
+		arg.DenyRequests,
+		arg.AutoApproveRequests,
+		arg.RequestQuota,
 		arg.UpdatedAt,
 		arg.ID,
 	)

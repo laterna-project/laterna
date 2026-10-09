@@ -229,6 +229,13 @@ type Account struct {
 	// Offline downloads taken away by an administrator (DownloadService); never from an
 	// administrator.
 	DenyDownloads bool `protobuf:"varint,8,opt,name=deny_downloads,json=denyDownloads,proto3" json:"deny_downloads,omitempty"`
+	// Requests taken away by an administrator (RequestService); never from an administrator.
+	DenyRequests bool `protobuf:"varint,9,opt,name=deny_requests,json=denyRequests,proto3" json:"deny_requests,omitempty"`
+	// Requests approved without waiting for an administrator, except from a restricted profile.
+	// Always the case for an administrator.
+	AutoApproveRequests bool `protobuf:"varint,10,opt,name=auto_approve_requests,json=autoApproveRequests,proto3" json:"auto_approve_requests,omitempty"`
+	// At most this many requests in seven days; 0 for no limit. Administrators have none.
+	RequestQuota  int32 `protobuf:"varint,11,opt,name=request_quota,json=requestQuota,proto3" json:"request_quota,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -317,6 +324,27 @@ func (x *Account) GetDenyDownloads() bool {
 		return x.DenyDownloads
 	}
 	return false
+}
+
+func (x *Account) GetDenyRequests() bool {
+	if x != nil {
+		return x.DenyRequests
+	}
+	return false
+}
+
+func (x *Account) GetAutoApproveRequests() bool {
+	if x != nil {
+		return x.AutoApproveRequests
+	}
+	return false
+}
+
+func (x *Account) GetRequestQuota() int32 {
+	if x != nil {
+		return x.RequestQuota
+	}
+	return 0
 }
 
 // LibraryAccess says which libraries an account may browse. The others do not exist for it: lists,
@@ -2516,7 +2544,7 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06client\x18\x02 \x01(\tR\x06client\x12%\n" +
 	"\x0eclient_version\x18\x03 \x01(\tR\rclientVersion\x12\x1a\n" +
-	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xc0\x02\n" +
+	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xbe\x03\n" +
 	"\aAccount\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x19\n" +
@@ -2526,7 +2554,11 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\bdisabled\x18\x05 \x01(\bR\bdisabled\x127\n" +
 	"\tlibraries\x18\x06 \x01(\v2\x19.laterna.v1.LibraryAccessR\tlibraries\x127\n" +
 	"\bparental\x18\a \x01(\v2\x1b.laterna.v1.ParentalControlR\bparental\x12%\n" +
-	"\x0edeny_downloads\x18\b \x01(\bR\rdenyDownloads\"B\n" +
+	"\x0edeny_downloads\x18\b \x01(\bR\rdenyDownloads\x12#\n" +
+	"\rdeny_requests\x18\t \x01(\bR\fdenyRequests\x122\n" +
+	"\x15auto_approve_requests\x18\n" +
+	" \x01(\bR\x13autoApproveRequests\x12#\n" +
+	"\rrequest_quota\x18\v \x01(\x05R\frequestQuota\"B\n" +
 	"\rLibraryAccess\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1f\n" +
 	"\vlibrary_ids\x18\x02 \x03(\tR\n" +
