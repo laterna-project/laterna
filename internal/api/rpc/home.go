@@ -144,6 +144,10 @@ func eventMsg(e domain.Event) *laternav1.Event {
 		}}}
 	case domain.ThemesChanged:
 		return &laternav1.Event{Kind: &laternav1.Event_ThemesChanged{ThemesChanged: &laternav1.ThemesChanged{}}}
+	case domain.RequestsChanged:
+		return &laternav1.Event{Kind: &laternav1.Event_RequestsChanged{RequestsChanged: &laternav1.RequestsChanged{
+			RequestIds: idsMsg(e.RequestIDs),
+		}}}
 	}
 	// Unknown kind (cannot happen: the interface is sealed and checked by gochecksumtype): reload
 	// everything.

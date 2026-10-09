@@ -157,6 +157,13 @@ message Account {
   // Offline downloads taken away by an administrator (DownloadService); never from an
   // administrator.
   bool deny_downloads = 8;
+  // Requests taken away by an administrator (RequestService); never from an administrator.
+  bool deny_requests = 9;
+  // Requests approved without waiting for an administrator, except from a restricted profile.
+  // Always the case for an administrator.
+  bool auto_approve_requests = 10;
+  // At most this many requests in seven days; 0 for no limit. Administrators have none.
+  int32 request_quota = 11;
 }
 
 // LibraryAccess says which libraries an account may browse. The others do not exist for it: lists,

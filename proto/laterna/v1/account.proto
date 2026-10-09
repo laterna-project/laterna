@@ -61,6 +61,12 @@ message CreateAccountRequest {
   ParentalControl parental = 5;
   // Takes offline downloads away (refused for an administrator).
   bool deny_downloads = 6;
+  // Takes requests away (refused for an administrator).
+  bool deny_requests = 7;
+  // Approves the account's requests without an administrator.
+  bool auto_approve_requests = 8;
+  // Requests in seven days; unset means 10, 0 means no limit.
+  optional int32 request_quota = 9;
 }
 
 message CreateAccountResponse {
@@ -82,6 +88,12 @@ message UpdateAccountRequest {
   ParentalControl parental = 7;
   // Takes offline downloads away (true) or gives them back (false); unset leaves it unchanged.
   optional bool deny_downloads = 8;
+  // Takes requests away (true) or gives them back (false); unset leaves it unchanged.
+  optional bool deny_requests = 9;
+  // Unset leaves it unchanged.
+  optional bool auto_approve_requests = 10;
+  // Requests in seven days, 0 for no limit; unset leaves it unchanged.
+  optional int32 request_quota = 11;
 }
 
 message UpdateAccountResponse {

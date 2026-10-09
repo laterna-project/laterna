@@ -18,6 +18,7 @@ not its history. When a change contradicts a note, update the note in the same c
 | [Home, history and recommendations](home.md) | Home rows, resume rules, play history, statistics, recommendations |
 | [Music, books and photos](media-types.md) | The non-video libraries, collections and playlists |
 | [Watch parties](watch-party.md) | Shared playback state and how clients stay in sync |
+| [Requests](requests.md) | Asking for movies and series, approval, Sonarr and Radarr, availability |
 | [Internationalization](i18n.md) | Error codes, composed text, languages |
 | [Themes](themes.md) | Design tokens, contrast checks, per-profile choice |
 | [Operations](operations.md) | Runtime settings, administration, logs, activity, metrics, traces |

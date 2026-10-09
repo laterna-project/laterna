@@ -11,18 +11,21 @@ import (
 )
 
 type Account struct {
-	ID            domain.ID
-	Username      string
-	UsernameKey   string
-	PasswordHash  string
-	IsAdmin       int64
-	Disabled      int64
-	CreatedAt     int64
-	UpdatedAt     int64
-	AllLibraries  int64
-	MaxAge        sql.NullInt64
-	BlockUnrated  int64
-	DenyDownloads int64
+	ID                  domain.ID
+	Username            string
+	UsernameKey         string
+	PasswordHash        string
+	IsAdmin             int64
+	Disabled            int64
+	CreatedAt           int64
+	UpdatedAt           int64
+	AllLibraries        int64
+	MaxAge              sql.NullInt64
+	BlockUnrated        int64
+	DenyDownloads       int64
+	DenyRequests        int64
+	AutoApproveRequests int64
+	RequestQuota        int64
 }
 
 type AccountLibrary struct {
@@ -402,6 +405,47 @@ type ReadingProgress struct {
 	Locator     string
 	Progression float64
 	UpdatedAt   int64
+}
+
+type Request struct {
+	ID                domain.ID
+	Kind              string
+	ExternalID        int64
+	Title             string
+	Year              int64
+	Poster            string
+	Status            string
+	Seasons           string
+	SeasonNumbers     string
+	DestinationID     *domain.ID
+	AccountID         domain.ID
+	ProfileID         domain.ID
+	CreatedAt         int64
+	UpdatedAt         int64
+	DecidedAt         sql.NullInt64
+	DecidedBy         string
+	DeclineReason     string
+	Error             string
+	ArrID             int64
+	Progress          float64
+	ItemID            *domain.ID
+	EpisodesAvailable int64
+	EpisodesWanted    int64
+	AvailableAt       sql.NullInt64
+}
+
+type RequestDestination struct {
+	ID                 domain.ID
+	Name               string
+	NameKey            string
+	Kind               string
+	LibraryID          domain.ID
+	RootFolder         string
+	QualityProfileID   int64
+	QualityProfileName string
+	SeriesType         string
+	CreatedAt          int64
+	UpdatedAt          int64
 }
 
 type Season struct {

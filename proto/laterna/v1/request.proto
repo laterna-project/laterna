@@ -1,0 +1,388 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/options.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// RequestService lets a profile ask for a movie or a series the libraries do not have. Searching
+// goes through Radarr and Sonarr (IntegrationService), which ask TMDB and TVDB: Laterna itself
+// talks to no metadata provider. A request lands in a destination, set by an administrator (a
+// library, and on the instance a root folder and a quality profile). An administrator's requests
+// are approved at once, and so are those of an account marked auto_approve_requests (unless they
+// come from a restricted profile); the others wait for an administrator. Once approved, the server
+// hands the title to the instance, follows the download and marks the request available when the
+// title is in the catalog.
+//
+// Changes are announced through EventService (RequestsChanged), to the requester and to the
+// administrators.
+//
+// Posters of search results and requests are served by the server, without authentication:
+//
+//   GET /requests/posters/{key}
+service RequestService {
+  // SearchRequestable looks a title up on the instance for that kind. Each result says whether
+  // it can be requested (RequestableState).
+  rpc SearchRequestable(SearchRequestableRequest) returns (SearchRequestableResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ListRequestDestinations lists the destinations the profile may request into (those of the
+  // libraries its account browses). An administrator also sees how each is set on the instance.
+  rpc ListRequestDestinations(ListRequestDestinationsRequest) returns (ListRequestDestinationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // CreateRequest asks for a title. Refused if the account may not request (Account.deny_requests),
+  // if its quota is reached, if the title is already available, requested or tracked, or if no
+  // destination of that kind is open to the profile.
+  rpc CreateRequest(CreateRequestRequest) returns (CreateRequestResponse);
+  // ListMyRequests lists the profile's requests, newest first.
+  rpc ListMyRequests(ListMyRequestsRequest) returns (ListMyRequestsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetRequest returns a request of the profile; an administrator may read any.
+  rpc GetRequest(GetRequestRequest) returns (GetRequestResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // CancelRequest withdraws a pending request of the profile.
+  rpc CancelRequest(CancelRequestRequest) returns (CancelRequestResponse);
+
+  // ListRequests lists the requests of every account, newest first.
+  rpc ListRequests(ListRequestsRequest) returns (ListRequestsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // ApproveRequest approves a pending or failed request, possibly into another destination or for
+  // other seasons, and hands it to the instance.
+  rpc ApproveRequest(ApproveRequestRequest) returns (ApproveRequestResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeclineRequest declines a pending or failed request, with a reason shown to the requester.
+  rpc DeclineRequest(DeclineRequestRequest) returns (DeclineRequestResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeleteRequest forgets a request, whatever its state. What the instance already has stays
+  // there.
+  rpc DeleteRequest(DeleteRequestRequest) returns (DeleteRequestResponse) {
+    option idempotency_level = IDEMPOTENT;
+    option (access) = ACCESS_ADMIN;
+  }
+  // GetRequestOptions reads from the instance for that kind what a destination can use: its root
+  // folders and quality profiles.
+  rpc GetRequestOptions(GetRequestOptionsRequest) returns (GetRequestOptionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // CreateRequestDestination adds a destination. Its library must be of the matching kind (shows
+  // for series, movies for movies) and its root folder one of the instance's.
+  rpc CreateRequestDestination(CreateRequestDestinationRequest) returns (CreateRequestDestinationResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // UpdateRequestDestination changes a destination. Requests already approved keep where they
+  // went.
+  rpc UpdateRequestDestination(UpdateRequestDestinationRequest) returns (UpdateRequestDestinationResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
+  // DeleteRequestDestination removes a destination. Pending requests into it are declined.
+  rpc DeleteRequestDestination(DeleteRequestDestinationRequest) returns (DeleteRequestDestinationResponse) {
+    option idempotency_level = IDEMPOTENT;
+    option (access) = ACCESS_ADMIN;
+  }
+}
+
+enum RequestKind {
+  REQUEST_KIND_UNSPECIFIED = 0;
+  // A series, through Sonarr, by its TVDB ID.
+  REQUEST_KIND_SERIES = 1;
+  // A movie, through Radarr, by its TMDB ID.
+  REQUEST_KIND_MOVIE = 2;
+}
+
+// RequestableState says what a search result is to the profile.
+enum RequestableState {
+  REQUESTABLE_STATE_UNSPECIFIED = 0;
+  // It can be requested.
+  REQUESTABLE_STATE_REQUESTABLE = 1;
+  // A library the profile sees has it (item_id).
+  REQUESTABLE_STATE_AVAILABLE = 2;
+  // A request for it is on its way (request_id).
+  REQUESTABLE_STATE_REQUESTED = 3;
+  // The instance already has it: it will arrive, or an administrator added it elsewhere.
+  REQUESTABLE_STATE_TRACKED = 4;
+}
+
+enum RequestStatus {
+  REQUEST_STATUS_UNSPECIFIED = 0;
+  // Waiting for an administrator.
+  REQUEST_STATUS_PENDING = 1;
+  // Approved and handed to the instance, nothing downloading yet.
+  REQUEST_STATUS_APPROVED = 2;
+  // The instance is downloading it (progress).
+  REQUEST_STATUS_DOWNLOADING = 3;
+  // In the catalog (item_id); for a series, from its first episode.
+  REQUEST_STATUS_AVAILABLE = 4;
+  // Declined by an administrator (decline_reason).
+  REQUEST_STATUS_DECLINED = 5;
+  // The instance refused it or could not be reached (error); an administrator can approve it again.
+  REQUEST_STATUS_FAILED = 6;
+}
+
+// RequestSeasons says which seasons of a series are requested.
+enum RequestSeasons {
+  // Same as ALL.
+  REQUEST_SEASONS_UNSPECIFIED = 0;
+  // Every season, and the next ones as they air.
+  REQUEST_SEASONS_ALL = 1;
+  REQUEST_SEASONS_FIRST = 2;
+  REQUEST_SEASONS_LATEST = 3;
+  // The seasons in season_numbers.
+  REQUEST_SEASONS_CHOSEN = 4;
+}
+
+// RequestSeriesType is how Sonarr numbers and searches the episodes of a destination.
+enum RequestSeriesType {
+  // Same as STANDARD.
+  REQUEST_SERIES_TYPE_UNSPECIFIED = 0;
+  REQUEST_SERIES_TYPE_STANDARD = 1;
+  // Absolute numbering; Sonarr searches the anime categories of the indexers.
+  REQUEST_SERIES_TYPE_ANIME = 2;
+  // By air date.
+  REQUEST_SERIES_TYPE_DAILY = 3;
+}
+
+// RequestableTitle is a search result.
+message RequestableTitle {
+  RequestKind kind = 1;
+  // TVDB ID of a series, TMDB ID of a movie.
+  int64 external_id = 2;
+  string title = 3;
+  // 0 if unknown.
+  int32 year = 4;
+  string overview = 5;
+  // Path to append to the server's address; empty without a poster.
+  string poster_url = 6;
+  RequestableState state = 7;
+  // AVAILABLE: the catalog item.
+  string item_id = 8;
+  // REQUESTED: the request.
+  string request_id = 9;
+  // Series: seasons, specials excluded.
+  int32 season_count = 10;
+  // Network of a series, studio of a movie.
+  string network = 11;
+}
+
+message SearchRequestableRequest {
+  RequestKind kind = 1;
+  // At least two characters.
+  string query = 2;
+}
+
+message SearchRequestableResponse {
+  // In the instance's order (best match first), 20 at most.
+  repeated RequestableTitle results = 1;
+}
+
+// RequestDestination is where requests of a kind land.
+message RequestDestination {
+  string id = 1;
+  string name = 2;
+  RequestKind kind = 3;
+  string library_id = 4;
+  string library_name = 5;
+  // On the instance; administrators only (empty otherwise).
+  string root_folder = 6;
+  int32 quality_profile_id = 7;
+  string quality_profile_name = 8;
+  // Series only.
+  RequestSeriesType series_type = 9;
+}
+
+message ListRequestDestinationsRequest {
+  // Unset lists both kinds.
+  RequestKind kind = 1;
+}
+
+message ListRequestDestinationsResponse {
+  repeated RequestDestination destinations = 1;
+}
+
+// MediaRequest is a request for a title.
+message MediaRequest {
+  string id = 1;
+  RequestKind kind = 2;
+  int64 external_id = 3;
+  string title = 4;
+  int32 year = 5;
+  // Path to append to the server's address; empty without a poster.
+  string poster_url = 6;
+  RequestStatus status = 7;
+  // Series: which seasons (season_numbers for CHOSEN).
+  RequestSeasons seasons = 8;
+  repeated int32 season_numbers = 9;
+  RequestDestination destination = 10;
+  // Who asked.
+  string account_id = 11;
+  string username = 12;
+  string profile_id = 13;
+  string profile_name = 14;
+  google.protobuf.Timestamp created_at = 15;
+  // Approved or declined: when and by which administrator.
+  google.protobuf.Timestamp decided_at = 16;
+  string decided_by = 17;
+  // DECLINED: the administrator's reason, as written.
+  string decline_reason = 18;
+  // FAILED: why, in the language of the request, and composed (Text) for the client to translate.
+  string error = 19;
+  Text error_text = 20;
+  // DOWNLOADING: 0 to 1.
+  double progress = 21;
+  // AVAILABLE: the catalog item.
+  string item_id = 22;
+  // Series: episodes in the catalog and episodes monitored on the instance.
+  int32 episodes_available = 23;
+  int32 episodes_wanted = 24;
+  google.protobuf.Timestamp available_at = 25;
+}
+
+message CreateRequestRequest {
+  RequestKind kind = 1;
+  // TVDB ID of a series, TMDB ID of a movie (RequestableTitle.external_id).
+  int64 external_id = 2;
+  // Empty takes the only destination of that kind open to the profile.
+  string destination_id = 3;
+  RequestSeasons seasons = 4;
+  repeated int32 season_numbers = 5;
+}
+
+message CreateRequestResponse {
+  MediaRequest request = 1;
+}
+
+message ListMyRequestsRequest {
+  // Token from the previous page; empty starts from the newest.
+  string page_token = 1;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 2;
+}
+
+message ListMyRequestsResponse {
+  repeated MediaRequest requests = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+}
+
+message GetRequestRequest {
+  string request_id = 1;
+}
+
+message GetRequestResponse {
+  MediaRequest request = 1;
+}
+
+message CancelRequestRequest {
+  string request_id = 1;
+}
+
+message CancelRequestResponse {}
+
+message ListRequestsRequest {
+  // Token from the previous page; empty starts from the newest.
+  string page_token = 1;
+  // 1 to 200; 0 means 50.
+  int32 page_size = 2;
+  // Only these states; empty means all.
+  repeated RequestStatus statuses = 3;
+}
+
+message ListRequestsResponse {
+  repeated MediaRequest requests = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+  // Requests waiting for an administrator, whatever the filter.
+  int32 pending_count = 3;
+}
+
+message ApproveRequestRequest {
+  string request_id = 1;
+  // Another destination of the same kind; unset keeps the requested one.
+  optional string destination_id = 2;
+  // Other seasons; UNSPECIFIED keeps the requested ones.
+  RequestSeasons seasons = 3;
+  repeated int32 season_numbers = 4;
+}
+
+message ApproveRequestResponse {
+  MediaRequest request = 1;
+}
+
+message DeclineRequestRequest {
+  string request_id = 1;
+  // Shown to the requester; may be empty.
+  string reason = 2;
+}
+
+message DeclineRequestResponse {
+  MediaRequest request = 1;
+}
+
+message DeleteRequestRequest {
+  string request_id = 1;
+}
+
+message DeleteRequestResponse {}
+
+message RequestRootFolder {
+  string path = 1;
+  // Free space on the instance, in bytes; 0 if unknown.
+  int64 free_space = 2;
+}
+
+message RequestQualityProfile {
+  int32 id = 1;
+  string name = 2;
+}
+
+message GetRequestOptionsRequest {
+  RequestKind kind = 1;
+}
+
+message GetRequestOptionsResponse {
+  repeated RequestRootFolder root_folders = 1;
+  repeated RequestQualityProfile quality_profiles = 2;
+}
+
+message CreateRequestDestinationRequest {
+  string name = 1;
+  RequestKind kind = 2;
+  string library_id = 3;
+  string root_folder = 4;
+  int32 quality_profile_id = 5;
+  RequestSeriesType series_type = 6;
+}
+
+message CreateRequestDestinationResponse {
+  RequestDestination destination = 1;
+}
+
+message UpdateRequestDestinationRequest {
+  string destination_id = 1;
+  optional string name = 2;
+  optional string library_id = 3;
+  optional string root_folder = 4;
+  optional int32 quality_profile_id = 5;
+  // UNSPECIFIED leaves it unchanged.
+  RequestSeriesType series_type = 6;
+}
+
+message UpdateRequestDestinationResponse {
+  RequestDestination destination = 1;
+}
+
+message DeleteRequestDestinationRequest {
+  string destination_id = 1;
+}
+
+message DeleteRequestDestinationResponse {}

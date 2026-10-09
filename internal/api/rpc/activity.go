@@ -36,6 +36,7 @@ var activityKinds = map[domain.ActivityKind]laternav1.ActivityKind{
 	domain.ActivityJobFailed:       laternav1.ActivityKind_ACTIVITY_KIND_JOB_FAILED,
 	domain.ActivityPartyStarted:    laternav1.ActivityKind_ACTIVITY_KIND_PARTY_STARTED,
 	domain.ActivityImport:          laternav1.ActivityKind_ACTIVITY_KIND_IMPORT,
+	domain.ActivityRequest:         laternav1.ActivityKind_ACTIVITY_KIND_REQUEST,
 }
 
 func optID(id *domain.ID) string {

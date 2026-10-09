@@ -25,6 +25,7 @@ func (q Q) CreateAccount(ctx context.Context, a domain.Account, passwordHash str
 		ID: a.ID, Username: a.Username, UsernameKey: NameKey(a.Username), PasswordHash: passwordHash,
 		IsAdmin: toInt(a.IsAdmin), AllLibraries: toInt(a.Libraries.All), MaxAge: nullAge(a.Parental.MaxAge),
 		BlockUnrated: toInt(a.Parental.BlockUnrated), DenyDownloads: toInt(a.DenyDownloads),
+		DenyRequests: toInt(a.DenyRequests), AutoApproveRequests: toInt(a.AutoApproveRequests), RequestQuota: int64(a.RequestQuota),
 		CreatedAt: toMillis(a.CreatedAt), UpdatedAt: toMillis(a.UpdatedAt),
 	})); err != nil {
 		return err
@@ -38,7 +39,8 @@ func (q Q) UpdateAccount(ctx context.Context, a domain.Account) error {
 	if err := translate(q.q.UpdateAccount(ctx, sqlc.UpdateAccountParams{
 		Username: a.Username, UsernameKey: NameKey(a.Username), IsAdmin: toInt(a.IsAdmin), Disabled: toInt(a.Disabled),
 		AllLibraries: toInt(a.Libraries.All), MaxAge: nullAge(a.Parental.MaxAge), BlockUnrated: toInt(a.Parental.BlockUnrated),
-		DenyDownloads: toInt(a.DenyDownloads), UpdatedAt: toMillis(a.UpdatedAt), ID: a.ID,
+		DenyDownloads: toInt(a.DenyDownloads), DenyRequests: toInt(a.DenyRequests), AutoApproveRequests: toInt(a.AutoApproveRequests),
+		RequestQuota: int64(a.RequestQuota), UpdatedAt: toMillis(a.UpdatedAt), ID: a.ID,
 	})); err != nil {
 		return err
 	}
@@ -118,6 +120,7 @@ func (q Q) AccountSummaries(ctx context.Context) ([]AccountSummary, error) {
 		a := accountFromRow(sqlc.Account{
 			ID: r.ID, Username: r.Username, IsAdmin: r.IsAdmin, Disabled: r.Disabled, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
 			AllLibraries: r.AllLibraries, MaxAge: r.MaxAge, BlockUnrated: r.BlockUnrated, DenyDownloads: r.DenyDownloads,
+			DenyRequests: r.DenyRequests, AutoApproveRequests: r.AutoApproveRequests, RequestQuota: r.RequestQuota,
 		})
 		if !a.Libraries.All {
 			a.Libraries.IDs = byAccount[a.ID]
@@ -150,8 +153,9 @@ func accountFromRow(r sqlc.Account) domain.Account {
 		ID: r.ID, Username: r.Username, IsAdmin: r.IsAdmin == 1, Disabled: r.Disabled == 1,
 		Libraries:     domain.LibraryAccess{All: r.AllLibraries == 1},
 		Parental:      domain.ParentalControl{MaxAge: optAge(r.MaxAge), BlockUnrated: r.BlockUnrated == 1},
-		DenyDownloads: r.DenyDownloads == 1,
-		CreatedAt:     fromMillis(r.CreatedAt), UpdatedAt: fromMillis(r.UpdatedAt),
+		DenyDownloads: r.DenyDownloads == 1, DenyRequests: r.DenyRequests == 1, AutoApproveRequests: r.AutoApproveRequests == 1,
+		RequestQuota: int(r.RequestQuota),
+		CreatedAt:    fromMillis(r.CreatedAt), UpdatedAt: fromMillis(r.UpdatedAt),
 	}
 }
 

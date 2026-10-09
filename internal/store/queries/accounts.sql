@@ -3,13 +3,14 @@ SELECT count(*) FROM accounts;
 
 -- name: InsertAccount :exec
 INSERT INTO accounts (id, username, username_key, password_hash, is_admin, disabled, all_libraries, max_age,
-                      block_unrated, deny_downloads, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?);
+                      block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota, created_at,
+                      updated_at)
+VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateAccount :exec
 UPDATE accounts
 SET username = ?, username_key = ?, is_admin = ?, disabled = ?, all_libraries = ?, max_age = ?, block_unrated = ?,
-    deny_downloads = ?, updated_at = ?
+    deny_downloads = ?, deny_requests = ?, auto_approve_requests = ?, request_quota = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteAccount :exec
