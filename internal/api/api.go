@@ -42,6 +42,7 @@ func NewHandler(a *app.App, opts Options) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health(a))
 	mux.Handle("GET /images/{id}/{hash}", images(a, log))
+	mux.Handle("GET /requests/posters/{key}", requestPosters(a, log))
 	mux.Handle("GET /playback/{session}/{token}/{file}", playback(a, log))
 	mux.Handle("GET /playback/{session}/{token}/subtitles/{file}", subtitle(a, log))
 	mux.Handle("GET /fonts/{file}", font(a, log))

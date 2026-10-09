@@ -15,8 +15,14 @@ type Account struct {
 	Parental ParentalControl
 	// DenyDownloads takes offline downloads away from the account. Never set on an administrator.
 	DenyDownloads bool
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	// DenyRequests takes requests away; AutoApproveRequests approves them without an administrator
+	// (not from a restricted profile); RequestQuota caps them over RequestQuotaWindow (0: no limit).
+	// None of them applies to an administrator.
+	DenyRequests        bool
+	AutoApproveRequests bool
+	RequestQuota        int
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 // Profile is one "Who's watching?" entry of an account. History, favorites and resume points belong
@@ -107,6 +113,15 @@ func (p Principal) AllowsLibrary(id ID) bool {
 
 // CanDownload reports whether the caller may download for offline playback.
 func (p Principal) CanDownload() bool { return p.Account.IsAdmin || !p.Account.DenyDownloads }
+
+// CanRequest reports whether the caller may request movies and series.
+func (p Principal) CanRequest() bool { return p.Account.IsAdmin || !p.Account.DenyRequests }
+
+// RequestsApproved reports whether the caller's requests are approved without an administrator:
+// an administrator's, or an account's marked so, but never a restricted profile's.
+func (p Principal) RequestsApproved() bool {
+	return !p.Restricted() && (p.Account.IsAdmin || p.Account.AutoApproveRequests)
+}
 
 // Viewer returns what the chosen profile is allowed to see; ok is false when no profile is chosen.
 // An administrator sees every library, only the profile's own control applies.

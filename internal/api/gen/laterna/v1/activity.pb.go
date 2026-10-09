@@ -48,6 +48,8 @@ const (
 	ActivityKind_ACTIVITY_KIND_PARTY_STARTED ActivityKind = 17
 	// Data imported from another server (ImportService).
 	ActivityKind_ACTIVITY_KIND_IMPORT ActivityKind = 18
+	// A request created, approved, declined or available (RequestService).
+	ActivityKind_ACTIVITY_KIND_REQUEST ActivityKind = 19
 )
 
 // Enum value maps for ActivityKind.
@@ -72,6 +74,7 @@ var (
 		16: "ACTIVITY_KIND_JOB_FAILED",
 		17: "ACTIVITY_KIND_PARTY_STARTED",
 		18: "ACTIVITY_KIND_IMPORT",
+		19: "ACTIVITY_KIND_REQUEST",
 	}
 	ActivityKind_value = map[string]int32{
 		"ACTIVITY_KIND_UNSPECIFIED":      0,
@@ -93,6 +96,7 @@ var (
 		"ACTIVITY_KIND_JOB_FAILED":       16,
 		"ACTIVITY_KIND_PARTY_STARTED":    17,
 		"ACTIVITY_KIND_IMPORT":           18,
+		"ACTIVITY_KIND_REQUEST":          19,
 	}
 )
 
@@ -1069,7 +1073,7 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x12EndPlaybackRequest\x12\x1f\n" +
 	"\vplayback_id\x18\x01 \x01(\tR\n" +
 	"playbackId\"\x15\n" +
-	"\x13EndPlaybackResponse*\xfd\x04\n" +
+	"\x13EndPlaybackResponse*\x98\x05\n" +
 	"\fActivityKind\x12\x1d\n" +
 	"\x19ACTIVITY_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ACTIVITY_KIND_LOGIN\x10\x01\x12\x1e\n" +
@@ -1090,7 +1094,8 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x15ACTIVITY_KIND_WEBHOOK\x10\x0f\x12\x1c\n" +
 	"\x18ACTIVITY_KIND_JOB_FAILED\x10\x10\x12\x1f\n" +
 	"\x1bACTIVITY_KIND_PARTY_STARTED\x10\x11\x12\x18\n" +
-	"\x14ACTIVITY_KIND_IMPORT\x10\x122\xd4\x03\n" +
+	"\x14ACTIVITY_KIND_IMPORT\x10\x12\x12\x19\n" +
+	"\x15ACTIVITY_KIND_REQUEST\x10\x132\xd4\x03\n" +
 	"\x0fActivityService\x12Z\n" +
 	"\fListActivity\x12\x1f.laterna.v1.ListActivityRequest\x1a .laterna.v1.ListActivityResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +
 	"\vListDevices\x12\x1e.laterna.v1.ListDevicesRequest\x1a\x1f.laterna.v1.ListDevicesResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +

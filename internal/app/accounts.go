@@ -25,6 +25,12 @@ type NewAccount struct {
 	Parental  *domain.ParentalControl
 	// DenyDownloads takes offline downloads away (refused for an administrator).
 	DenyDownloads bool
+	// DenyRequests takes requests away (refused for an administrator); AutoApproveRequests approves
+	// them without an administrator; RequestQuota caps them over seven days (nil: the default,
+	// 0: no limit).
+	DenyRequests        bool
+	AutoApproveRequests bool
+	RequestQuota        *int
 }
 
 // AccountChanges describes a change to an account; a nil field is left alone. A new password or
@@ -38,6 +44,10 @@ type AccountChanges struct {
 	Parental  *domain.ParentalControl
 	// DenyDownloads takes offline downloads away or gives them back.
 	DenyDownloads *bool
+	// DenyRequests, AutoApproveRequests and RequestQuota change the account's requests.
+	DenyRequests        *bool
+	AutoApproveRequests *bool
+	RequestQuota        *int
 }
 
 // Accounts lists the accounts with their profile count and last activity.
@@ -58,9 +68,20 @@ func (a *App) CreateAccount(ctx context.Context, p domain.Principal, n NewAccoun
 	if n.IsAdmin && n.DenyDownloads {
 		return domain.Account{}, domain.Invalid("account.admin_always_downloads")
 	}
+	if n.IsAdmin && n.DenyRequests {
+		return domain.Account{}, domain.Invalid("account.admin_always_requests")
+	}
+	quota := domain.DefaultRequestQuota
+	if n.RequestQuota != nil {
+		if err := validateQuota(*n.RequestQuota); err != nil {
+			return domain.Account{}, err
+		}
+		quota = *n.RequestQuota
+	}
 	account := domain.Account{
 		ID: domain.NewID(), Username: username, IsAdmin: n.IsAdmin, Libraries: domain.AllLibraries(),
-		DenyDownloads: n.DenyDownloads, CreatedAt: now, UpdatedAt: now,
+		DenyDownloads: n.DenyDownloads, DenyRequests: n.DenyRequests, AutoApproveRequests: n.AutoApproveRequests,
+		RequestQuota: quota, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := a.applyRestrictions(ctx, &account, n.Libraries, n.Parental); err != nil {
 		return domain.Account{}, err
@@ -126,6 +147,7 @@ func (a *App) UpdateAccount(ctx context.Context, p domain.Principal, id domain.I
 			if *ch.IsAdmin && !account.IsAdmin {
 				// An administrator sees everything: their restrictions are lifted.
 				account.Libraries, account.Parental, account.DenyDownloads = domain.AllLibraries(), domain.ParentalControl{}, false
+				account.DenyRequests = false
 			}
 			account.IsAdmin = *ch.IsAdmin
 		}
@@ -137,6 +159,21 @@ func (a *App) UpdateAccount(ctx context.Context, p domain.Principal, id domain.I
 				return domain.Invalid("account.admin_always_downloads")
 			}
 			account.DenyDownloads = *ch.DenyDownloads
+		}
+		if ch.DenyRequests != nil {
+			if *ch.DenyRequests && account.IsAdmin {
+				return domain.Invalid("account.admin_always_requests")
+			}
+			account.DenyRequests = *ch.DenyRequests
+		}
+		if ch.AutoApproveRequests != nil {
+			account.AutoApproveRequests = *ch.AutoApproveRequests
+		}
+		if ch.RequestQuota != nil {
+			if err := validateQuota(*ch.RequestQuota); err != nil {
+				return err
+			}
+			account.RequestQuota = *ch.RequestQuota
 		}
 		if err := a.applyRestrictions(ctx, &account, ch.Libraries, ch.Parental); err != nil {
 			return err
@@ -240,6 +277,16 @@ func (a *App) applyRestrictions(ctx context.Context, account *domain.Account, li
 	return nil
 }
 
+// maxRequestQuota bounds the quota an administrator can set.
+const maxRequestQuota = 1000
+
+func validateQuota(n int) error {
+	if n < 0 || n > maxRequestQuota {
+		return domain.Invalid("account.invalid_quota", "quota", n, "max", maxRequestQuota)
+	}
+	return nil
+}
+
 // keepAnAdmin checks, inside the transaction, that an enabled administrator is left.
 func keepAnAdmin(ctx context.Context, q store.Q) error {
 	n, err := q.CountEnabledAdmins(ctx)
@@ -289,6 +336,12 @@ func accountChangesText(actor, username string, ch AccountChanges) domain.Text {
 	}
 	if ch.DenyDownloads != nil {
 		parts = append(parts, either(*ch.DenyDownloads, domain.T("activity.change.downloads_denied"), domain.T("activity.change.downloads_allowed")))
+	}
+	if ch.DenyRequests != nil {
+		parts = append(parts, either(*ch.DenyRequests, domain.T("activity.change.requests_denied"), domain.T("activity.change.requests_allowed")))
+	}
+	if ch.AutoApproveRequests != nil || ch.RequestQuota != nil {
+		parts = append(parts, domain.T("activity.change.requests"))
 	}
 	if len(parts) == 0 {
 		return domain.T("activity.account_updated", "actor", actor, "username", username)

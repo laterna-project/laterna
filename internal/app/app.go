@@ -148,6 +148,9 @@ type App struct {
 	// warming holds the book pages being prepared ahead (cache path).
 	warming sync.Map
 
+	// posters are the posters of recent request searches.
+	posters posterURLs
+
 	// bus pushes events to subscribed clients; changes batches the item ones.
 	bus     *events.Bus[domain.Event]
 	changes changes

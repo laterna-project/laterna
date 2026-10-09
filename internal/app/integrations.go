@@ -421,6 +421,7 @@ func (a *App) ArrWebhook(ctx context.Context, kind, secret string, body []byte) 
 		return err
 	}
 	a.jobs.Kick()
+	a.followRequests(ctx, requestsAfterImport)
 	a.log.InfoContext(ctx, "webhook: scan scheduled", "kind", k, "event", ev.Type, "path", ev.Path, "libraries", len(libs))
 	a.record(ctx, domain.Activity{
 		Kind: domain.ActivityWebhook, Text: domain.T("activity.webhook", "name", k.Name(), "event", ev.Type, "path", ev.Path),

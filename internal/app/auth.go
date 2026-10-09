@@ -60,7 +60,10 @@ func (a *App) Setup(ctx context.Context, username, password string, dev domain.D
 		return Login{}, err
 	}
 	now := a.now()
-	account := domain.Account{ID: domain.NewID(), Username: username, IsAdmin: true, Libraries: domain.AllLibraries(), CreatedAt: now, UpdatedAt: now}
+	account := domain.Account{
+		ID: domain.NewID(), Username: username, IsAdmin: true, Libraries: domain.AllLibraries(), RequestQuota: domain.DefaultRequestQuota,
+		CreatedAt: now, UpdatedAt: now,
+	}
 	profile := domain.Profile{ID: domain.NewID(), AccountID: account.ID, Name: username, CreatedAt: now, UpdatedAt: now}
 	var login Login
 	err = a.store.Write(ctx, func(q store.Q) error {

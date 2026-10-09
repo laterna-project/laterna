@@ -176,6 +176,12 @@ type CreateAccountRequest struct {
 	Parental *ParentalControl `protobuf:"bytes,5,opt,name=parental,proto3" json:"parental,omitempty"`
 	// Takes offline downloads away (refused for an administrator).
 	DenyDownloads bool `protobuf:"varint,6,opt,name=deny_downloads,json=denyDownloads,proto3" json:"deny_downloads,omitempty"`
+	// Takes requests away (refused for an administrator).
+	DenyRequests bool `protobuf:"varint,7,opt,name=deny_requests,json=denyRequests,proto3" json:"deny_requests,omitempty"`
+	// Approves the account's requests without an administrator.
+	AutoApproveRequests bool `protobuf:"varint,8,opt,name=auto_approve_requests,json=autoApproveRequests,proto3" json:"auto_approve_requests,omitempty"`
+	// Requests in seven days; unset means 10, 0 means no limit.
+	RequestQuota  *int32 `protobuf:"varint,9,opt,name=request_quota,json=requestQuota,proto3,oneof" json:"request_quota,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -252,6 +258,27 @@ func (x *CreateAccountRequest) GetDenyDownloads() bool {
 	return false
 }
 
+func (x *CreateAccountRequest) GetDenyRequests() bool {
+	if x != nil {
+		return x.DenyRequests
+	}
+	return false
+}
+
+func (x *CreateAccountRequest) GetAutoApproveRequests() bool {
+	if x != nil {
+		return x.AutoApproveRequests
+	}
+	return false
+}
+
+func (x *CreateAccountRequest) GetRequestQuota() int32 {
+	if x != nil && x.RequestQuota != nil {
+		return *x.RequestQuota
+	}
+	return 0
+}
+
 type CreateAccountResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Account       *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
@@ -312,6 +339,12 @@ type UpdateAccountRequest struct {
 	Parental *ParentalControl `protobuf:"bytes,7,opt,name=parental,proto3" json:"parental,omitempty"`
 	// Takes offline downloads away (true) or gives them back (false); unset leaves it unchanged.
 	DenyDownloads *bool `protobuf:"varint,8,opt,name=deny_downloads,json=denyDownloads,proto3,oneof" json:"deny_downloads,omitempty"`
+	// Takes requests away (true) or gives them back (false); unset leaves it unchanged.
+	DenyRequests *bool `protobuf:"varint,9,opt,name=deny_requests,json=denyRequests,proto3,oneof" json:"deny_requests,omitempty"`
+	// Unset leaves it unchanged.
+	AutoApproveRequests *bool `protobuf:"varint,10,opt,name=auto_approve_requests,json=autoApproveRequests,proto3,oneof" json:"auto_approve_requests,omitempty"`
+	// Requests in seven days, 0 for no limit; unset leaves it unchanged.
+	RequestQuota  *int32 `protobuf:"varint,11,opt,name=request_quota,json=requestQuota,proto3,oneof" json:"request_quota,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -400,6 +433,27 @@ func (x *UpdateAccountRequest) GetDenyDownloads() bool {
 		return *x.DenyDownloads
 	}
 	return false
+}
+
+func (x *UpdateAccountRequest) GetDenyRequests() bool {
+	if x != nil && x.DenyRequests != nil {
+		return *x.DenyRequests
+	}
+	return false
+}
+
+func (x *UpdateAccountRequest) GetAutoApproveRequests() bool {
+	if x != nil && x.AutoApproveRequests != nil {
+		return *x.AutoApproveRequests
+	}
+	return false
+}
+
+func (x *UpdateAccountRequest) GetRequestQuota() int32 {
+	if x != nil && x.RequestQuota != nil {
+		return *x.RequestQuota
+	}
+	return 0
 }
 
 type UpdateAccountResponse struct {
@@ -538,16 +592,20 @@ const file_laterna_v1_account_proto_rawDesc = "" +
 	"\x0elast_active_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\flastActiveAt\"\x15\n" +
 	"\x13ListAccountsRequest\"N\n" +
 	"\x14ListAccountsResponse\x126\n" +
-	"\baccounts\x18\x01 \x03(\v2\x1a.laterna.v1.AccountSummaryR\baccounts\"\x82\x02\n" +
+	"\baccounts\x18\x01 \x03(\v2\x1a.laterna.v1.AccountSummaryR\baccounts\"\x97\x03\n" +
 	"\x14CreateAccountRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x19\n" +
 	"\bis_admin\x18\x03 \x01(\bR\aisAdmin\x127\n" +
 	"\tlibraries\x18\x04 \x01(\v2\x19.laterna.v1.LibraryAccessR\tlibraries\x127\n" +
 	"\bparental\x18\x05 \x01(\v2\x1b.laterna.v1.ParentalControlR\bparental\x12%\n" +
-	"\x0edeny_downloads\x18\x06 \x01(\bR\rdenyDownloads\"F\n" +
+	"\x0edeny_downloads\x18\x06 \x01(\bR\rdenyDownloads\x12#\n" +
+	"\rdeny_requests\x18\a \x01(\bR\fdenyRequests\x122\n" +
+	"\x15auto_approve_requests\x18\b \x01(\bR\x13autoApproveRequests\x12(\n" +
+	"\rrequest_quota\x18\t \x01(\x05H\x00R\frequestQuota\x88\x01\x01B\x10\n" +
+	"\x0e_request_quota\"F\n" +
 	"\x15CreateAccountResponse\x12-\n" +
-	"\aaccount\x18\x01 \x01(\v2\x13.laterna.v1.AccountR\aaccount\"\x9d\x03\n" +
+	"\aaccount\x18\x01 \x01(\v2\x13.laterna.v1.AccountR\aaccount\"\xe8\x04\n" +
 	"\x14UpdateAccountRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1f\n" +
@@ -557,12 +615,19 @@ const file_laterna_v1_account_proto_rawDesc = "" +
 	"\bdisabled\x18\x05 \x01(\bH\x03R\bdisabled\x88\x01\x01\x127\n" +
 	"\tlibraries\x18\x06 \x01(\v2\x19.laterna.v1.LibraryAccessR\tlibraries\x127\n" +
 	"\bparental\x18\a \x01(\v2\x1b.laterna.v1.ParentalControlR\bparental\x12*\n" +
-	"\x0edeny_downloads\x18\b \x01(\bH\x04R\rdenyDownloads\x88\x01\x01B\v\n" +
+	"\x0edeny_downloads\x18\b \x01(\bH\x04R\rdenyDownloads\x88\x01\x01\x12(\n" +
+	"\rdeny_requests\x18\t \x01(\bH\x05R\fdenyRequests\x88\x01\x01\x127\n" +
+	"\x15auto_approve_requests\x18\n" +
+	" \x01(\bH\x06R\x13autoApproveRequests\x88\x01\x01\x12(\n" +
+	"\rrequest_quota\x18\v \x01(\x05H\aR\frequestQuota\x88\x01\x01B\v\n" +
 	"\t_usernameB\v\n" +
 	"\t_passwordB\v\n" +
 	"\t_is_adminB\v\n" +
 	"\t_disabledB\x11\n" +
-	"\x0f_deny_downloads\"F\n" +
+	"\x0f_deny_downloadsB\x10\n" +
+	"\x0e_deny_requestsB\x18\n" +
+	"\x16_auto_approve_requestsB\x10\n" +
+	"\x0e_request_quota\"F\n" +
 	"\x15UpdateAccountResponse\x12-\n" +
 	"\aaccount\x18\x01 \x01(\v2\x13.laterna.v1.AccountR\aaccount\"5\n" +
 	"\x14DeleteAccountRequest\x12\x1d\n" +
@@ -636,6 +701,7 @@ func file_laterna_v1_account_proto_init() {
 	file_laterna_v1_auth_proto_init()
 	file_laterna_v1_options_proto_init()
 	file_laterna_v1_profile_proto_init()
+	file_laterna_v1_account_proto_msgTypes[3].OneofWrappers = []any{}
 	file_laterna_v1_account_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

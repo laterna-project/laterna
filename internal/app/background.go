@@ -39,6 +39,7 @@ const (
 	jobBackupStore = "store.backup"
 	// Intro and credits of a file: chapters, then audio compared with the season's other episodes.
 	jobDetectSegments = "file.segments"
+	// Requests (jobSubmitRequest, jobRefreshRequests) are in requests.go.
 
 	// One scan at a time: it walks folders, often over the network.
 	classScan = "scan"
@@ -66,6 +67,9 @@ const (
 	// Intro and credits: several minutes of audio to decode for each episode. One at a time, kept
 	// apart.
 	classSegments = "segments"
+	// Requests handed to Sonarr and Radarr and followed: short calls, kept apart from refreshes,
+	// which wait for the end of a command.
+	classRequests = "requests"
 
 	// Priorities: what the user asks for goes before background work. priorityIdle goes after every
 	// waiting job of its class.
@@ -88,6 +92,7 @@ func (a *App) registerJobs() {
 	a.jobs.Class(classPrepare, 1)
 	a.jobs.Class(classConvert, 2)
 	a.jobs.Class(classSegments, 1)
+	a.jobs.Class(classRequests, 1)
 	a.jobs.Register(jobScanLibrary, classScan, a.scanLibrary, jobs.Timeout(2*time.Hour))
 	// In the analysis class, at idle priority: after the analyses a scan just asked for, which
 	// create the items.
@@ -100,6 +105,8 @@ func (a *App) registerJobs() {
 	a.jobs.Register(jobPurgeMetadata, classIO, a.purgeMetadata, jobs.Timeout(10*time.Minute))
 	a.jobs.Register(jobBackupStore, classIO, a.autoBackup, jobs.Timeout(30*time.Minute))
 	a.jobs.Register(jobArrRefresh, classArr, a.refreshArr, jobs.Timeout(2*time.Hour))
+	a.jobs.Register(jobSubmitRequest, classRequests, a.submitRequest, jobs.Timeout(2*time.Minute))
+	a.jobs.Register(jobRefreshRequests, classRequests, a.refreshRequests, jobs.Timeout(5*time.Minute))
 	a.jobs.Register(jobTrickplay, classTrickplay, a.generateTrickplay, jobs.Timeout(2*time.Hour))
 	a.jobs.Register(jobDetectSegments, classSegments, a.detectSegments, jobs.Timeout(30*time.Minute))
 	a.jobs.Register(jobPrepareDownload, classPrepare, a.prepareDownload, jobs.Timeout(12*time.Hour))
@@ -109,8 +116,12 @@ func (a *App) registerJobs() {
 	a.jobs.Register(jobPurgeSubtitles, classExtract, a.purgeSubtitles, jobs.Timeout(10*time.Minute))
 }
 
-// jobFailed writes a job that failed for good to the activity log.
+// jobFailed writes a job that failed for good to the activity log. A request that could not be
+// handed to its instance fails.
 func (a *App) jobFailed(ctx context.Context, kind, target string, err error) {
+	if kind == jobSubmitRequest {
+		a.requestFailed(ctx, target, err)
+	}
 	msg := err.Error()
 	if len(msg) > 300 {
 		msg = strings.ToValidUTF8(msg[:300], "") + "…"
@@ -160,6 +171,8 @@ func (a *App) periodic(ctx context.Context) {
 	}
 	purge := time.NewTicker(24 * time.Hour)
 	defer purge.Stop()
+	requests := time.NewTicker(requestsEvery)
+	defer requests.Stop()
 	var timer *time.Timer
 	arm := func() <-chan time.Time {
 		if timer != nil {
@@ -189,6 +202,8 @@ func (a *App) periodic(ctx context.Context) {
 			scans = arm()
 		case <-purge.C:
 			a.runPurges(ctx)
+		case <-requests.C:
+			a.followRequests(ctx, 0)
 		}
 	}
 }
@@ -215,6 +230,9 @@ func (a *App) runPurges(ctx context.Context) {
 	}
 	if err := a.purgePrints(ctx); err != nil {
 		a.log.WarnContext(ctx, "cannot purge cached audio fingerprints", "err", err)
+	}
+	if err := a.purgePosters(ctx); err != nil {
+		a.log.WarnContext(ctx, "cannot purge cached request posters", "err", err)
 	}
 	a.enqueuePurges(ctx)
 }

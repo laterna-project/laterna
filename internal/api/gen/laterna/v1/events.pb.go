@@ -115,6 +115,7 @@ type Event struct {
 	//	*Event_UserDataChanged
 	//	*Event_DownloadsChanged
 	//	*Event_ThemesChanged
+	//	*Event_RequestsChanged
 	Kind          isEvent_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -236,6 +237,15 @@ func (x *Event) GetThemesChanged() *ThemesChanged {
 	return nil
 }
 
+func (x *Event) GetRequestsChanged() *RequestsChanged {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_RequestsChanged); ok {
+			return x.RequestsChanged
+		}
+	}
+	return nil
+}
+
 type isEvent_Kind interface {
 	isEvent_Kind()
 }
@@ -272,6 +282,10 @@ type Event_ThemesChanged struct {
 	ThemesChanged *ThemesChanged `protobuf:"bytes,9,opt,name=themes_changed,json=themesChanged,proto3,oneof"`
 }
 
+type Event_RequestsChanged struct {
+	RequestsChanged *RequestsChanged `protobuf:"bytes,10,opt,name=requests_changed,json=requestsChanged,proto3,oneof"`
+}
+
 func (*Event_Heartbeat) isEvent_Kind() {}
 
 func (*Event_Resync) isEvent_Kind() {}
@@ -287,6 +301,8 @@ func (*Event_UserDataChanged) isEvent_Kind() {}
 func (*Event_DownloadsChanged) isEvent_Kind() {}
 
 func (*Event_ThemesChanged) isEvent_Kind() {}
+
+func (*Event_RequestsChanged) isEvent_Kind() {}
 
 // Heartbeat keeps the stream open; nothing to do.
 type Heartbeat struct {
@@ -703,6 +719,53 @@ func (*ThemesChanged) Descriptor() ([]byte, []int) {
 	return file_laterna_v1_events_proto_rawDescGZIP(), []int{10}
 }
 
+// RequestsChanged: requests changed (created, approved, declined, downloading, available,
+// removed). Sent to the profile that made them and to the administrators; reload them
+// (RequestService).
+type RequestsChanged struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestIds    []string               `protobuf:"bytes,1,rep,name=request_ids,json=requestIds,proto3" json:"request_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestsChanged) Reset() {
+	*x = RequestsChanged{}
+	mi := &file_laterna_v1_events_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestsChanged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestsChanged) ProtoMessage() {}
+
+func (x *RequestsChanged) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_events_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestsChanged.ProtoReflect.Descriptor instead.
+func (*RequestsChanged) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_events_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RequestsChanged) GetRequestIds() []string {
+	if x != nil {
+		return x.RequestIds
+	}
+	return nil
+}
+
 var File_laterna_v1_events_proto protoreflect.FileDescriptor
 
 const file_laterna_v1_events_proto_rawDesc = "" +
@@ -711,7 +774,7 @@ const file_laterna_v1_events_proto_rawDesc = "" +
 	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\"\x12\n" +
 	"\x10SubscribeRequest\"<\n" +
 	"\x11SubscribeResponse\x12'\n" +
-	"\x05event\x18\x01 \x01(\v2\x11.laterna.v1.EventR\x05event\"\xd5\x04\n" +
+	"\x05event\x18\x01 \x01(\v2\x11.laterna.v1.EventR\x05event\"\x9f\x05\n" +
 	"\x05Event\x12.\n" +
 	"\x04time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x125\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x15.laterna.v1.HeartbeatH\x00R\theartbeat\x12,\n" +
@@ -721,7 +784,9 @@ const file_laterna_v1_events_proto_rawDesc = "" +
 	"\ritems_changed\x18\x06 \x01(\v2\x18.laterna.v1.ItemsChangedH\x00R\fitemsChanged\x12I\n" +
 	"\x11user_data_changed\x18\a \x01(\v2\x1b.laterna.v1.UserDataChangedH\x00R\x0fuserDataChanged\x12K\n" +
 	"\x11downloads_changed\x18\b \x01(\v2\x1c.laterna.v1.DownloadsChangedH\x00R\x10downloadsChanged\x12B\n" +
-	"\x0ethemes_changed\x18\t \x01(\v2\x19.laterna.v1.ThemesChangedH\x00R\rthemesChangedB\x06\n" +
+	"\x0ethemes_changed\x18\t \x01(\v2\x19.laterna.v1.ThemesChangedH\x00R\rthemesChanged\x12H\n" +
+	"\x10requests_changed\x18\n" +
+	" \x01(\v2\x1b.laterna.v1.RequestsChangedH\x00R\x0frequestsChangedB\x06\n" +
 	"\x04kind\"\v\n" +
 	"\tHeartbeat\"\b\n" +
 	"\x06Resync\"\x12\n" +
@@ -746,7 +811,10 @@ const file_laterna_v1_events_proto_rawDesc = "" +
 	"\ttruncated\x18\x02 \x01(\bR\ttruncated\"5\n" +
 	"\x10DownloadsChanged\x12!\n" +
 	"\fdownload_ids\x18\x01 \x03(\tR\vdownloadIds\"\x0f\n" +
-	"\rThemesChanged2`\n" +
+	"\rThemesChanged\"2\n" +
+	"\x0fRequestsChanged\x12\x1f\n" +
+	"\vrequest_ids\x18\x01 \x03(\tR\n" +
+	"requestIds2`\n" +
 	"\fEventService\x12P\n" +
 	"\tSubscribe\x12\x1c.laterna.v1.SubscribeRequest\x1a\x1d.laterna.v1.SubscribeResponse\"\x04\x88\xb5\x18\x020\x01BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
@@ -762,7 +830,7 @@ func file_laterna_v1_events_proto_rawDescGZIP() []byte {
 	return file_laterna_v1_events_proto_rawDescData
 }
 
-var file_laterna_v1_events_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_laterna_v1_events_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_laterna_v1_events_proto_goTypes = []any{
 	(*SubscribeRequest)(nil),      // 0: laterna.v1.SubscribeRequest
 	(*SubscribeResponse)(nil),     // 1: laterna.v1.SubscribeResponse
@@ -775,11 +843,12 @@ var file_laterna_v1_events_proto_goTypes = []any{
 	(*UserDataChanged)(nil),       // 8: laterna.v1.UserDataChanged
 	(*DownloadsChanged)(nil),      // 9: laterna.v1.DownloadsChanged
 	(*ThemesChanged)(nil),         // 10: laterna.v1.ThemesChanged
-	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(*RequestsChanged)(nil),       // 11: laterna.v1.RequestsChanged
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_laterna_v1_events_proto_depIdxs = []int32{
 	2,  // 0: laterna.v1.SubscribeResponse.event:type_name -> laterna.v1.Event
-	11, // 1: laterna.v1.Event.time:type_name -> google.protobuf.Timestamp
+	12, // 1: laterna.v1.Event.time:type_name -> google.protobuf.Timestamp
 	3,  // 2: laterna.v1.Event.heartbeat:type_name -> laterna.v1.Heartbeat
 	4,  // 3: laterna.v1.Event.resync:type_name -> laterna.v1.Resync
 	5,  // 4: laterna.v1.Event.libraries_changed:type_name -> laterna.v1.LibrariesChanged
@@ -788,13 +857,14 @@ var file_laterna_v1_events_proto_depIdxs = []int32{
 	8,  // 7: laterna.v1.Event.user_data_changed:type_name -> laterna.v1.UserDataChanged
 	9,  // 8: laterna.v1.Event.downloads_changed:type_name -> laterna.v1.DownloadsChanged
 	10, // 9: laterna.v1.Event.themes_changed:type_name -> laterna.v1.ThemesChanged
-	0,  // 10: laterna.v1.EventService.Subscribe:input_type -> laterna.v1.SubscribeRequest
-	1,  // 11: laterna.v1.EventService.Subscribe:output_type -> laterna.v1.SubscribeResponse
-	11, // [11:12] is the sub-list for method output_type
-	10, // [10:11] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	11, // 10: laterna.v1.Event.requests_changed:type_name -> laterna.v1.RequestsChanged
+	0,  // 11: laterna.v1.EventService.Subscribe:input_type -> laterna.v1.SubscribeRequest
+	1,  // 12: laterna.v1.EventService.Subscribe:output_type -> laterna.v1.SubscribeResponse
+	12, // [12:13] is the sub-list for method output_type
+	11, // [11:12] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_events_proto_init() }
@@ -812,6 +882,7 @@ func file_laterna_v1_events_proto_init() {
 		(*Event_UserDataChanged)(nil),
 		(*Event_DownloadsChanged)(nil),
 		(*Event_ThemesChanged)(nil),
+		(*Event_RequestsChanged)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -819,7 +890,7 @@ func file_laterna_v1_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_events_proto_rawDesc), len(file_laterna_v1_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
