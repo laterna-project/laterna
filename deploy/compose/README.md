@@ -42,7 +42,7 @@ the server up. `docker compose logs -f laterna` shows what it does.
 
 - **Upgrading:** `docker compose pull --ignore-buildable && docker compose up -d --build`.
   `https-dns` builds its Caddy, an image no registry has: without `--ignore-buildable` the pull
-  fails on it and `up` never runs. `LATERNA_VERSION=0.7` follows the patches of 0.7.x; set the next
+  fails on it and `up` never runs. `LATERNA_VERSION=0.8` follows the patches of 0.8.x; set the next
   minor version yourself after reading its release notes. The server backs its database up before
   migrating it.
 - **These files:** `main` holds those of the latest release, and `git pull` brings the next
