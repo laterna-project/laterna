@@ -40,9 +40,11 @@ docker compose up -d
 Open http://localhost:8096 (or `http://<this machine's address>:8096` from another device) to set
 the server up. `docker compose logs -f laterna` shows what it does.
 
-- **Upgrading:** `docker compose pull && docker compose up -d`. `LATERNA_VERSION=0.7` follows the
-  patches of 0.7.x; set the next minor version yourself after reading its release notes. The
-  server backs its database up before migrating it.
+- **Upgrading:** `docker compose pull --ignore-buildable && docker compose up -d --build`.
+  `https-dns` builds its Caddy, an image no registry has: without `--ignore-buildable` the pull
+  fails on it and `up` never runs. `LATERNA_VERSION=0.7` follows the patches of 0.7.x; set the next
+  minor version yourself after reading its release notes. The server backs its database up before
+  migrating it.
 - **These files:** `main` holds those of the latest release, and `git pull` brings the next
   release's. `--branch v0.6.0` keeps those of one release; `develop` has the ones being written.
 - **Data:** the `config` volume holds the database, logs, images and backups: it is the one to
@@ -465,7 +467,7 @@ provider module, plus:
 ## Upkeep
 
 **`diun`.** Checks every 6 hours whether a container of this machine has a newer image, and tells
-you: the release notes come first, then `docker compose pull && docker compose up -d`. Where it
+you: the release notes come first, then the upgrade command of [Starting](#starting). Where it
 writes goes in `diun.env`, for instance ntfy:
 
 ```sh
