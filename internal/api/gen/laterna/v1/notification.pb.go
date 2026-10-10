@@ -502,6 +502,269 @@ func (*DeleteNotificationsResponse) Descriptor() ([]byte, []int) {
 	return file_laterna_v1_notification_proto_rawDescGZIP(), []int{6}
 }
 
+type GetPushConfigRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPushConfigRequest) Reset() {
+	*x = GetPushConfigRequest{}
+	mi := &file_laterna_v1_notification_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPushConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPushConfigRequest) ProtoMessage() {}
+
+func (x *GetPushConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_notification_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPushConfigRequest.ProtoReflect.Descriptor instead.
+func (*GetPushConfigRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_notification_proto_rawDescGZIP(), []int{7}
+}
+
+type GetPushConfigResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The server's key, as PushManager.subscribe takes it (applicationServerKey): an uncompressed
+	// P-256 point in base64url. It never changes.
+	PublicKey string `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	// Endpoint this device is subscribed with; empty if it is not. A browser whose own subscription
+	// has another endpoint subscribes again.
+	Endpoint      string `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPushConfigResponse) Reset() {
+	*x = GetPushConfigResponse{}
+	mi := &file_laterna_v1_notification_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPushConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPushConfigResponse) ProtoMessage() {}
+
+func (x *GetPushConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_notification_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPushConfigResponse.ProtoReflect.Descriptor instead.
+func (*GetPushConfigResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_notification_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetPushConfigResponse) GetPublicKey() string {
+	if x != nil {
+		return x.PublicKey
+	}
+	return ""
+}
+
+func (x *GetPushConfigResponse) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+// SubscribePushRequest carries what PushSubscription.toJSON() gives.
+type SubscribePushRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Address of the push service for this device: https only.
+	Endpoint string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// keys.p256dh and keys.auth, in base64url.
+	P256Dh        string `protobuf:"bytes,2,opt,name=p256dh,proto3" json:"p256dh,omitempty"`
+	Auth          string `protobuf:"bytes,3,opt,name=auth,proto3" json:"auth,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribePushRequest) Reset() {
+	*x = SubscribePushRequest{}
+	mi := &file_laterna_v1_notification_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribePushRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribePushRequest) ProtoMessage() {}
+
+func (x *SubscribePushRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_notification_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribePushRequest.ProtoReflect.Descriptor instead.
+func (*SubscribePushRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_notification_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SubscribePushRequest) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *SubscribePushRequest) GetP256Dh() string {
+	if x != nil {
+		return x.P256Dh
+	}
+	return ""
+}
+
+func (x *SubscribePushRequest) GetAuth() string {
+	if x != nil {
+		return x.Auth
+	}
+	return ""
+}
+
+type SubscribePushResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribePushResponse) Reset() {
+	*x = SubscribePushResponse{}
+	mi := &file_laterna_v1_notification_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribePushResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribePushResponse) ProtoMessage() {}
+
+func (x *SubscribePushResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_notification_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribePushResponse.ProtoReflect.Descriptor instead.
+func (*SubscribePushResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_notification_proto_rawDescGZIP(), []int{10}
+}
+
+type UnsubscribePushRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsubscribePushRequest) Reset() {
+	*x = UnsubscribePushRequest{}
+	mi := &file_laterna_v1_notification_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsubscribePushRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsubscribePushRequest) ProtoMessage() {}
+
+func (x *UnsubscribePushRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_notification_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsubscribePushRequest.ProtoReflect.Descriptor instead.
+func (*UnsubscribePushRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_notification_proto_rawDescGZIP(), []int{11}
+}
+
+type UnsubscribePushResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsubscribePushResponse) Reset() {
+	*x = UnsubscribePushResponse{}
+	mi := &file_laterna_v1_notification_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsubscribePushResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsubscribePushResponse) ProtoMessage() {}
+
+func (x *UnsubscribePushResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_notification_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsubscribePushResponse.ProtoReflect.Descriptor instead.
+func (*UnsubscribePushResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_notification_proto_rawDescGZIP(), []int{12}
+}
+
 var File_laterna_v1_notification_proto protoreflect.FileDescriptor
 
 const file_laterna_v1_notification_proto_rawDesc = "" +
@@ -536,7 +799,19 @@ const file_laterna_v1_notification_proto_rawDesc = "" +
 	"\x1aDeleteNotificationsRequest\x12)\n" +
 	"\x10notification_ids\x18\x01 \x03(\tR\x0fnotificationIds\x12\x10\n" +
 	"\x03all\x18\x02 \x01(\bR\x03all\"\x1d\n" +
-	"\x1bDeleteNotificationsResponse*\x9f\x02\n" +
+	"\x1bDeleteNotificationsResponse\"\x16\n" +
+	"\x14GetPushConfigRequest\"R\n" +
+	"\x15GetPushConfigResponse\x12\x1d\n" +
+	"\n" +
+	"public_key\x18\x01 \x01(\tR\tpublicKey\x12\x1a\n" +
+	"\bendpoint\x18\x02 \x01(\tR\bendpoint\"^\n" +
+	"\x14SubscribePushRequest\x12\x1a\n" +
+	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x12\x16\n" +
+	"\x06p256dh\x18\x02 \x01(\tR\x06p256dh\x12\x12\n" +
+	"\x04auth\x18\x03 \x01(\tR\x04auth\"\x17\n" +
+	"\x15SubscribePushResponse\"\x18\n" +
+	"\x16UnsubscribePushRequest\"\x19\n" +
+	"\x17UnsubscribePushResponse*\x9f\x02\n" +
 	"\x10NotificationKind\x12!\n" +
 	"\x1dNOTIFICATION_KIND_UNSPECIFIED\x10\x00\x12%\n" +
 	"!NOTIFICATION_KIND_REQUEST_PENDING\x10\x01\x12&\n" +
@@ -544,11 +819,14 @@ const file_laterna_v1_notification_proto_rawDesc = "" +
 	"\"NOTIFICATION_KIND_REQUEST_DECLINED\x10\x03\x12'\n" +
 	"#NOTIFICATION_KIND_REQUEST_AVAILABLE\x10\x04\x12$\n" +
 	" NOTIFICATION_KIND_REQUEST_FAILED\x10\x05\x12\"\n" +
-	"\x1eNOTIFICATION_KIND_NEW_EPISODES\x10\x062\xdc\x02\n" +
+	"\x1eNOTIFICATION_KIND_NEW_EPISODES\x10\x062\xf3\x04\n" +
 	"\x13NotificationService\x12e\n" +
 	"\x11ListNotifications\x12$.laterna.v1.ListNotificationsRequest\x1a%.laterna.v1.ListNotificationsResponse\"\x03\x90\x02\x01\x12q\n" +
 	"\x15MarkNotificationsRead\x12(.laterna.v1.MarkNotificationsReadRequest\x1a).laterna.v1.MarkNotificationsReadResponse\"\x03\x90\x02\x02\x12k\n" +
-	"\x13DeleteNotifications\x12&.laterna.v1.DeleteNotificationsRequest\x1a'.laterna.v1.DeleteNotificationsResponse\"\x03\x90\x02\x02BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
+	"\x13DeleteNotifications\x12&.laterna.v1.DeleteNotificationsRequest\x1a'.laterna.v1.DeleteNotificationsResponse\"\x03\x90\x02\x02\x12Y\n" +
+	"\rGetPushConfig\x12 .laterna.v1.GetPushConfigRequest\x1a!.laterna.v1.GetPushConfigResponse\"\x03\x90\x02\x01\x12Y\n" +
+	"\rSubscribePush\x12 .laterna.v1.SubscribePushRequest\x1a!.laterna.v1.SubscribePushResponse\"\x03\x90\x02\x02\x12_\n" +
+	"\x0fUnsubscribePush\x12\".laterna.v1.UnsubscribePushRequest\x1a#.laterna.v1.UnsubscribePushResponse\"\x03\x90\x02\x02BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
 var (
 	file_laterna_v1_notification_proto_rawDescOnce sync.Once
@@ -563,7 +841,7 @@ func file_laterna_v1_notification_proto_rawDescGZIP() []byte {
 }
 
 var file_laterna_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_laterna_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_laterna_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_laterna_v1_notification_proto_goTypes = []any{
 	(NotificationKind)(0),                 // 0: laterna.v1.NotificationKind
 	(*Notification)(nil),                  // 1: laterna.v1.Notification
@@ -573,24 +851,36 @@ var file_laterna_v1_notification_proto_goTypes = []any{
 	(*MarkNotificationsReadResponse)(nil), // 5: laterna.v1.MarkNotificationsReadResponse
 	(*DeleteNotificationsRequest)(nil),    // 6: laterna.v1.DeleteNotificationsRequest
 	(*DeleteNotificationsResponse)(nil),   // 7: laterna.v1.DeleteNotificationsResponse
-	(*Text)(nil),                          // 8: laterna.v1.Text
-	(*timestamppb.Timestamp)(nil),         // 9: google.protobuf.Timestamp
-	(*SearchResult)(nil),                  // 10: laterna.v1.SearchResult
+	(*GetPushConfigRequest)(nil),          // 8: laterna.v1.GetPushConfigRequest
+	(*GetPushConfigResponse)(nil),         // 9: laterna.v1.GetPushConfigResponse
+	(*SubscribePushRequest)(nil),          // 10: laterna.v1.SubscribePushRequest
+	(*SubscribePushResponse)(nil),         // 11: laterna.v1.SubscribePushResponse
+	(*UnsubscribePushRequest)(nil),        // 12: laterna.v1.UnsubscribePushRequest
+	(*UnsubscribePushResponse)(nil),       // 13: laterna.v1.UnsubscribePushResponse
+	(*Text)(nil),                          // 14: laterna.v1.Text
+	(*timestamppb.Timestamp)(nil),         // 15: google.protobuf.Timestamp
+	(*SearchResult)(nil),                  // 16: laterna.v1.SearchResult
 }
 var file_laterna_v1_notification_proto_depIdxs = []int32{
 	0,  // 0: laterna.v1.Notification.kind:type_name -> laterna.v1.NotificationKind
-	8,  // 1: laterna.v1.Notification.text:type_name -> laterna.v1.Text
-	9,  // 2: laterna.v1.Notification.created_at:type_name -> google.protobuf.Timestamp
-	10, // 3: laterna.v1.Notification.item:type_name -> laterna.v1.SearchResult
+	14, // 1: laterna.v1.Notification.text:type_name -> laterna.v1.Text
+	15, // 2: laterna.v1.Notification.created_at:type_name -> google.protobuf.Timestamp
+	16, // 3: laterna.v1.Notification.item:type_name -> laterna.v1.SearchResult
 	1,  // 4: laterna.v1.ListNotificationsResponse.notifications:type_name -> laterna.v1.Notification
 	2,  // 5: laterna.v1.NotificationService.ListNotifications:input_type -> laterna.v1.ListNotificationsRequest
 	4,  // 6: laterna.v1.NotificationService.MarkNotificationsRead:input_type -> laterna.v1.MarkNotificationsReadRequest
 	6,  // 7: laterna.v1.NotificationService.DeleteNotifications:input_type -> laterna.v1.DeleteNotificationsRequest
-	3,  // 8: laterna.v1.NotificationService.ListNotifications:output_type -> laterna.v1.ListNotificationsResponse
-	5,  // 9: laterna.v1.NotificationService.MarkNotificationsRead:output_type -> laterna.v1.MarkNotificationsReadResponse
-	7,  // 10: laterna.v1.NotificationService.DeleteNotifications:output_type -> laterna.v1.DeleteNotificationsResponse
-	8,  // [8:11] is the sub-list for method output_type
-	5,  // [5:8] is the sub-list for method input_type
+	8,  // 8: laterna.v1.NotificationService.GetPushConfig:input_type -> laterna.v1.GetPushConfigRequest
+	10, // 9: laterna.v1.NotificationService.SubscribePush:input_type -> laterna.v1.SubscribePushRequest
+	12, // 10: laterna.v1.NotificationService.UnsubscribePush:input_type -> laterna.v1.UnsubscribePushRequest
+	3,  // 11: laterna.v1.NotificationService.ListNotifications:output_type -> laterna.v1.ListNotificationsResponse
+	5,  // 12: laterna.v1.NotificationService.MarkNotificationsRead:output_type -> laterna.v1.MarkNotificationsReadResponse
+	7,  // 13: laterna.v1.NotificationService.DeleteNotifications:output_type -> laterna.v1.DeleteNotificationsResponse
+	9,  // 14: laterna.v1.NotificationService.GetPushConfig:output_type -> laterna.v1.GetPushConfigResponse
+	11, // 15: laterna.v1.NotificationService.SubscribePush:output_type -> laterna.v1.SubscribePushResponse
+	13, // 16: laterna.v1.NotificationService.UnsubscribePush:output_type -> laterna.v1.UnsubscribePushResponse
+	11, // [11:17] is the sub-list for method output_type
+	5,  // [5:11] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -609,7 +899,7 @@ func file_laterna_v1_notification_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_notification_proto_rawDesc), len(file_laterna_v1_notification_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

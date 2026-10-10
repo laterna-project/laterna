@@ -34,3 +34,14 @@ type Notification struct {
 	// ReadAt is nil until the profile has seen it.
 	ReadAt *time.Time
 }
+
+// PushSubscription is where to reach a device that asked for notifications while the app is
+// closed: the address its browser's push service gave it, and the keys to encrypt for it.
+type PushSubscription struct {
+	// SessionID is the device.
+	SessionID ID
+	Endpoint  string
+	// P256DH is the public key of the device, Auth its authentication secret.
+	P256DH []byte
+	Auth   []byte
+}

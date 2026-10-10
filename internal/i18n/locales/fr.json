@@ -238,6 +238,7 @@
   "error.media_request.unknown_root_folder": "Dossier racine inconnu : {path}",
   "error.metrics.token_required": "Jeton de lecture des mesures requis",
   "error.notification.all_or_some": "Nommez des notifications ou demandez-les toutes, pas les deux",
+  "error.notification.invalid_subscription": "Cet abonnement aux notifications est inutilisable",
   "error.notification.too_many": "Au plus {max} notifications à la fois",
   "error.oidc.client_id_required": "L'identifiant du client est obligatoire",
   "error.oidc.client_secret_required": "Le secret du client est obligatoire",

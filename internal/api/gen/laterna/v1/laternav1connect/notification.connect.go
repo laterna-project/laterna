@@ -42,6 +42,15 @@ const (
 	// NotificationServiceDeleteNotificationsProcedure is the fully-qualified name of the
 	// NotificationService's DeleteNotifications RPC.
 	NotificationServiceDeleteNotificationsProcedure = "/laterna.v1.NotificationService/DeleteNotifications"
+	// NotificationServiceGetPushConfigProcedure is the fully-qualified name of the
+	// NotificationService's GetPushConfig RPC.
+	NotificationServiceGetPushConfigProcedure = "/laterna.v1.NotificationService/GetPushConfig"
+	// NotificationServiceSubscribePushProcedure is the fully-qualified name of the
+	// NotificationService's SubscribePush RPC.
+	NotificationServiceSubscribePushProcedure = "/laterna.v1.NotificationService/SubscribePush"
+	// NotificationServiceUnsubscribePushProcedure is the fully-qualified name of the
+	// NotificationService's UnsubscribePush RPC.
+	NotificationServiceUnsubscribePushProcedure = "/laterna.v1.NotificationService/UnsubscribePush"
 )
 
 // NotificationServiceClient is a client for the laterna.v1.NotificationService service.
@@ -53,6 +62,14 @@ type NotificationServiceClient interface {
 	MarkNotificationsRead(context.Context, *connect.Request[v1.MarkNotificationsReadRequest]) (*connect.Response[v1.MarkNotificationsReadResponse], error)
 	// DeleteNotifications removes notifications of the profile.
 	DeleteNotifications(context.Context, *connect.Request[v1.DeleteNotificationsRequest]) (*connect.Response[v1.DeleteNotificationsResponse], error)
+	// GetPushConfig returns the public key a browser subscribes to web push with, and the
+	// subscription this device has.
+	GetPushConfig(context.Context, *connect.Request[v1.GetPushConfigRequest]) (*connect.Response[v1.GetPushConfigResponse], error)
+	// SubscribePush stores the web push subscription of this device, in place of the one it had. It
+	// goes away with the session (sign-out, device revoked).
+	SubscribePush(context.Context, *connect.Request[v1.SubscribePushRequest]) (*connect.Response[v1.SubscribePushResponse], error)
+	// UnsubscribePush forgets the web push subscription of this device.
+	UnsubscribePush(context.Context, *connect.Request[v1.UnsubscribePushRequest]) (*connect.Response[v1.UnsubscribePushResponse], error)
 }
 
 // NewNotificationServiceClient constructs a client for the laterna.v1.NotificationService service.
@@ -87,6 +104,27 @@ func NewNotificationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		getPushConfig: connect.NewClient[v1.GetPushConfigRequest, v1.GetPushConfigResponse](
+			httpClient,
+			baseURL+NotificationServiceGetPushConfigProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("GetPushConfig")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		subscribePush: connect.NewClient[v1.SubscribePushRequest, v1.SubscribePushResponse](
+			httpClient,
+			baseURL+NotificationServiceSubscribePushProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("SubscribePush")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		unsubscribePush: connect.NewClient[v1.UnsubscribePushRequest, v1.UnsubscribePushResponse](
+			httpClient,
+			baseURL+NotificationServiceUnsubscribePushProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("UnsubscribePush")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -95,6 +133,9 @@ type notificationServiceClient struct {
 	listNotifications     *connect.Client[v1.ListNotificationsRequest, v1.ListNotificationsResponse]
 	markNotificationsRead *connect.Client[v1.MarkNotificationsReadRequest, v1.MarkNotificationsReadResponse]
 	deleteNotifications   *connect.Client[v1.DeleteNotificationsRequest, v1.DeleteNotificationsResponse]
+	getPushConfig         *connect.Client[v1.GetPushConfigRequest, v1.GetPushConfigResponse]
+	subscribePush         *connect.Client[v1.SubscribePushRequest, v1.SubscribePushResponse]
+	unsubscribePush       *connect.Client[v1.UnsubscribePushRequest, v1.UnsubscribePushResponse]
 }
 
 // ListNotifications calls laterna.v1.NotificationService.ListNotifications.
@@ -112,6 +153,21 @@ func (c *notificationServiceClient) DeleteNotifications(ctx context.Context, req
 	return c.deleteNotifications.CallUnary(ctx, req)
 }
 
+// GetPushConfig calls laterna.v1.NotificationService.GetPushConfig.
+func (c *notificationServiceClient) GetPushConfig(ctx context.Context, req *connect.Request[v1.GetPushConfigRequest]) (*connect.Response[v1.GetPushConfigResponse], error) {
+	return c.getPushConfig.CallUnary(ctx, req)
+}
+
+// SubscribePush calls laterna.v1.NotificationService.SubscribePush.
+func (c *notificationServiceClient) SubscribePush(ctx context.Context, req *connect.Request[v1.SubscribePushRequest]) (*connect.Response[v1.SubscribePushResponse], error) {
+	return c.subscribePush.CallUnary(ctx, req)
+}
+
+// UnsubscribePush calls laterna.v1.NotificationService.UnsubscribePush.
+func (c *notificationServiceClient) UnsubscribePush(ctx context.Context, req *connect.Request[v1.UnsubscribePushRequest]) (*connect.Response[v1.UnsubscribePushResponse], error) {
+	return c.unsubscribePush.CallUnary(ctx, req)
+}
+
 // NotificationServiceHandler is an implementation of the laterna.v1.NotificationService service.
 type NotificationServiceHandler interface {
 	// ListNotifications lists the notifications of the profile, newest first, with how many it has
@@ -121,6 +177,14 @@ type NotificationServiceHandler interface {
 	MarkNotificationsRead(context.Context, *connect.Request[v1.MarkNotificationsReadRequest]) (*connect.Response[v1.MarkNotificationsReadResponse], error)
 	// DeleteNotifications removes notifications of the profile.
 	DeleteNotifications(context.Context, *connect.Request[v1.DeleteNotificationsRequest]) (*connect.Response[v1.DeleteNotificationsResponse], error)
+	// GetPushConfig returns the public key a browser subscribes to web push with, and the
+	// subscription this device has.
+	GetPushConfig(context.Context, *connect.Request[v1.GetPushConfigRequest]) (*connect.Response[v1.GetPushConfigResponse], error)
+	// SubscribePush stores the web push subscription of this device, in place of the one it had. It
+	// goes away with the session (sign-out, device revoked).
+	SubscribePush(context.Context, *connect.Request[v1.SubscribePushRequest]) (*connect.Response[v1.SubscribePushResponse], error)
+	// UnsubscribePush forgets the web push subscription of this device.
+	UnsubscribePush(context.Context, *connect.Request[v1.UnsubscribePushRequest]) (*connect.Response[v1.UnsubscribePushResponse], error)
 }
 
 // NewNotificationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -151,6 +215,27 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	notificationServiceGetPushConfigHandler := connect.NewUnaryHandler(
+		NotificationServiceGetPushConfigProcedure,
+		svc.GetPushConfig,
+		connect.WithSchema(notificationServiceMethods.ByName("GetPushConfig")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	notificationServiceSubscribePushHandler := connect.NewUnaryHandler(
+		NotificationServiceSubscribePushProcedure,
+		svc.SubscribePush,
+		connect.WithSchema(notificationServiceMethods.ByName("SubscribePush")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	notificationServiceUnsubscribePushHandler := connect.NewUnaryHandler(
+		NotificationServiceUnsubscribePushProcedure,
+		svc.UnsubscribePush,
+		connect.WithSchema(notificationServiceMethods.ByName("UnsubscribePush")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/laterna.v1.NotificationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case NotificationServiceListNotificationsProcedure:
@@ -159,6 +244,12 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 			notificationServiceMarkNotificationsReadHandler.ServeHTTP(w, r)
 		case NotificationServiceDeleteNotificationsProcedure:
 			notificationServiceDeleteNotificationsHandler.ServeHTTP(w, r)
+		case NotificationServiceGetPushConfigProcedure:
+			notificationServiceGetPushConfigHandler.ServeHTTP(w, r)
+		case NotificationServiceSubscribePushProcedure:
+			notificationServiceSubscribePushHandler.ServeHTTP(w, r)
+		case NotificationServiceUnsubscribePushProcedure:
+			notificationServiceUnsubscribePushHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -178,4 +269,16 @@ func (UnimplementedNotificationServiceHandler) MarkNotificationsRead(context.Con
 
 func (UnimplementedNotificationServiceHandler) DeleteNotifications(context.Context, *connect.Request[v1.DeleteNotificationsRequest]) (*connect.Response[v1.DeleteNotificationsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.NotificationService.DeleteNotifications is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) GetPushConfig(context.Context, *connect.Request[v1.GetPushConfigRequest]) (*connect.Response[v1.GetPushConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.NotificationService.GetPushConfig is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) SubscribePush(context.Context, *connect.Request[v1.SubscribePushRequest]) (*connect.Response[v1.SubscribePushResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.NotificationService.SubscribePush is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) UnsubscribePush(context.Context, *connect.Request[v1.UnsubscribePushRequest]) (*connect.Response[v1.UnsubscribePushResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.NotificationService.UnsubscribePush is not implemented"))
 }

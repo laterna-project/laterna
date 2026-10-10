@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"context"
+	"encoding/base64"
+	"strings"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -72,4 +74,39 @@ func (s *NotificationService) DeleteNotifications(ctx context.Context, req *conn
 		return nil, err
 	}
 	return connect.NewResponse(&laternav1.DeleteNotificationsResponse{}), nil
+}
+
+// GetPushConfig returns the server's push key and the subscription of this device.
+func (s *NotificationService) GetPushConfig(ctx context.Context, _ *connect.Request[laternav1.GetPushConfigRequest]) (*connect.Response[laternav1.GetPushConfigResponse], error) {
+	cfg, err := s.app.PushConfig(ctx, principal(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.GetPushConfigResponse{PublicKey: cfg.PublicKey, Endpoint: cfg.Endpoint}), nil
+}
+
+// SubscribePush stores the push subscription of this device.
+func (s *NotificationService) SubscribePush(ctx context.Context, req *connect.Request[laternav1.SubscribePushRequest]) (*connect.Response[laternav1.SubscribePushResponse], error) {
+	m := req.Msg
+	// Browsers write these with or without padding.
+	key, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(m.GetP256Dh(), "="))
+	if err != nil {
+		return nil, domain.Invalid("notification.invalid_subscription")
+	}
+	auth, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(m.GetAuth(), "="))
+	if err != nil {
+		return nil, domain.Invalid("notification.invalid_subscription")
+	}
+	if err := s.app.SubscribePush(ctx, principal(ctx), m.GetEndpoint(), key, auth); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.SubscribePushResponse{}), nil
+}
+
+// UnsubscribePush forgets the push subscription of this device.
+func (s *NotificationService) UnsubscribePush(ctx context.Context, _ *connect.Request[laternav1.UnsubscribePushRequest]) (*connect.Response[laternav1.UnsubscribePushResponse], error) {
+	if err := s.app.UnsubscribePush(ctx, principal(ctx)); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.UnsubscribePushResponse{}), nil
 }
