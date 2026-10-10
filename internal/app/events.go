@@ -172,6 +172,8 @@ func (s *Subscription) wants(e domain.Event) bool {
 		return e.ProfileID == nil || (s.p.Profile != nil && s.p.Profile.ID == *e.ProfileID)
 	case domain.RequestsChanged:
 		return s.p.CanAdminister() || (s.p.Profile != nil && s.p.Profile.ID == e.ProfileID)
+	case domain.SubtitleSearchChanged:
+		return s.p.Profile != nil && s.p.Profile.ID == e.ProfileID
 	case domain.NotificationsChanged:
 		return s.p.Profile != nil && s.p.Profile.ID == e.ProfileID
 	}

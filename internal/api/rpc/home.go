@@ -167,6 +167,10 @@ func eventMsg(e domain.Event) *laternav1.Event {
 		return &laternav1.Event{Kind: &laternav1.Event_RequestsChanged{RequestsChanged: &laternav1.RequestsChanged{
 			RequestIds: idsMsg(e.RequestIDs),
 		}}}
+	case domain.SubtitleSearchChanged:
+		return &laternav1.Event{Kind: &laternav1.Event_SubtitleSearchChanged{SubtitleSearchChanged: &laternav1.SubtitleSearchChanged{
+			FileId: e.FileID.String(),
+		}}}
 	case domain.NotificationsChanged:
 		return &laternav1.Event{Kind: &laternav1.Event_NotificationsChanged{NotificationsChanged: &laternav1.NotificationsChanged{}}}
 	}

@@ -156,6 +156,11 @@ type App struct {
 	posters posterURLs
 	// books are the books of recent request searches.
 	books bookCache
+	// subSearches are the subtitle searches handed to Bazarr; the two durations are how long it
+	// gets to find one and how often it is asked.
+	subSearches        subtitleSearches
+	subtitleSearchWait time.Duration
+	subtitleSearchPoll time.Duration
 	// arrived are the episodes that arrived and were not announced yet.
 	arrived newEpisodes
 	// pushKeys is the key pair the server names itself with to push services; pushHTTP calls them.
@@ -182,8 +187,9 @@ func New(ctx context.Context, st *store.Store, opts Options) (*App, error) {
 		prober:     probe.New(opts.FFprobe), jobs: jobs.New(st, log), noAutoScans: opts.NoAutoScans, startedAt: time.Now(),
 		settingsChanged: make(chan struct{}, 1), logs: opts.Logs, dataDir: opts.DataDir, logDir: opts.LogDir,
 		watchResync: make(chan struct{}, 1), watchQuiet: cmp.Or(opts.WatchQuiet, defaultWatchQuiet),
-		segmentMin: cmp.Or(opts.SegmentMin, segments.DefaultMin),
-		cacheDir:   opts.CacheDir, resizing: make(chan struct{}, max(1, runtime.NumCPU()/2)),
+		segmentMin:         cmp.Or(opts.SegmentMin, segments.DefaultMin),
+		subtitleSearchWait: defaultSubtitleSearchWait, subtitleSearchPoll: defaultSubtitleSearchPoll,
+		cacheDir: opts.CacheDir, resizing: make(chan struct{}, max(1, runtime.NumCPU()/2)),
 		bus: events.New[domain.Event](), ffmpeg: opts.FFmpeg, ffprobe: opts.FFprobe,
 		plays: playSessions{byID: map[domain.ID]*playSession{}}, convs: conversions{byPath: map[string]*conversion{}},
 		preps:        preparations{byID: map[domain.ID]context.CancelFunc{}, lastAt: map[domain.ID]time.Time{}},

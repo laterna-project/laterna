@@ -38,6 +38,7 @@ message Event {
     ThemesChanged themes_changed = 9;
     RequestsChanged requests_changed = 10;
     NotificationsChanged notifications_changed = 11;
+    SubtitleSearchChanged subtitle_search_changed = 12;
   }
 }
 
@@ -100,3 +101,9 @@ message RequestsChanged {
 // NotificationsChanged: the notifications of the profile changed (one arrived, or some were read or
 // deleted, possibly from another device); reload them (NotificationService).
 message NotificationsChanged {}
+
+// SubtitleSearchChanged: a subtitle search of the profile started or ended; read where it stands
+// (SubtitleService.GetSubtitleSearch) and, once a subtitle is found, the subtitles of the file.
+message SubtitleSearchChanged {
+  string file_id = 1;
+}
