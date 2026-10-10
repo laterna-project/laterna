@@ -153,6 +153,7 @@ func (a *App) Start(ctx context.Context) error {
 	a.background.Go(func() { _, _ = a.encoders() })
 	a.background.Go(func() { a.periodic(ctx) })
 	a.background.Go(func() { a.publishChanges(ctx) })
+	a.background.Go(func() { a.watchNewEpisodes(ctx) })
 	return nil
 }
 
@@ -233,6 +234,9 @@ func (a *App) runPurges(ctx context.Context) {
 	}
 	if err := a.purgePosters(ctx); err != nil {
 		a.log.WarnContext(ctx, "cannot purge cached request posters", "err", err)
+	}
+	if err := a.purgeNotifications(ctx); err != nil {
+		a.log.WarnContext(ctx, "cannot purge old notifications", "err", err)
 	}
 	a.enqueuePurges(ctx)
 }

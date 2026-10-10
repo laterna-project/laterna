@@ -152,6 +152,8 @@ type App struct {
 	posters posterURLs
 	// books are the books of recent request searches.
 	books bookCache
+	// arrived are the episodes that arrived and were not announced yet.
+	arrived newEpisodes
 
 	// bus pushes events to subscribed clients; changes batches the item ones.
 	bus     *events.Bus[domain.Event]
