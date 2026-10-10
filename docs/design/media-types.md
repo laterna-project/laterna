@@ -58,7 +58,11 @@ The first playback of a converted track waits for the conversion (a couple of se
 four-minute track), then nothing. Clients preload the next track, so it mostly shows on the first
 one.
 
-Not done: lyrics, "appears on" for guest artists, radios and mixes, a Lidarr integration.
+Lidarr writes `artist.nfo`, `album.nfo` and the images when its Kodi metadata is on, and its
+webhook triggers a scan of the music libraries, as Sonarr and Radarr do for video
+([Metadata](metadata.md)).
+
+Not done: lyrics, "appears on" for guest artists, radios and mixes.
 
 ## Books
 

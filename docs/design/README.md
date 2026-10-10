@@ -10,7 +10,7 @@ not its history. When a change contradicts a note, update the note in the same c
 | [API](api.md) | The Protobuf contract, access levels, errors, catalog messages, paging, search, images, events |
 | [Storage](storage.md) | SQLite, one writer and many readers, migrations, list queries, backups and restore |
 | [Libraries](library.md) | Scanning, file identity, folder watching, the folder picker, library order |
-| [Metadata](metadata.md) | NFO files and local artwork, Sonarr and Radarr, collections |
+| [Metadata](metadata.md) | NFO files and local artwork, Sonarr, Radarr and Lidarr, collections |
 | [Playback](playback.md) | Direct play, HLS, transcoding, HDR, FFmpeg processes, scrubbing thumbnails, offline downloads |
 | [Subtitles](subtitles.md) | Extraction at import, formats, fonts, burn-in |
 | [Intro and credits detection](intro-detection.md) | Named chapters and audio fingerprints |
@@ -18,7 +18,7 @@ not its history. When a change contradicts a note, update the note in the same c
 | [Home, history and recommendations](home.md) | Home rows, resume rules, play history, statistics, recommendations |
 | [Music, books and photos](media-types.md) | The non-video libraries, collections and playlists |
 | [Watch parties](watch-party.md) | Shared playback state and how clients stay in sync |
-| [Requests](requests.md) | Asking for movies and series, approval, Sonarr and Radarr, availability |
+| [Requests](requests.md) | Asking for movies, series, music and books, approval, Sonarr, Radarr, Lidarr and LazyLibrarian, availability |
 | [Internationalization](i18n.md) | Error codes, composed text, languages |
 | [Themes](themes.md) | Design tokens, contrast checks, per-profile choice |
 | [Operations](operations.md) | Runtime settings, administration, logs, activity, metrics, traces |

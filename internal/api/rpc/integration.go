@@ -16,8 +16,10 @@ type IntegrationService struct {
 }
 
 var integrationKinds = map[domain.IntegrationKind]laternav1.IntegrationKind{
-	domain.IntegrationSonarr: laternav1.IntegrationKind_INTEGRATION_KIND_SONARR,
-	domain.IntegrationRadarr: laternav1.IntegrationKind_INTEGRATION_KIND_RADARR,
+	domain.IntegrationSonarr:        laternav1.IntegrationKind_INTEGRATION_KIND_SONARR,
+	domain.IntegrationRadarr:        laternav1.IntegrationKind_INTEGRATION_KIND_RADARR,
+	domain.IntegrationLidarr:        laternav1.IntegrationKind_INTEGRATION_KIND_LIDARR,
+	domain.IntegrationLazyLibrarian: laternav1.IntegrationKind_INTEGRATION_KIND_LAZYLIBRARIAN,
 }
 
 func integrationKindFromMsg(k laternav1.IntegrationKind) domain.IntegrationKind {
@@ -35,7 +37,7 @@ func integrationMsg(ctx context.Context, i domain.Integration) *laternav1.Integr
 		Error: render(ctx, i.Error), ErrorText: textMsg(ctx, i.Error),
 		KodiMetadata: i.KodiMetadata, MissingOptions: i.MissingOptions, Webhook: i.Webhook,
 		Folders: clampInt32(i.Folders), Unmapped: clampInt32(i.Unmapped),
-		WithoutNfo: clampInt32(i.WithoutNFO), WithoutNfoTitles: i.WithoutNFOTitles,
+		WithoutNfo: clampInt32(i.WithoutNFO), WithoutNfoTitles: i.WithoutNFOTitles, ManagesMetadata: i.ManagesMetadata,
 	}
 }
 

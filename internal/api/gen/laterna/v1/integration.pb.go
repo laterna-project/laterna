@@ -29,6 +29,10 @@ const (
 	IntegrationKind_INTEGRATION_KIND_SONARR IntegrationKind = 1
 	// Radarr: movies.
 	IntegrationKind_INTEGRATION_KIND_RADARR IntegrationKind = 2
+	// Lidarr: music.
+	IntegrationKind_INTEGRATION_KIND_LIDARR IntegrationKind = 3
+	// LazyLibrarian: books, for requests only.
+	IntegrationKind_INTEGRATION_KIND_LAZYLIBRARIAN IntegrationKind = 4
 )
 
 // Enum value maps for IntegrationKind.
@@ -37,11 +41,15 @@ var (
 		0: "INTEGRATION_KIND_UNSPECIFIED",
 		1: "INTEGRATION_KIND_SONARR",
 		2: "INTEGRATION_KIND_RADARR",
+		3: "INTEGRATION_KIND_LIDARR",
+		4: "INTEGRATION_KIND_LAZYLIBRARIAN",
 	}
 	IntegrationKind_value = map[string]int32{
-		"INTEGRATION_KIND_UNSPECIFIED": 0,
-		"INTEGRATION_KIND_SONARR":      1,
-		"INTEGRATION_KIND_RADARR":      2,
+		"INTEGRATION_KIND_UNSPECIFIED":   0,
+		"INTEGRATION_KIND_SONARR":        1,
+		"INTEGRATION_KIND_RADARR":        2,
+		"INTEGRATION_KIND_LIDARR":        3,
+		"INTEGRATION_KIND_LAZYLIBRARIAN": 4,
 	}
 )
 
@@ -88,7 +96,7 @@ type Integration struct {
 	MissingOptions []string `protobuf:"bytes,7,rep,name=missing_options,json=missingOptions,proto3" json:"missing_options,omitempty"`
 	// Laterna's webhook is installed and enabled.
 	Webhook bool `protobuf:"varint,8,opt,name=webhook,proto3" json:"webhook,omitempty"`
-	// Tracked series or movies that have files.
+	// Tracked series, movies or artists that have files.
 	Folders int32 `protobuf:"varint,9,opt,name=folders,proto3" json:"folders,omitempty"`
 	// Those whose folder is in none of Laterna's libraries.
 	Unmapped int32 `protobuf:"varint,10,opt,name=unmapped,proto3" json:"unmapped,omitempty"`
@@ -97,9 +105,12 @@ type Integration struct {
 	WithoutNfoTitles []string `protobuf:"bytes,12,rep,name=without_nfo_titles,json=withoutNfoTitles,proto3" json:"without_nfo_titles,omitempty"`
 	// "error.integration.unauthorized", "error.integration.unreachable" (params "name", "reason")...;
 	// unset if the instance answers.
-	ErrorText     *Text `protobuf:"bytes,13,opt,name=error_text,json=errorText,proto3" json:"error_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ErrorText *Text `protobuf:"bytes,13,opt,name=error_text,json=errorText,proto3" json:"error_text,omitempty"`
+	// The instance writes Kodi metadata and takes a webhook and a refresh (Sonarr, Radarr, Lidarr):
+	// the fields above and ConfigureIntegration apply. False for LazyLibrarian.
+	ManagesMetadata bool `protobuf:"varint,14,opt,name=manages_metadata,json=managesMetadata,proto3" json:"manages_metadata,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Integration) Reset() {
@@ -223,6 +234,13 @@ func (x *Integration) GetErrorText() *Text {
 	return nil
 }
 
+func (x *Integration) GetManagesMetadata() bool {
+	if x != nil {
+		return x.ManagesMetadata
+	}
+	return false
+}
+
 type ListIntegrationsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -308,7 +326,7 @@ type SetIntegrationRequest struct {
 	Kind  IntegrationKind        `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.IntegrationKind" json:"kind,omitempty"`
 	// Address of the instance as Laterna sees it ("http://localhost:8989").
 	Url string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
-	// API key (Settings > General).
+	// API key (Settings > General; Config > Interface for LazyLibrarian).
 	ApiKey        string `protobuf:"bytes,3,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -493,13 +511,13 @@ type ConfigureIntegrationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  IntegrationKind        `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.IntegrationKind" json:"kind,omitempty"`
 	// Turns Kodi metadata on with every option we need (NFO and images for series, seasons and
-	// episodes, or for movies); other settings are left alone.
+	// episodes, for movies, or for artists and albums); other settings are left alone.
 	KodiMetadata bool `protobuf:"varint,2,opt,name=kodi_metadata,json=kodiMetadata,proto3" json:"kodi_metadata,omitempty"`
 	// Installs or updates Laterna's webhook, at this address of Laterna as seen from the instance
 	// ("http://192.168.1.10:8096"); the instance tries it right away. Empty leaves it unchanged.
 	WebhookUrl string `protobuf:"bytes,3,opt,name=webhook_url,json=webhookUrl,proto3" json:"webhook_url,omitempty"`
-	// Asks for a refresh of every series or movie (missing NFO files and images get written), then
-	// scans the libraries. The response does not wait for it to finish.
+	// Asks for a refresh of every series, movie or artist (missing NFO files and images get written),
+	// then scans the libraries. The response does not wait for it to finish.
 	Refresh       bool `protobuf:"varint,4,opt,name=refresh,proto3" json:"refresh,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -612,7 +630,7 @@ var File_laterna_v1_integration_proto protoreflect.FileDescriptor
 const file_laterna_v1_integration_proto_rawDesc = "" +
 	"\n" +
 	"\x1claterna/v1/integration.proto\x12\n" +
-	"laterna.v1\x1a\x18laterna/v1/options.proto\x1a\x15laterna/v1/text.proto\"\xbc\x03\n" +
+	"laterna.v1\x1a\x18laterna/v1/options.proto\x1a\x15laterna/v1/text.proto\"\xe7\x03\n" +
 	"\vIntegration\x12/\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1b.laterna.v1.IntegrationKindR\x04kind\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x1c\n" +
@@ -629,7 +647,8 @@ const file_laterna_v1_integration_proto_rawDesc = "" +
 	"withoutNfo\x12,\n" +
 	"\x12without_nfo_titles\x18\f \x03(\tR\x10withoutNfoTitles\x12/\n" +
 	"\n" +
-	"error_text\x18\r \x01(\v2\x10.laterna.v1.TextR\terrorText\"\x19\n" +
+	"error_text\x18\r \x01(\v2\x10.laterna.v1.TextR\terrorText\x12)\n" +
+	"\x10manages_metadata\x18\x0e \x01(\bR\x0fmanagesMetadata\"\x19\n" +
 	"\x17ListIntegrationsRequest\"W\n" +
 	"\x18ListIntegrationsResponse\x12;\n" +
 	"\fintegrations\x18\x01 \x03(\v2\x17.laterna.v1.IntegrationR\fintegrations\"s\n" +
@@ -649,11 +668,13 @@ const file_laterna_v1_integration_proto_rawDesc = "" +
 	"webhookUrl\x12\x18\n" +
 	"\arefresh\x18\x04 \x01(\bR\arefresh\"Y\n" +
 	"\x1cConfigureIntegrationResponse\x129\n" +
-	"\vintegration\x18\x01 \x01(\v2\x17.laterna.v1.IntegrationR\vintegration*m\n" +
+	"\vintegration\x18\x01 \x01(\v2\x17.laterna.v1.IntegrationR\vintegration*\xae\x01\n" +
 	"\x0fIntegrationKind\x12 \n" +
 	"\x1cINTEGRATION_KIND_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17INTEGRATION_KIND_SONARR\x10\x01\x12\x1b\n" +
-	"\x17INTEGRATION_KIND_RADARR\x10\x022\xb4\x03\n" +
+	"\x17INTEGRATION_KIND_RADARR\x10\x02\x12\x1b\n" +
+	"\x17INTEGRATION_KIND_LIDARR\x10\x03\x12\"\n" +
+	"\x1eINTEGRATION_KIND_LAZYLIBRARIAN\x10\x042\xb4\x03\n" +
 	"\x12IntegrationService\x12f\n" +
 	"\x10ListIntegrations\x12#.laterna.v1.ListIntegrationsRequest\x1a$.laterna.v1.ListIntegrationsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12]\n" +
 	"\x0eSetIntegration\x12!.laterna.v1.SetIntegrationRequest\x1a\".laterna.v1.SetIntegrationResponse\"\x04\x88\xb5\x18\x04\x12f\n" +

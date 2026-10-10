@@ -313,18 +313,22 @@ func seasonsWanted(o AddOptions, seasons []int) []int {
 
 // Download is a title being downloaded by the instance.
 type Download struct {
-	// ArrID is the series or movie on the instance.
-	ArrID int
+	// ArrID is the series, movie or artist on the instance; AlbumID the album (Lidarr), 0 otherwise.
+	ArrID   int
+	AlbumID int
 	// Size and Left are in bytes.
 	Size, Left float64
 }
 
-// Queue lists what the instance is downloading, title by title (episodes of a series added up).
+// Queue lists what the instance is downloading, title by title (episodes of a series added up,
+// tracks of an album).
 func (c *Client) Queue(ctx context.Context) ([]Download, error) {
 	var page struct {
 		Records []struct {
 			SeriesID int     `json:"seriesId"`
 			MovieID  int     `json:"movieId"`
+			ArtistID int     `json:"artistId"`
+			AlbumID  int     `json:"albumId"`
 			Size     float64 `json:"size"`
 			Left     float64 `json:"sizeleft"`
 		} `json:"records"`
@@ -332,21 +336,26 @@ func (c *Client) Queue(ctx context.Context) ([]Download, error) {
 	if err := c.do(ctx, http.MethodGet, "/queue?page=1&pageSize=500", nil, &page); err != nil {
 		return nil, err
 	}
-	index := map[int]int{}
+	type key struct{ arr, album int }
+	index := map[key]int{}
 	out := []Download{}
 	for _, r := range page.Records {
-		id := r.SeriesID
-		if c.kind == Radarr {
-			id = r.MovieID
+		k := key{arr: r.SeriesID}
+		switch c.kind {
+		case Radarr:
+			k.arr = r.MovieID
+		case Lidarr:
+			k = key{arr: r.ArtistID, album: r.AlbumID}
+		case Sonarr:
 		}
-		if id == 0 {
+		if k.arr == 0 {
 			continue
 		}
-		i, ok := index[id]
+		i, ok := index[k]
 		if !ok {
 			i = len(out)
-			index[id] = i
-			out = append(out, Download{ArrID: id})
+			index[k] = i
+			out = append(out, Download{ArrID: k.arr, AlbumID: k.album})
 		}
 		out[i].Size += r.Size
 		out[i].Left += r.Left

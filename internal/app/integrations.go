@@ -18,14 +18,16 @@ import (
 	"github.com/laterna-project/laterna/internal/auth"
 	"github.com/laterna-project/laterna/internal/domain"
 	"github.com/laterna-project/laterna/internal/jobs"
+	"github.com/laterna-project/laterna/internal/lazylibrarian"
 	"github.com/laterna-project/laterna/internal/library"
 	"github.com/laterna-project/laterna/internal/store"
 )
 
-// Sonarr and Radarr integrations. They write the NFO files and images Laterna reads, and tell it
-// about each import through a webhook. Laterna checks how they are set up, can fix it when an
-// administrator asks, and can ask for a refresh. All of this is optional: without them NFO files
-// are read again at scan time.
+// Sonarr, Radarr and Lidarr integrations. They write the NFO files and images Laterna reads, and
+// tell it about each import through a webhook. Laterna checks how they are set up, can fix it when
+// an administrator asks, and can ask for a refresh. All of this is optional: without them NFO files
+// are read again at scan time. LazyLibrarian is linked too, for book requests only
+// (lazylibrarian.go).
 
 const (
 	// keyIntegration prefixes the setting of each integration ("integration.sonarr").
@@ -74,69 +76,85 @@ func arrKind(k domain.IntegrationKind) (arr.Kind, error) {
 
 // libraryKind is the kind of library an integration manages.
 func libraryKind(k arr.Kind) domain.LibraryKind {
-	if k == arr.Radarr {
+	switch k {
+	case arr.Radarr:
 		return domain.LibraryMovies
+	case arr.Lidarr:
+		return domain.LibraryMusic
+	case arr.Sonarr:
 	}
 	return domain.LibraryShows
 }
 
-func (a *App) loadIntegration(ctx context.Context, k arr.Kind) (integrationSettings, bool, error) {
-	raw, ok, err := a.store.Read().Setting(ctx, keyIntegration+string(k))
+// loadIntegration reads the setting of an integration by its name ("sonarr", "lazylibrarian").
+func (a *App) loadIntegration(ctx context.Context, name string) (integrationSettings, bool, error) {
+	raw, ok, err := a.store.Read().Setting(ctx, keyIntegration+name)
 	if err != nil || !ok {
 		return integrationSettings{}, false, err
 	}
 	var s integrationSettings
 	if err := json.Unmarshal([]byte(raw), &s); err != nil {
-		return integrationSettings{}, false, fmt.Errorf("unreadable setting %s: %w", k, err)
+		return integrationSettings{}, false, fmt.Errorf("unreadable setting %s: %w", name, err)
 	}
 	return s, true, nil
 }
 
-func (a *App) saveIntegration(ctx context.Context, k arr.Kind, s integrationSettings) error {
+func (a *App) saveIntegration(ctx context.Context, name string, s integrationSettings) error {
 	// The API key is stored as is, since it has to be sent with every call. It stays in the
 	// database and the API never returns it.
 	raw, err := json.Marshal(s) //nolint:gosec // G117: see above
 	if err != nil {
 		return err
 	}
-	return a.store.Write(ctx, func(q store.Q) error { return q.SetSetting(ctx, keyIntegration+string(k), string(raw)) })
+	return a.store.Write(ctx, func(q store.Q) error { return q.SetSetting(ctx, keyIntegration+name, string(raw)) })
 }
 
 func (a *App) arrClient(k arr.Kind, s integrationSettings) *arr.Client {
 	return arr.New(k, s.URL, s.APIKey, a.http)
 }
 
-// arrProblem explains a Sonarr or Radarr error to an administrator.
-func arrProblem(k arr.Kind, err error) domain.Text {
+// arrProblem explains a Sonarr, Radarr or Lidarr error to an administrator.
+func arrProblem(k arr.Kind, err error) domain.Text { return integrationProblem(k.Name(), err) }
+
+// integrationProblem explains an error of an integration (Sonarr, Radarr, Lidarr, LazyLibrarian)
+// to an administrator.
+func integrationProblem(name string, err error) domain.Text {
 	var refused *arr.Error
+	var declined *lazylibrarian.Error
 	switch {
-	case errors.Is(err, arr.ErrUnauthorized):
-		return domain.T("error.integration.unauthorized", "name", k.Name())
+	case errors.Is(err, arr.ErrUnauthorized), errors.Is(err, lazylibrarian.ErrUnauthorized):
+		return domain.T("error.integration.unauthorized", "name", name)
 	case errors.As(err, &refused):
-		return domain.T("error.integration.refused", "name", k.Name(), "reason", refused)
+		return domain.T("error.integration.refused", "name", name, "reason", refused)
+	case errors.As(err, &declined):
+		return domain.T("error.integration.refused", "name", name, "reason", declined)
 	case errors.Is(err, context.DeadlineExceeded):
-		return domain.T("error.integration.timeout", "name", k.Name())
+		return domain.T("error.integration.timeout", "name", name)
 	}
-	return domain.T("error.integration.unreachable", "name", k.Name(), "reason", err)
+	return domain.T("error.integration.unreachable", "name", name, "reason", err)
 }
 
-// Integrations returns the state of Sonarr and Radarr.
+// Integrations returns the state of Sonarr, Radarr, Lidarr and LazyLibrarian.
 func (a *App) Integrations(ctx context.Context) ([]domain.Integration, error) {
-	out := make([]domain.Integration, 0, len(arr.Kinds))
+	out := make([]domain.Integration, 0, len(arr.Kinds)+1)
 	for _, k := range arr.Kinds {
-		s, ok, err := a.loadIntegration(ctx, k)
+		s, ok, err := a.loadIntegration(ctx, string(k))
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, a.integrationStatus(ctx, k, s, ok))
 	}
-	return out, nil
+	ll, err := a.lazyLibrarianStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return append(out, ll), nil
 }
 
 // integrationStatus queries an instance: identity, Kodi metadata, webhook, and the NFO files
-// present in the folder of each tracked series or movie.
+// present in the folder of each tracked series, movie or artist.
 func (a *App) integrationStatus(ctx context.Context, k arr.Kind, s integrationSettings, configured bool) domain.Integration {
-	st := domain.Integration{Kind: domain.IntegrationKind(k)}
+	st := domain.Integration{Kind: domain.IntegrationKind(k), ManagesMetadata: true}
 	if !configured {
 		return st
 	}
@@ -187,6 +205,9 @@ func (a *App) integrationStatus(ctx context.Context, k arr.Kind, s integrationSe
 			continue
 		}
 		nfos := []string{filepath.Join(local, "tvshow.nfo")}
+		if k == arr.Lidarr {
+			nfos = []string{filepath.Join(local, "artist.nfo")}
+		}
 		if k == arr.Radarr {
 			nfos = []string{filepath.Join(local, "movie.nfo")}
 			if f.File != "" {
@@ -235,8 +256,12 @@ func (a *App) integrationLibraries(ctx context.Context, k arr.Kind) ([]domain.Li
 	return slices.DeleteFunc(libs, func(l domain.Library) bool { return l.Kind != libraryKind(k) }), nil
 }
 
-// SetIntegration stores the address and API key of Sonarr or Radarr, after trying them.
+// SetIntegration stores the address and API key of Sonarr, Radarr, Lidarr or LazyLibrarian, after
+// trying them.
 func (a *App) SetIntegration(ctx context.Context, p domain.Principal, kind domain.IntegrationKind, rawURL, apiKey string) (domain.Integration, error) {
+	if kind == domain.IntegrationLazyLibrarian {
+		return a.setLazyLibrarian(ctx, p, rawURL, apiKey)
+	}
 	k, err := arrKind(kind)
 	if err != nil {
 		return domain.Integration{}, err
@@ -254,12 +279,12 @@ func (a *App) SetIntegration(ctx context.Context, p domain.Principal, kind domai
 	if _, err := a.arrClient(k, s).Status(check); err != nil {
 		return domain.Integration{}, domain.FromText(domain.ErrInvalid, arrProblem(k, err))
 	}
-	if prev, ok, err := a.loadIntegration(ctx, k); err != nil {
+	if prev, ok, err := a.loadIntegration(ctx, string(k)); err != nil {
 		return domain.Integration{}, err
 	} else if ok {
 		s.Webhook = prev.Webhook // same instance or another one: the webhook is still valid
 	}
-	if err := a.saveIntegration(ctx, k, s); err != nil {
+	if err := a.saveIntegration(ctx, string(k), s); err != nil {
 		return domain.Integration{}, err
 	}
 	a.log.InfoContext(ctx, "integration saved", "kind", k, "url", rawURL)
@@ -270,13 +295,17 @@ func (a *App) SetIntegration(ctx context.Context, p domain.Principal, kind domai
 	return a.integrationStatus(ctx, k, s, true), nil
 }
 
-// DeleteIntegration forgets Sonarr or Radarr, and removes Laterna's webhook from it if it answers.
+// DeleteIntegration forgets an integration, and removes Laterna's webhook from Sonarr, Radarr or
+// Lidarr if it answers.
 func (a *App) DeleteIntegration(ctx context.Context, p domain.Principal, kind domain.IntegrationKind) error {
+	if kind == domain.IntegrationLazyLibrarian {
+		return a.deleteLazyLibrarian(ctx, p)
+	}
 	k, err := arrKind(kind)
 	if err != nil {
 		return err
 	}
-	s, ok, err := a.loadIntegration(ctx, k)
+	s, ok, err := a.loadIntegration(ctx, string(k))
 	if err != nil || !ok {
 		return err
 	}
@@ -294,15 +323,18 @@ func (a *App) DeleteIntegration(ctx context.Context, p domain.Principal, kind do
 	return nil
 }
 
-// ConfigureIntegration sets Sonarr or Radarr up for Laterna: Kodi metadata, webhook, refresh (see
-// domain.IntegrationSetup). Each step changes the instance's configuration, so it only happens when
-// an administrator asks.
+// ConfigureIntegration sets Sonarr, Radarr or Lidarr up for Laterna: Kodi metadata, webhook,
+// refresh (see domain.IntegrationSetup). Each step changes the instance's configuration, so it only
+// happens when an administrator asks. LazyLibrarian has none of it.
 func (a *App) ConfigureIntegration(ctx context.Context, p domain.Principal, kind domain.IntegrationKind, setup domain.IntegrationSetup) (domain.Integration, error) {
+	if kind == domain.IntegrationLazyLibrarian {
+		return domain.Integration{}, domain.Precondition("integration.not_configurable", "name", lazyLibrarianName)
+	}
 	k, err := arrKind(kind)
 	if err != nil {
 		return domain.Integration{}, err
 	}
-	s, ok, err := a.loadIntegration(ctx, k)
+	s, ok, err := a.loadIntegration(ctx, string(k))
 	if err != nil {
 		return domain.Integration{}, err
 	}
@@ -360,7 +392,7 @@ func (a *App) installWebhook(ctx context.Context, k arr.Kind, s integrationSetti
 		return s, err
 	}
 	s.WebhookNext = hash
-	if err := a.saveIntegration(ctx, k, s); err != nil {
+	if err := a.saveIntegration(ctx, string(k), s); err != nil {
 		return s, err
 	}
 	installErr := a.arrClient(k, s).InstallWebhook(ctx, base+"/hooks/"+string(k), webhookUser, secret)
@@ -368,7 +400,7 @@ func (a *App) installWebhook(ctx context.Context, k arr.Kind, s integrationSetti
 		s.Webhook = hash
 	}
 	s.WebhookNext = ""
-	if err := a.saveIntegration(ctx, k, s); err != nil {
+	if err := a.saveIntegration(ctx, string(k), s); err != nil {
 		return s, err
 	}
 	if installErr != nil {
@@ -386,7 +418,7 @@ func (a *App) ArrWebhook(ctx context.Context, kind, secret string, body []byte) 
 	if err != nil {
 		return domain.NotFound("integration.unknown_webhook")
 	}
-	s, ok, err := a.loadIntegration(ctx, k)
+	s, ok, err := a.loadIntegration(ctx, string(k))
 	if err != nil {
 		return err
 	}
@@ -445,7 +477,7 @@ func (a *App) refreshArr(ctx context.Context, target string) error {
 	if err != nil {
 		return jobs.Permanent(err)
 	}
-	s, ok, err := a.loadIntegration(ctx, k)
+	s, ok, err := a.loadIntegration(ctx, string(k))
 	if err != nil || !ok {
 		return err
 	}

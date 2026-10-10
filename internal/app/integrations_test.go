@@ -170,7 +170,8 @@ func TestSonarrIntegration(t *testing.T) {
 	})
 	list, err := a.Integrations(ctx)
 	mustNil(t, err)
-	if len(list) != 2 || list[0].URL != "" || list[1].Kind != domain.IntegrationRadarr {
+	if len(list) != 4 || list[0].URL != "" || list[1].Kind != domain.IntegrationRadarr || list[2].Kind != domain.IntegrationLidarr ||
+		list[3].Kind != domain.IntegrationLazyLibrarian || list[3].ManagesMetadata || !list[2].ManagesMetadata {
 		t.Errorf("integrations: %+v", list)
 	}
 	if _, err := a.ConfigureIntegration(ctx, admin, domain.IntegrationSonarr, domain.IntegrationSetup{Refresh: true}); !errors.Is(err, domain.ErrPrecondition) {
@@ -189,7 +190,7 @@ func TestIntegrationUnreachable(t *testing.T) {
 	fake.Close()
 	list, err := a.Integrations(ctx)
 	mustNil(t, err)
-	if len(list) != 2 {
+	if len(list) != 4 {
 		t.Fatalf("%d integrations", len(list))
 	}
 	if r := list[1]; r.Reachable || r.Error.Key != "error.integration.unreachable" || r.Error.Params["name"] != "Radarr" {

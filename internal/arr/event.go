@@ -7,11 +7,12 @@ import (
 	"strings"
 )
 
-// Event is what a Sonarr or Radarr webhook tells Laterna.
+// Event is what a Sonarr, Radarr or Lidarr webhook tells Laterna.
 type Event struct {
-	// Type is "Download", "Rename", "SeriesDelete", "Test"...
+	// Type is "Download", "Rename", "SeriesDelete", "Retag", "Test"...
 	Type string
-	// Path is the folder of the series or movie concerned, as the instance sees it ("" if missing).
+	// Path is the folder of the series, movie or artist concerned, as the instance sees it ("" if
+	// missing).
 	Path string
 }
 
@@ -25,6 +26,9 @@ func ParseEvent(data []byte) (Event, error) {
 		Movie *struct {
 			FolderPath string `json:"folderPath"`
 		} `json:"movie"`
+		Artist *struct {
+			Path string `json:"path"`
+		} `json:"artist"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return Event{}, fmt.Errorf("unreadable webhook: %w", err)
@@ -38,20 +42,23 @@ func ParseEvent(data []byte) (Event, error) {
 		e.Path = raw.Series.Path
 	case raw.Movie != nil:
 		e.Path = raw.Movie.FolderPath
+	case raw.Artist != nil:
+		e.Path = raw.Artist.Path
 	}
 	return e, nil
 }
 
 // changesFiles lists the events after which files (media, NFO, images) have changed.
 var changesFiles = map[string]bool{
-	"Download": true, "ImportComplete": true, "Rename": true,
+	"Download": true, "ImportComplete": true, "Rename": true, "Retag": true,
 	"SeriesDelete": true, "EpisodeFileDelete": true, "MovieDelete": true, "MovieFileDelete": true,
+	"ArtistDelete": true, "AlbumDelete": true,
 }
 
 // ChangesFiles reports an event that calls for a new scan.
 func (e Event) ChangesFiles() bool { return changesFiles[e.Type] }
 
-// MapPath maps a folder as Sonarr or Radarr sees it (often inside a container: "/tv/Anime/Dr.
+// MapPath maps a folder as Sonarr, Radarr or Lidarr sees it (often inside a container: "/tv/Anime/Dr.
 // STONE") to the folder Laterna sees ("D:\media\tv\Anime\Dr. STONE"). No setting is needed: the
 // path is used as is if it is under a root, otherwise we take the longest tail of the path that
 // exists under one of the roots. exists checks that a folder exists.
