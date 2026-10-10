@@ -116,11 +116,24 @@ func TestRetryThenPermanentFailure(t *testing.T) {
 	enqueue(t, r, st, "fragile", "x")
 	enqueue(t, r, st, "broken", "y")
 
-	eventually(t, func() bool { return calls.Load() == 1 && states(t, st)["failed"] == 1 })
+	told := func(kind string) int {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(outcomes[kind])
+	}
+	// An outcome is told once it is recorded: waiting for it is waiting for the database too, and
+	// the clock only moves once the retry has its date.
+	eventually(t, func() bool { return told("fragile") == 1 && told("broken") == 1 })
+	if calls.Load() != 1 || states(t, st)["failed"] != 1 {
+		t.Fatalf("after the first run: %d calls, states %v", calls.Load(), states(t, st))
+	}
 	// The retry waits for its delay: move the clock forward.
 	clock.Add(int64(time.Minute))
 	r.Kick()
-	eventually(t, func() bool { return calls.Load() == 2 && states(t, st)["failed"] == 2 })
+	eventually(t, func() bool { return told("fragile") == 2 })
+	if calls.Load() != 2 || states(t, st)["failed"] != 2 {
+		t.Fatalf("after the retry: %d calls, states %v", calls.Load(), states(t, st))
+	}
 	mu.Lock()
 	defer mu.Unlock()
 	if !slices.Equal(outcomes["fragile"], []Outcome{Retried, Failed}) || !slices.Equal(outcomes["broken"], []Outcome{Failed}) {
