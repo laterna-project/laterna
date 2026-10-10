@@ -116,6 +116,7 @@ type Event struct {
 	//	*Event_DownloadsChanged
 	//	*Event_ThemesChanged
 	//	*Event_RequestsChanged
+	//	*Event_NotificationsChanged
 	//	*Event_SubtitleSearchChanged
 	Kind          isEvent_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
@@ -247,6 +248,15 @@ func (x *Event) GetRequestsChanged() *RequestsChanged {
 	return nil
 }
 
+func (x *Event) GetNotificationsChanged() *NotificationsChanged {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_NotificationsChanged); ok {
+			return x.NotificationsChanged
+		}
+	}
+	return nil
+}
+
 func (x *Event) GetSubtitleSearchChanged() *SubtitleSearchChanged {
 	if x != nil {
 		if x, ok := x.Kind.(*Event_SubtitleSearchChanged); ok {
@@ -296,6 +306,10 @@ type Event_RequestsChanged struct {
 	RequestsChanged *RequestsChanged `protobuf:"bytes,10,opt,name=requests_changed,json=requestsChanged,proto3,oneof"`
 }
 
+type Event_NotificationsChanged struct {
+	NotificationsChanged *NotificationsChanged `protobuf:"bytes,11,opt,name=notifications_changed,json=notificationsChanged,proto3,oneof"`
+}
+
 type Event_SubtitleSearchChanged struct {
 	SubtitleSearchChanged *SubtitleSearchChanged `protobuf:"bytes,12,opt,name=subtitle_search_changed,json=subtitleSearchChanged,proto3,oneof"`
 }
@@ -317,6 +331,8 @@ func (*Event_DownloadsChanged) isEvent_Kind() {}
 func (*Event_ThemesChanged) isEvent_Kind() {}
 
 func (*Event_RequestsChanged) isEvent_Kind() {}
+
+func (*Event_NotificationsChanged) isEvent_Kind() {}
 
 func (*Event_SubtitleSearchChanged) isEvent_Kind() {}
 
@@ -782,6 +798,44 @@ func (x *RequestsChanged) GetRequestIds() []string {
 	return nil
 }
 
+// NotificationsChanged: the notifications of the profile changed (one arrived, or some were read or
+// deleted, possibly from another device); reload them (NotificationService).
+type NotificationsChanged struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NotificationsChanged) Reset() {
+	*x = NotificationsChanged{}
+	mi := &file_laterna_v1_events_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotificationsChanged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotificationsChanged) ProtoMessage() {}
+
+func (x *NotificationsChanged) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_events_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NotificationsChanged.ProtoReflect.Descriptor instead.
+func (*NotificationsChanged) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_events_proto_rawDescGZIP(), []int{12}
+}
+
 // SubtitleSearchChanged: a subtitle search of the profile started or ended; read where it stands
 // (SubtitleService.GetSubtitleSearch) and, once a subtitle is found, the subtitles of the file.
 type SubtitleSearchChanged struct {
@@ -793,7 +847,7 @@ type SubtitleSearchChanged struct {
 
 func (x *SubtitleSearchChanged) Reset() {
 	*x = SubtitleSearchChanged{}
-	mi := &file_laterna_v1_events_proto_msgTypes[12]
+	mi := &file_laterna_v1_events_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -805,7 +859,7 @@ func (x *SubtitleSearchChanged) String() string {
 func (*SubtitleSearchChanged) ProtoMessage() {}
 
 func (x *SubtitleSearchChanged) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_events_proto_msgTypes[12]
+	mi := &file_laterna_v1_events_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -818,7 +872,7 @@ func (x *SubtitleSearchChanged) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubtitleSearchChanged.ProtoReflect.Descriptor instead.
 func (*SubtitleSearchChanged) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_events_proto_rawDescGZIP(), []int{12}
+	return file_laterna_v1_events_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SubtitleSearchChanged) GetFileId() string {
@@ -836,7 +890,7 @@ const file_laterna_v1_events_proto_rawDesc = "" +
 	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\"\x12\n" +
 	"\x10SubscribeRequest\"<\n" +
 	"\x11SubscribeResponse\x12'\n" +
-	"\x05event\x18\x01 \x01(\v2\x11.laterna.v1.EventR\x05event\"\xfc\x05\n" +
+	"\x05event\x18\x01 \x01(\v2\x11.laterna.v1.EventR\x05event\"\xd5\x06\n" +
 	"\x05Event\x12.\n" +
 	"\x04time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x125\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x15.laterna.v1.HeartbeatH\x00R\theartbeat\x12,\n" +
@@ -848,7 +902,8 @@ const file_laterna_v1_events_proto_rawDesc = "" +
 	"\x11downloads_changed\x18\b \x01(\v2\x1c.laterna.v1.DownloadsChangedH\x00R\x10downloadsChanged\x12B\n" +
 	"\x0ethemes_changed\x18\t \x01(\v2\x19.laterna.v1.ThemesChangedH\x00R\rthemesChanged\x12H\n" +
 	"\x10requests_changed\x18\n" +
-	" \x01(\v2\x1b.laterna.v1.RequestsChangedH\x00R\x0frequestsChanged\x12[\n" +
+	" \x01(\v2\x1b.laterna.v1.RequestsChangedH\x00R\x0frequestsChanged\x12W\n" +
+	"\x15notifications_changed\x18\v \x01(\v2 .laterna.v1.NotificationsChangedH\x00R\x14notificationsChanged\x12[\n" +
 	"\x17subtitle_search_changed\x18\f \x01(\v2!.laterna.v1.SubtitleSearchChangedH\x00R\x15subtitleSearchChangedB\x06\n" +
 	"\x04kind\"\v\n" +
 	"\tHeartbeat\"\b\n" +
@@ -877,7 +932,8 @@ const file_laterna_v1_events_proto_rawDesc = "" +
 	"\rThemesChanged\"2\n" +
 	"\x0fRequestsChanged\x12\x1f\n" +
 	"\vrequest_ids\x18\x01 \x03(\tR\n" +
-	"requestIds\"0\n" +
+	"requestIds\"\x16\n" +
+	"\x14NotificationsChanged\"0\n" +
 	"\x15SubtitleSearchChanged\x12\x17\n" +
 	"\afile_id\x18\x01 \x01(\tR\x06fileId2`\n" +
 	"\fEventService\x12P\n" +
@@ -895,7 +951,7 @@ func file_laterna_v1_events_proto_rawDescGZIP() []byte {
 	return file_laterna_v1_events_proto_rawDescData
 }
 
-var file_laterna_v1_events_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_laterna_v1_events_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_laterna_v1_events_proto_goTypes = []any{
 	(*SubscribeRequest)(nil),      // 0: laterna.v1.SubscribeRequest
 	(*SubscribeResponse)(nil),     // 1: laterna.v1.SubscribeResponse
@@ -909,12 +965,13 @@ var file_laterna_v1_events_proto_goTypes = []any{
 	(*DownloadsChanged)(nil),      // 9: laterna.v1.DownloadsChanged
 	(*ThemesChanged)(nil),         // 10: laterna.v1.ThemesChanged
 	(*RequestsChanged)(nil),       // 11: laterna.v1.RequestsChanged
-	(*SubtitleSearchChanged)(nil), // 12: laterna.v1.SubtitleSearchChanged
-	(*timestamppb.Timestamp)(nil), // 13: google.protobuf.Timestamp
+	(*NotificationsChanged)(nil),  // 12: laterna.v1.NotificationsChanged
+	(*SubtitleSearchChanged)(nil), // 13: laterna.v1.SubtitleSearchChanged
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
 }
 var file_laterna_v1_events_proto_depIdxs = []int32{
 	2,  // 0: laterna.v1.SubscribeResponse.event:type_name -> laterna.v1.Event
-	13, // 1: laterna.v1.Event.time:type_name -> google.protobuf.Timestamp
+	14, // 1: laterna.v1.Event.time:type_name -> google.protobuf.Timestamp
 	3,  // 2: laterna.v1.Event.heartbeat:type_name -> laterna.v1.Heartbeat
 	4,  // 3: laterna.v1.Event.resync:type_name -> laterna.v1.Resync
 	5,  // 4: laterna.v1.Event.libraries_changed:type_name -> laterna.v1.LibrariesChanged
@@ -924,14 +981,15 @@ var file_laterna_v1_events_proto_depIdxs = []int32{
 	9,  // 8: laterna.v1.Event.downloads_changed:type_name -> laterna.v1.DownloadsChanged
 	10, // 9: laterna.v1.Event.themes_changed:type_name -> laterna.v1.ThemesChanged
 	11, // 10: laterna.v1.Event.requests_changed:type_name -> laterna.v1.RequestsChanged
-	12, // 11: laterna.v1.Event.subtitle_search_changed:type_name -> laterna.v1.SubtitleSearchChanged
-	0,  // 12: laterna.v1.EventService.Subscribe:input_type -> laterna.v1.SubscribeRequest
-	1,  // 13: laterna.v1.EventService.Subscribe:output_type -> laterna.v1.SubscribeResponse
-	13, // [13:14] is the sub-list for method output_type
-	12, // [12:13] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	12, // 11: laterna.v1.Event.notifications_changed:type_name -> laterna.v1.NotificationsChanged
+	13, // 12: laterna.v1.Event.subtitle_search_changed:type_name -> laterna.v1.SubtitleSearchChanged
+	0,  // 13: laterna.v1.EventService.Subscribe:input_type -> laterna.v1.SubscribeRequest
+	1,  // 14: laterna.v1.EventService.Subscribe:output_type -> laterna.v1.SubscribeResponse
+	14, // [14:15] is the sub-list for method output_type
+	13, // [13:14] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_events_proto_init() }
@@ -950,6 +1008,7 @@ func file_laterna_v1_events_proto_init() {
 		(*Event_DownloadsChanged)(nil),
 		(*Event_ThemesChanged)(nil),
 		(*Event_RequestsChanged)(nil),
+		(*Event_NotificationsChanged)(nil),
 		(*Event_SubtitleSearchChanged)(nil),
 	}
 	type x struct{}
@@ -958,7 +1017,7 @@ func file_laterna_v1_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_events_proto_rawDesc), len(file_laterna_v1_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

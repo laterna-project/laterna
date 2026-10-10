@@ -29,6 +29,18 @@ func searchEnd(t *testing.T, a *App, p domain.Principal, fileID domain.ID) []dom
 	}
 }
 
+// searchFor finds the search for what was wanted among those of a file.
+func searchFor(t *testing.T, searches []domain.SubtitleSearch, w domain.SubtitleWanted) domain.SubtitleSearch {
+	t.Helper()
+	for _, s := range searches {
+		if s.SubtitleWanted == w {
+			return s
+		}
+	}
+	t.Fatalf("no search for %+v among %+v", w, searches)
+	return domain.SubtitleSearch{}
+}
+
 // A profile asks for a subtitle its movie does not have: Bazarr finds it, saves it next to the
 // video, and the subtitles of the file are read again.
 func TestSubtitleSearch(t *testing.T) {
@@ -140,7 +152,7 @@ func TestSubtitleSearch(t *testing.T) {
 	_, err = a.SearchSubtitle(ctx, p, file.ID, wanted)
 	mustNil(t, err)
 	searches = searchEnd(t, a, p, file.ID)
-	if len(searches) != 2 || searches[1].State != domain.SubtitleNotFound || !searches[1].HearingImpaired {
+	if len(searches) != 2 || searchFor(t, searches, wanted).State != domain.SubtitleNotFound {
 		t.Fatalf("nothing found: %+v", searches)
 	}
 	again, err := a.SearchSubtitle(ctx, p, file.ID, wanted)
@@ -158,7 +170,7 @@ func TestSubtitleSearch(t *testing.T) {
 	_, err = a.SearchSubtitle(ctx, p, file.ID, domain.SubtitleWanted{Language: "en"})
 	mustNil(t, err)
 	searches = searchEnd(t, a, p, file.ID)
-	if last := searches[len(searches)-1]; last.State != domain.SubtitleSearchFailed || last.Error == nil || last.Error.Key != "subtitle_search.not_followed" {
+	if last := searchFor(t, searches, domain.SubtitleWanted{Language: "en"}); last.State != domain.SubtitleSearchFailed || last.Error == nil || last.Error.Key != "subtitle_search.not_followed" {
 		t.Errorf("not followed: %+v", last)
 	}
 

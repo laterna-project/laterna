@@ -157,6 +157,8 @@ type App struct {
 	subSearches        subtitleSearches
 	subtitleSearchWait time.Duration
 	subtitleSearchPoll time.Duration
+	// arrived are the episodes that arrived and were not announced yet.
+	arrived newEpisodes
 	// upcoming is what Sonarr, Radarr and Lidarr expect in the coming days.
 	upcoming upcomingCache
 

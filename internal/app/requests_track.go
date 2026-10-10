@@ -157,6 +157,8 @@ func (a *App) failRequest(ctx context.Context, r domain.MediaRequest, reason dom
 		Text: domain.T("activity.request_failed", "title", r.Title, "profile", r.ProfileName, []domain.Text{reason}),
 	})
 	a.requestsChanged(r.ProfileID, r.ID)
+	a.notifyRequest(ctx, r, domain.NotificationRequestFailed, nil)
+	a.notifyAdministrators(ctx, r, domain.NotificationRequestFailed, &r.ProfileID)
 	return nil
 }
 
@@ -389,6 +391,7 @@ func (a *App) saveProgress(ctx context.Context, r, next domain.MediaRequest, ite
 			Kind: domain.ActivityRequest, ProfileID: &r.ProfileID, ItemID: item,
 			Text: domain.T("activity.request_available", "title", r.Title, "profile", r.ProfileName),
 		})
+		a.notifyRequest(ctx, next, domain.NotificationRequestAvailable, nil)
 	}
 	a.requestsChanged(r.ProfileID, r.ID)
 	return nil

@@ -211,6 +211,9 @@ func (a *App) CreateRequest(ctx context.Context, p domain.Principal, n NewReques
 	}
 	a.record(ctx, domain.Activity{Kind: domain.ActivityRequest, AccountID: &p.Account.ID, ProfileID: &p.Profile.ID, Text: text})
 	a.requestsChanged(r.ProfileID, r.ID)
+	if !approved {
+		a.notifyAdministrators(ctx, r, domain.NotificationRequestPending, &p.Profile.ID)
+	}
 	return requestFor(p, r), nil
 }
 
@@ -454,6 +457,7 @@ func (a *App) ApproveRequest(ctx context.Context, p domain.Principal, id domain.
 		Text: domain.T("activity.request_approved", "actor", p.Account.Username, "profile", r.ProfileName, "title", r.Title),
 	})
 	a.requestsChanged(r.ProfileID, r.ID)
+	a.notifyRequest(ctx, r, domain.NotificationRequestApproved, profileID(p))
 	return r, nil
 }
 
@@ -482,6 +486,7 @@ func (a *App) DeclineRequest(ctx context.Context, p domain.Principal, id domain.
 		Text: domain.T("activity.request_declined", "actor", p.Account.Username, "profile", r.ProfileName, "title", r.Title),
 	})
 	a.requestsChanged(r.ProfileID, r.ID)
+	a.notifyRequest(ctx, r, domain.NotificationRequestDeclined, profileID(p))
 	return r, nil
 }
 
@@ -532,6 +537,14 @@ func (a *App) DeleteRequest(ctx context.Context, p domain.Principal, id domain.I
 
 // requestsChanged announces changed requests to the profile that made them and to the
 // administrators.
+// profileID is the profile of the caller, nil if it has not picked one.
+func profileID(p domain.Principal) *domain.ID {
+	if p.Profile == nil {
+		return nil
+	}
+	return &p.Profile.ID
+}
+
 func (a *App) requestsChanged(profileID domain.ID, ids ...domain.ID) {
 	a.bus.Publish(domain.RequestsChanged{ProfileID: profileID, RequestIDs: slices.Clone(ids)})
 }

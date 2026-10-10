@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"path"
@@ -167,7 +168,8 @@ func (a *App) SubtitleSearch(ctx context.Context, p domain.Principal, fileID dom
 	return info, nil
 }
 
-// searchesOf lists the searches remembered for a file, oldest first, and forgets the old ones.
+// searchesOf lists the searches remembered for a file, oldest first (then by language), and
+// forgets the old ones.
 func (a *App) searchesOf(fileID domain.ID) []domain.SubtitleSearch {
 	now := a.now()
 	a.subSearches.mu.Lock()
@@ -182,7 +184,9 @@ func (a *App) searchesOf(fileID domain.ID) []domain.SubtitleSearch {
 			out = append(out, *s)
 		}
 	}
-	slices.SortFunc(out, func(x, y domain.SubtitleSearch) int { return x.StartedAt.Compare(y.StartedAt) })
+	slices.SortFunc(out, func(x, y domain.SubtitleSearch) int {
+		return cmp.Or(x.StartedAt.Compare(y.StartedAt), cmp.Compare(subtitleSearchKey(x.FileID, x.SubtitleWanted), subtitleSearchKey(y.FileID, y.SubtitleWanted)))
+	})
 	return out
 }
 

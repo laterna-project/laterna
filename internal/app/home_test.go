@@ -194,7 +194,8 @@ func TestEvents(t *testing.T) {
 		}
 		mustNil(t, err)
 		switch e.(type) {
-		case domain.LibraryScanned, domain.UserDataChanged, domain.DownloadsChanged, domain.RequestsChanged, domain.SubtitleSearchChanged:
+		case domain.LibraryScanned, domain.UserDataChanged, domain.DownloadsChanged, domain.RequestsChanged,
+			domain.NotificationsChanged, domain.SubtitleSearchChanged:
 			t.Errorf("event received by mistake: %T", e)
 		case domain.Resync, domain.LibrariesChanged, domain.ItemsChanged, domain.ThemesChanged:
 		}

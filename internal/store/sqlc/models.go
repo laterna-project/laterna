@@ -289,6 +289,17 @@ type MetadataDir struct {
 	Signature string
 }
 
+type Notification struct {
+	ID        domain.ID
+	ProfileID domain.ID
+	Kind      string
+	Text      string
+	ItemID    *domain.ID
+	RequestID *domain.ID
+	CreatedAt int64
+	ReadAt    sql.NullInt64
+}
+
 type OfflinePlay struct {
 	ProfileID domain.ID
 	ItemID    domain.ID

@@ -19,6 +19,7 @@ not its history. When a change contradicts a note, update the note in the same c
 | [Music, books and photos](media-types.md) | The non-video libraries, collections and playlists |
 | [Watch parties](watch-party.md) | Shared playback state and how clients stay in sync |
 | [Requests](requests.md) | Asking for movies, series, music and books, approval, Sonarr, Radarr, Lidarr and LazyLibrarian, availability |
+| [Notifications](notifications.md) | What a profile is told about: its requests, new episodes of the series it follows |
 | [Internationalization](i18n.md) | Error codes, composed text, languages |
 | [Themes](themes.md) | Design tokens, contrast checks, per-profile choice |
 | [Operations](operations.md) | Runtime settings, administration, logs, activity, metrics, traces |

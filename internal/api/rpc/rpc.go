@@ -58,6 +58,7 @@ func Mount(mux *http.ServeMux, a *app.App, log *slog.Logger) {
 	mux.Handle(laternav1connect.NewImportServiceHandler(&ImportService{app: a}, opts...))
 	mux.Handle(laternav1connect.NewRequestServiceHandler(&RequestService{app: a}, opts...))
 	mux.Handle(laternav1connect.NewSubtitleServiceHandler(&SubtitleService{app: a}, opts...))
+	mux.Handle(laternav1connect.NewNotificationServiceHandler(&NotificationService{app: a}, opts...))
 	// Themes receive images (8 MiB) and exported files that hold two of them.
 	mux.Handle(laternav1connect.NewThemeServiceHandler(&ThemeService{app: a}, append(opts, connect.WithReadMaxBytes(maxThemeRequestBytes))...))
 }
