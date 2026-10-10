@@ -66,7 +66,7 @@ linters:
             - github.com/laterna-project/laterna/internal/domain
         adapters:
           list-mode: lax
-          files: ["**/internal/store/**", "**/internal/media/**", "**/internal/metadata/**", "**/internal/jobs/**", "**/internal/library/**", "**/internal/arr/**", "**/internal/oidc/**", "**/internal/jellyfin/**", "**/internal/discovery/**", "!$test"]
+          files: ["**/internal/store/**", "**/internal/media/**", "**/internal/metadata/**", "**/internal/jobs/**", "**/internal/library/**", "**/internal/arr/**", "**/internal/lazylibrarian/**", "**/internal/oidc/**", "**/internal/jellyfin/**", "**/internal/discovery/**", "!$test"]
           deny:
             - pkg: github.com/laterna-project/laterna/internal/app
               desc: "adapters are called by app, never the other way round"
@@ -87,6 +87,8 @@ linters:
             - pkg: github.com/laterna-project/laterna/internal/jobs
               desc: "the API goes through app"
             - pkg: github.com/laterna-project/laterna/internal/arr
+              desc: "the API goes through app"
+            - pkg: github.com/laterna-project/laterna/internal/lazylibrarian
               desc: "the API goes through app"
         app:
           list-mode: lax

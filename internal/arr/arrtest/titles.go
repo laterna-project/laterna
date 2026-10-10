@@ -98,9 +98,12 @@ func (s *Server) serveTitles(w http.ResponseWriter, r *http.Request, path string
 		var records []any
 		for _, d := range s.Queue {
 			rec := map[string]any{"size": d.Size, "sizeleft": d.Left}
-			if s.kind == arr.Radarr {
+			switch s.kind {
+			case arr.Radarr:
 				rec["movieId"] = d.ArrID
-			} else {
+			case arr.Lidarr:
+				rec["artistId"], rec["albumId"] = d.ArrID, d.AlbumID
+			default:
 				rec["seriesId"] = d.ArrID
 			}
 			records = append(records, rec)

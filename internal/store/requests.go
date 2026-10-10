@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/laterna-project/laterna/internal/domain"
 	"github.com/laterna-project/laterna/internal/store/sqlc"
 )
 
-// Requests for movies and series, and where they land (docs/design/requests.md).
+// Requests for movies, series, music and books, and where they land (docs/design/requests.md).
 
 // Destinations.
 
@@ -21,7 +21,8 @@ func (q Q) CreateRequestDestination(ctx context.Context, d domain.RequestDestina
 	return translate(q.q.InsertRequestDestination(ctx, sqlc.InsertRequestDestinationParams{
 		ID: d.ID, Name: d.Name, NameKey: NameKey(d.Name), Kind: string(d.Kind), LibraryID: d.LibraryID,
 		RootFolder: d.RootFolder, QualityProfileID: int64(d.QualityProfileID), QualityProfileName: d.QualityProfileName,
-		SeriesType: string(d.SeriesType), CreatedAt: toMillis(d.CreatedAt), UpdatedAt: toMillis(d.UpdatedAt),
+		SeriesType: string(d.SeriesType), MetadataProfileID: int64(d.MetadataProfileID), MetadataProfileName: d.MetadataProfileName,
+		CreatedAt: toMillis(d.CreatedAt), UpdatedAt: toMillis(d.UpdatedAt),
 	}))
 }
 
@@ -31,7 +32,8 @@ func (q Q) UpdateRequestDestination(ctx context.Context, d domain.RequestDestina
 	return translate(q.q.UpdateRequestDestination(ctx, sqlc.UpdateRequestDestinationParams{
 		Name: d.Name, NameKey: NameKey(d.Name), LibraryID: d.LibraryID, RootFolder: d.RootFolder,
 		QualityProfileID: int64(d.QualityProfileID), QualityProfileName: d.QualityProfileName,
-		SeriesType: string(d.SeriesType), UpdatedAt: toMillis(d.UpdatedAt), ID: d.ID,
+		SeriesType: string(d.SeriesType), MetadataProfileID: int64(d.MetadataProfileID),
+		MetadataProfileName: d.MetadataProfileName, UpdatedAt: toMillis(d.UpdatedAt), ID: d.ID,
 	}))
 }
 
@@ -51,7 +53,8 @@ func (q Q) RequestDestinations(ctx context.Context) ([]domain.RequestDestination
 		out[i] = domain.RequestDestination{
 			ID: r.ID, Name: r.Name, Kind: domain.RequestKind(r.Kind), LibraryID: r.LibraryID, LibraryName: r.LibraryName,
 			RootFolder: r.RootFolder, QualityProfileID: int(r.QualityProfileID), QualityProfileName: r.QualityProfileName,
-			SeriesType: domain.SeriesType(r.SeriesType), CreatedAt: fromMillis(r.CreatedAt), UpdatedAt: fromMillis(r.UpdatedAt),
+			SeriesType: domain.SeriesType(r.SeriesType), MetadataProfileID: int(r.MetadataProfileID),
+			MetadataProfileName: r.MetadataProfileName, CreatedAt: fromMillis(r.CreatedAt), UpdatedAt: fromMillis(r.UpdatedAt),
 		}
 	}
 	return out, nil
@@ -80,7 +83,8 @@ func (q Q) CreateRequest(ctx context.Context, r domain.MediaRequest) error {
 		return err
 	}
 	return translate(q.q.InsertRequest(ctx, sqlc.InsertRequestParams{
-		ID: r.ID, Kind: string(r.Kind), ExternalID: r.ExternalID, Title: r.Title, Year: int64(r.Year), Poster: r.Poster,
+		ID: r.ID, Kind: string(r.Kind), ExternalID: r.ExternalID, ExternalKey: r.ExternalKey, Title: r.Title,
+		Subtitle: r.Subtitle, Year: int64(r.Year), Poster: r.Poster,
 		Status: string(r.Status), Seasons: string(r.Seasons), SeasonNumbers: string(seasons), DestinationID: destinationID(r),
 		AccountID: r.AccountID, ProfileID: r.ProfileID, CreatedAt: toMillis(r.CreatedAt), UpdatedAt: toMillis(r.UpdatedAt),
 		DecidedAt: nullMillis(r.DecidedAt), DecidedBy: r.DecidedBy,
@@ -149,11 +153,12 @@ type RequestQuery struct {
 // Requests lists requests, newest first, with who made them and their destination.
 func (q Q) Requests(ctx context.Context, rq RequestQuery) ([]domain.MediaRequest, error) {
 	var b query
-	b.add(`SELECT r.id, r.kind, r.external_id, r.title, r.year, r.poster, r.status, r.seasons, r.season_numbers,
+	b.add(`SELECT r.id, r.kind, r.external_id, r.external_key, r.title, r.subtitle, r.year, r.poster, r.status, r.seasons,
+		r.season_numbers,
 		r.account_id, a.username, r.profile_id, p.name, r.created_at, r.updated_at, r.decided_at, r.decided_by,
 		r.decline_reason, r.error, r.arr_id, r.progress, r.item_id, r.episodes_available, r.episodes_wanted,
 		r.available_at, d.id, d.name, d.kind, d.library_id, l.name, d.root_folder, d.quality_profile_id,
-		d.quality_profile_name, d.series_type, d.created_at, d.updated_at
+		d.quality_profile_name, d.series_type, d.metadata_profile_id, d.metadata_profile_name, d.created_at, d.updated_at
 		FROM requests r
 		JOIN accounts a ON a.id = r.account_id
 		JOIN profiles p ON p.id = r.profile_id
@@ -208,14 +213,16 @@ func scanRequest(rows *sql.Rows) (domain.MediaRequest, error) {
 		decidedAt, availableAt                    sql.NullInt64
 		destID, destLibrary                       *domain.ID
 		destName, destKind, destLibName, destRoot sql.NullString
-		destProfileName, destType                 sql.NullString
-		destProfile, destCreated, destUpdated     sql.NullInt64
+		destProfileName, destType, destMetaName   sql.NullString
+		destProfile, destMeta                     sql.NullInt64
+		destCreated, destUpdated                  sql.NullInt64
 	)
-	if err := rows.Scan(&r.ID, &kind, &r.ExternalID, &r.Title, &year, &r.Poster, &status, &seasons, &numbers,
+	if err := rows.Scan(&r.ID, &kind, &r.ExternalID, &r.ExternalKey, &r.Title, &r.Subtitle, &year, &r.Poster, &status,
+		&seasons, &numbers,
 		&r.AccountID, &r.Username, &r.ProfileID, &r.ProfileName, &createdAt, &updatedAt, &decidedAt, &r.DecidedBy,
 		&r.DeclineReason, &failure, &arrID, &r.Progress, &r.ItemID, &available, &wanted,
 		&availableAt, &destID, &destName, &destKind, &destLibrary, &destLibName, &destRoot, &destProfile,
-		&destProfileName, &destType, &destCreated, &destUpdated); err != nil {
+		&destProfileName, &destType, &destMeta, &destMetaName, &destCreated, &destUpdated); err != nil {
 		return r, err
 	}
 	r.Kind, r.Status, r.Seasons = domain.RequestKind(kind), domain.RequestStatus(status), domain.RequestSeasons(seasons)
@@ -236,6 +243,7 @@ func scanRequest(rows *sql.Rows) (domain.MediaRequest, error) {
 			ID: *destID, Name: destName.String, Kind: domain.RequestKind(destKind.String), LibraryID: *destLibrary,
 			LibraryName: destLibName.String, RootFolder: destRoot.String, QualityProfileID: int(destProfile.Int64),
 			QualityProfileName: destProfileName.String, SeriesType: domain.SeriesType(destType.String),
+			MetadataProfileID: int(destMeta.Int64), MetadataProfileName: destMetaName.String,
 			CreatedAt: fromMillis(destCreated.Int64), UpdatedAt: fromMillis(destUpdated.Int64),
 		}
 	}
@@ -266,28 +274,24 @@ func (q Q) CountPendingRequests(ctx context.Context) (int, error) {
 	return int(n), err
 }
 
-// OpenRequestFor returns the open request for a title; ok is false if there is none.
-func (q Q) OpenRequestFor(ctx context.Context, kind domain.RequestKind, externalID int64) (domain.ID, bool, error) {
-	id, err := q.q.OpenRequestFor(ctx, sqlc.OpenRequestForParams{Kind: string(kind), ExternalID: externalID})
-	if IsNotFound(err) {
-		return domain.ID{}, false, nil
-	}
-	return id, err == nil, err
-}
+// requestKey is the external ID of a request as text: its key, or its number for a series or a
+// movie (domain.MediaRequest.Key).
+const requestKey = "(CASE external_key WHEN '' THEN CAST(external_id AS TEXT) ELSE external_key END)"
 
-// OpenRequests returns the open request for each of these titles that has one.
-func (q Q) OpenRequests(ctx context.Context, kind domain.RequestKind, externalIDs []int64) (map[int64]domain.ID, error) {
-	out := map[int64]domain.ID{}
-	if len(externalIDs) == 0 {
+// OpenRequests returns the open request for each of these titles (domain.MediaRequest.Key) that
+// has one.
+func (q Q) OpenRequests(ctx context.Context, kind domain.RequestKind, keys []string) (map[string]domain.ID, error) {
+	out := map[string]domain.ID{}
+	if len(keys) == 0 {
 		return out, nil
 	}
 	var b query
 	args := []any{string(kind)}
-	for _, id := range externalIDs {
-		args = append(args, id)
+	for _, k := range keys {
+		args = append(args, k)
 	}
-	b.add(`SELECT external_id, id FROM requests
-		WHERE kind = ? AND status IN ('pending', 'approved', 'downloading') AND external_id IN (`+placeholders(len(externalIDs))+")", args...)
+	b.add(`SELECT `+requestKey+`, id FROM requests
+		WHERE kind = ? AND status IN ('pending', 'approved', 'downloading') AND `+requestKey+` IN (`+placeholders(len(keys))+")", args...)
 	rows, err := q.db.QueryContext(ctx, b.String(), b.args...)
 	if err != nil {
 		return nil, err
@@ -295,13 +299,13 @@ func (q Q) OpenRequests(ctx context.Context, kind domain.RequestKind, externalID
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var (
-			ext int64
+			key string
 			id  domain.ID
 		)
-		if err := rows.Scan(&ext, &id); err != nil {
+		if err := rows.Scan(&key, &id); err != nil {
 			return nil, err
 		}
-		out[ext] = id
+		out[key] = id
 	}
 	return out, rows.Err()
 }
@@ -331,37 +335,45 @@ func (q Q) DeclinePendingRequestsTo(ctx context.Context, destinationID domain.ID
 	return out, nil
 }
 
-// externalPresent keeps movies with a file present and series with an episode present.
-const externalPresent = `((i.kind = 'movie' AND i.present = 1) OR (i.kind = 'series' AND EXISTS (
-	SELECT 1 FROM episodes e JOIN items ei ON ei.id = e.item_id WHERE e.series_id = i.id AND ei.present = 1)))`
+// externalPresent keeps movies with a file present, and series, albums and artists with an
+// episode or a track present.
+const externalPresent = `((i.kind = 'movie' AND i.present = 1)
+	OR (i.kind = 'series' AND EXISTS (SELECT 1 FROM episodes e JOIN items ei ON ei.id = e.item_id
+		WHERE e.series_id = i.id AND ei.present = 1))
+	OR (i.kind = 'album' AND EXISTS (SELECT 1 FROM tracks t JOIN items ti ON ti.id = t.item_id
+		WHERE t.album_id = i.id AND ti.present = 1))
+	OR (i.kind = 'artist' AND EXISTS (SELECT 1 FROM tracks t JOIN items ti ON ti.id = t.item_id
+		WHERE t.artist_id = i.id AND ti.present = 1)))`
 
-// ExternalItem is a movie or a series of the catalog that has files, found by its external ID.
+// ExternalItem is a movie, a series, an album or an artist of the catalog that has files, found by
+// its external ID.
 type ExternalItem struct {
 	ItemID    domain.ID
 	LibraryID domain.ID
 }
 
-// ItemsWithExternalIDs returns, for each of these TVDB or TMDB IDs (provider "tvdb" or "tmdb", as
-// NFO files name them), the movies or series with files that carry it.
-func (q Q) ItemsWithExternalIDs(ctx context.Context, provider string, ids []int64) (map[int64][]ExternalItem, error) {
-	out := map[int64][]ExternalItem{}
-	if len(ids) == 0 {
+// ItemsWithExternalIDs returns, for each of these external IDs (provider "tvdb", "tmdb",
+// "musicbrainz_artist" or "musicbrainz_releasegroup", as the catalog names them), the items with
+// files that carry it.
+func (q Q) ItemsWithExternalIDs(ctx context.Context, provider string, values []string) (map[string][]ExternalItem, error) {
+	out := map[string][]ExternalItem{}
+	if len(values) == 0 {
 		return out, nil
 	}
-	if len(ids) == 1 {
-		rows, err := q.q.ItemWithExternalID(ctx, sqlc.ItemWithExternalIDParams{Provider: provider, Value: strconv.FormatInt(ids[0], 10)})
+	if len(values) == 1 {
+		rows, err := q.q.ItemWithExternalID(ctx, sqlc.ItemWithExternalIDParams{Provider: provider, Value: values[0]})
 		for _, r := range rows {
-			out[ids[0]] = append(out[ids[0]], ExternalItem{ItemID: r.ItemID, LibraryID: r.LibraryID})
+			out[values[0]] = append(out[values[0]], ExternalItem{ItemID: r.ItemID, LibraryID: r.LibraryID})
 		}
 		return out, err
 	}
 	var b query
 	args := []any{provider}
-	for _, id := range ids {
-		args = append(args, strconv.FormatInt(id, 10))
+	for _, v := range values {
+		args = append(args, v)
 	}
 	b.add(`SELECT p.value, p.item_id, i.library_id FROM provider_ids p JOIN items i ON i.id = p.item_id
-		WHERE p.provider = ? AND p.value IN (`+placeholders(len(ids))+`) AND `+externalPresent, args...)
+		WHERE p.provider = ? AND p.value IN (`+placeholders(len(values))+`) AND `+externalPresent, args...)
 	rows, err := q.db.QueryContext(ctx, b.String(), b.args...)
 	if err != nil {
 		return nil, err
@@ -375,9 +387,48 @@ func (q Q) ItemsWithExternalIDs(ctx context.Context, provider string, ids []int6
 		if err := rows.Scan(&value, &it.ItemID, &it.LibraryID); err != nil {
 			return nil, err
 		}
-		if n, err := strconv.ParseInt(value, 10, 64); err == nil {
-			out[n] = append(out[n], it)
+		out[value] = append(out[value], it)
+	}
+	return out, rows.Err()
+}
+
+// CatalogBook is a book with a file present, as requests look for it: its title, ISBN and authors.
+type CatalogBook struct {
+	ItemID    domain.ID
+	LibraryID domain.ID
+	Title     string
+	ISBN      string
+	Authors   []string
+}
+
+// authorSeparator joins the authors of a book in one column (the unit separator, never in a name).
+const authorSeparator = "\x1f"
+
+// CatalogBooks lists the books with a file present, with their authors. Books have no external ID
+// LazyLibrarian shares: requests find them by ISBN, or by title and author.
+func (q Q) CatalogBooks(ctx context.Context) ([]CatalogBook, error) {
+	rows, err := q.db.QueryContext(ctx, `SELECT i.id, i.library_id, i.title, b.isbn,
+		coalesce((SELECT group_concat(pe.name, char(31)) FROM item_people c JOIN people pe ON pe.id = c.person_id
+			WHERE c.item_id = i.id AND c.role = 'writer'), '')
+		FROM items i JOIN books b ON b.item_id = i.id
+		WHERE i.kind = 'book' AND i.present = 1`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []CatalogBook
+	for rows.Next() {
+		var (
+			b       CatalogBook
+			authors string
+		)
+		if err := rows.Scan(&b.ItemID, &b.LibraryID, &b.Title, &b.ISBN, &authors); err != nil {
+			return nil, err
 		}
+		if authors != "" {
+			b.Authors = strings.Split(authors, authorSeparator)
+		}
+		out = append(out, b)
 	}
 	return out, rows.Err()
 }

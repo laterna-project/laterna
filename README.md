@@ -24,8 +24,11 @@ server without a client.
 - **Instant subtitles.** Tracks, external files and fonts are extracted at import and served
   separately, so switching subtitles restarts nothing. Burn-in is a last resort.
 - **Metadata from your files.** NFO files and artwork next to the media, as written by Sonarr,
-  Radarr, Kodi or tinyMediaManager. No online lookup, no wrong match. Optional Sonarr and Radarr
-  integration with webhooks.
+  Radarr, Lidarr, Kodi or tinyMediaManager. No online lookup, no wrong match. Optional Sonarr,
+  Radarr and Lidarr integration with webhooks.
+- **Requests.** Profiles ask for movies, series, music and books; an administrator approves, and
+  Sonarr, Radarr, Lidarr or LazyLibrarian fetch them. Each request is followed until it can be
+  watched, listened to or read.
 - **Files keep their identity.** A renamed or moved file keeps its watch state, and a share that
   goes offline does not wipe a library.
 - **Households.** Accounts with profiles, PINs, per-library access and parental controls

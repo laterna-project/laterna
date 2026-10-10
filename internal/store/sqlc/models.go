@@ -411,7 +411,9 @@ type Request struct {
 	ID                domain.ID
 	Kind              string
 	ExternalID        int64
+	ExternalKey       string
 	Title             string
+	Subtitle          string
 	Year              int64
 	Poster            string
 	Status            string
@@ -435,17 +437,19 @@ type Request struct {
 }
 
 type RequestDestination struct {
-	ID                 domain.ID
-	Name               string
-	NameKey            string
-	Kind               string
-	LibraryID          domain.ID
-	RootFolder         string
-	QualityProfileID   int64
-	QualityProfileName string
-	SeriesType         string
-	CreatedAt          int64
-	UpdatedAt          int64
+	ID                  domain.ID
+	Name                string
+	NameKey             string
+	Kind                string
+	LibraryID           domain.ID
+	RootFolder          string
+	QualityProfileID    int64
+	QualityProfileName  string
+	SeriesType          string
+	MetadataProfileID   int64
+	MetadataProfileName string
+	CreatedAt           int64
+	UpdatedAt           int64
 }
 
 type Season struct {

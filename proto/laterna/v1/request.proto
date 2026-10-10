@@ -8,9 +8,10 @@ import "laterna/v1/text.proto";
 
 option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
 
-// RequestService lets a profile ask for a movie or a series the libraries do not have. Searching
-// goes through Radarr and Sonarr (IntegrationService), which ask TMDB and TVDB: Laterna itself
-// talks to no metadata provider. A request lands in a destination, set by an administrator (a
+// RequestService lets a profile ask for a movie, a series, music or a book the libraries do not
+// have. Searching goes through Radarr and Sonarr (IntegrationService), which ask TMDB and TVDB,
+// Lidarr, which asks MusicBrainz, and LazyLibrarian, which asks OpenLibrary: Laterna itself talks
+// to no metadata provider. A request lands in a destination, set by an administrator (a
 // library, and on the instance a root folder and a quality profile). An administrator's requests
 // are approved at once, and so are those of an account marked auto_approve_requests (unless they
 // come from a restricted profile); the others wait for an administrator. Once approved, the server
@@ -70,13 +71,14 @@ service RequestService {
     option (access) = ACCESS_ADMIN;
   }
   // GetRequestOptions reads from the instance for that kind what a destination can use: its root
-  // folders and quality profiles.
+  // folders and quality profiles, and Lidarr's metadata profiles.
   rpc GetRequestOptions(GetRequestOptionsRequest) returns (GetRequestOptionsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
     option (access) = ACCESS_ADMIN;
   }
   // CreateRequestDestination adds a destination. Its library must be of the matching kind (shows
-  // for series, movies for movies) and its root folder one of the instance's.
+  // for series, movies for movies, music, books) and its root folder and profiles the instance's
+  // (none for books).
   rpc CreateRequestDestination(CreateRequestDestinationRequest) returns (CreateRequestDestinationResponse) {
     option (access) = ACCESS_ADMIN;
   }
@@ -92,12 +94,23 @@ service RequestService {
   }
 }
 
+// RequestKind is what a request is for. Searches and destinations use SERIES, MOVIE, MUSIC and
+// BOOK; search results and requests use SERIES, MOVIE, ARTIST, ALBUM and BOOK.
 enum RequestKind {
   REQUEST_KIND_UNSPECIFIED = 0;
-  // A series, through Sonarr, by its TVDB ID.
+  // A series, through Sonarr, by its TVDB ID (external_id).
   REQUEST_KIND_SERIES = 1;
-  // A movie, through Radarr, by its TMDB ID.
+  // A movie, through Radarr, by its TMDB ID (external_id).
   REQUEST_KIND_MOVIE = 2;
+  // Music, through Lidarr: searches find artists and albums, a destination takes both.
+  REQUEST_KIND_MUSIC = 3;
+  // An artist, through Lidarr, by its MusicBrainz ID (external_key).
+  REQUEST_KIND_ARTIST = 4;
+  // An album, through Lidarr, by the MusicBrainz ID of its release group (external_key).
+  REQUEST_KIND_ALBUM = 5;
+  // A book, through LazyLibrarian, by its OpenLibrary work ID (external_key); asked for as an
+  // ebook.
+  REQUEST_KIND_BOOK = 6;
 }
 
 // RequestableState says what a search result is to the profile.
@@ -129,15 +142,18 @@ enum RequestStatus {
   REQUEST_STATUS_FAILED = 6;
 }
 
-// RequestSeasons says which seasons of a series are requested.
+// RequestSeasons says which seasons of a series are requested, or which albums of an artist.
 enum RequestSeasons {
   // Same as ALL.
   REQUEST_SEASONS_UNSPECIFIED = 0;
-  // Every season, and the next ones as they air.
+  // Every season, and the next ones as they air; every album of an artist (those the
+  // destination's metadata profile keeps).
   REQUEST_SEASONS_ALL = 1;
+  // The first season, or the first album.
   REQUEST_SEASONS_FIRST = 2;
+  // The latest season, or the latest album.
   REQUEST_SEASONS_LATEST = 3;
-  // The seasons in season_numbers.
+  // The seasons in season_numbers (series only).
   REQUEST_SEASONS_CHOSEN = 4;
 }
 
@@ -155,7 +171,7 @@ enum RequestSeriesType {
 // RequestableTitle is a search result.
 message RequestableTitle {
   RequestKind kind = 1;
-  // TVDB ID of a series, TMDB ID of a movie.
+  // TVDB ID of a series, TMDB ID of a movie; 0 for the others.
   int64 external_id = 2;
   string title = 3;
   // 0 if unknown.
@@ -170,11 +186,15 @@ message RequestableTitle {
   string request_id = 9;
   // Series: seasons, specials excluded.
   int32 season_count = 10;
-  // Network of a series, studio of a movie.
+  // Network of a series, studio of a movie, artist of an album, author of a book.
   string network = 11;
+  // MusicBrainz ID of an artist or of an album's release group, OpenLibrary work ID of a book;
+  // empty for series and movies.
+  string external_key = 12;
 }
 
 message SearchRequestableRequest {
+  // SERIES, MOVIE, MUSIC (artists and albums) or BOOK.
   RequestKind kind = 1;
   // At least two characters.
   string query = 2;
@@ -189,19 +209,24 @@ message SearchRequestableResponse {
 message RequestDestination {
   string id = 1;
   string name = 2;
+  // SERIES, MOVIE, MUSIC or BOOK.
   RequestKind kind = 3;
   string library_id = 4;
   string library_name = 5;
-  // On the instance; administrators only (empty otherwise).
+  // On the instance; administrators only (empty otherwise). Empty for books: LazyLibrarian decides
+  // where they go.
   string root_folder = 6;
   int32 quality_profile_id = 7;
   string quality_profile_name = 8;
   // Series only.
   RequestSeriesType series_type = 9;
+  // Music only: the Lidarr metadata profile (which kinds of releases an artist's albums include).
+  int32 metadata_profile_id = 10;
+  string metadata_profile_name = 11;
 }
 
 message ListRequestDestinationsRequest {
-  // Unset lists both kinds.
+  // SERIES, MOVIE, MUSIC or BOOK; unset lists them all.
   RequestKind kind = 1;
 }
 
@@ -241,20 +266,29 @@ message MediaRequest {
   double progress = 21;
   // AVAILABLE: the catalog item.
   string item_id = 22;
-  // Series: episodes in the catalog and episodes monitored on the instance.
+  // Series: episodes in the catalog and episodes monitored on the instance. Artist or album: tracks
+  // with a file and tracks monitored on Lidarr.
   int32 episodes_available = 23;
   int32 episodes_wanted = 24;
   google.protobuf.Timestamp available_at = 25;
+  // See RequestableTitle.external_key.
+  string external_key = 26;
+  // Artist of an album, author of a book; empty otherwise.
+  string subtitle = 27;
 }
 
 message CreateRequestRequest {
+  // SERIES, MOVIE, ARTIST, ALBUM or BOOK.
   RequestKind kind = 1;
   // TVDB ID of a series, TMDB ID of a movie (RequestableTitle.external_id).
   int64 external_id = 2;
   // Empty takes the only destination of that kind open to the profile.
   string destination_id = 3;
+  // Series: which seasons; artist: which albums (ALL, FIRST or LATEST). Ignored for the others.
   RequestSeasons seasons = 4;
   repeated int32 season_numbers = 5;
+  // Artist, album or book (RequestableTitle.external_key).
+  string external_key = 6;
 }
 
 message CreateRequestResponse {
@@ -346,12 +380,15 @@ message RequestQualityProfile {
 }
 
 message GetRequestOptionsRequest {
+  // SERIES, MOVIE or MUSIC; BOOK has no options.
   RequestKind kind = 1;
 }
 
 message GetRequestOptionsResponse {
   repeated RequestRootFolder root_folders = 1;
   repeated RequestQualityProfile quality_profiles = 2;
+  // Music: Lidarr's metadata profiles.
+  repeated RequestQualityProfile metadata_profiles = 3;
 }
 
 message CreateRequestDestinationRequest {
@@ -361,6 +398,8 @@ message CreateRequestDestinationRequest {
   string root_folder = 4;
   int32 quality_profile_id = 5;
   RequestSeriesType series_type = 6;
+  // Music: Lidarr's metadata profile.
+  int32 metadata_profile_id = 7;
 }
 
 message CreateRequestDestinationResponse {
@@ -375,6 +414,7 @@ message UpdateRequestDestinationRequest {
   optional int32 quality_profile_id = 5;
   // UNSPECIFIED leaves it unchanged.
   RequestSeriesType series_type = 6;
+  optional int32 metadata_profile_id = 7;
 }
 
 message UpdateRequestDestinationResponse {

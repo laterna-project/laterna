@@ -1,6 +1,6 @@
-// Package arrtest fakes Sonarr or Radarr (API v3) for tests: identity, Kodi metadata, notifications
-// (the webhook is tried when saved, as the real ones do), refresh commands, tracked series or
-// movies.
+// Package arrtest fakes Sonarr or Radarr (API v3), or Lidarr (API v1), for tests: identity, Kodi
+// metadata, notifications (the webhook is tried when saved, as the real ones do), refresh commands,
+// tracked series, movies or artists, and what requests use.
 package arrtest
 
 import (
@@ -20,7 +20,7 @@ import (
 // Key is the API key the fake accepts.
 const Key = "test-key"
 
-// Server is a fake Sonarr or Radarr.
+// Server is a fake Sonarr, Radarr or Lidarr.
 type Server struct {
 	*httptest.Server
 	kind arr.Kind
@@ -47,6 +47,11 @@ type Server struct {
 	Profiles []arr.QualityProfile
 	// Queue is what the instance is downloading.
 	Queue []arr.Download
+	// Lidarr: what a search finds, the artists and albums it has, its metadata profiles.
+	Music            []MusicEntry
+	Artists          map[int]*Artist
+	Albums           map[int]*Album
+	MetadataProfiles []arr.QualityProfile
 }
 
 // Entry is a title a search can find.
@@ -81,13 +86,16 @@ type Hook struct {
 	OnDownload, Rename bool
 }
 
-// New starts a fake Sonarr or Radarr that is stopped when the test ends.
+// New starts a fake Sonarr, Radarr or Lidarr that is stopped when the test ends.
 func New(t *testing.T, kind arr.Kind) *Server {
 	t.Helper()
 	s := &Server{
 		kind: kind, KodiOptions: map[string]bool{}, reads: map[int]int{}, Titles: map[int]*Title{},
-		Roots:    []arr.RootFolder{{Path: "/data/media/" + map[arr.Kind]string{arr.Sonarr: "shows", arr.Radarr: "movies"}[kind], FreeSpace: 1 << 40}},
-		Profiles: []arr.QualityProfile{{ID: 1, Name: "Any"}, {ID: 7, Name: "HD Bluray + WEB"}},
+		Roots:            []arr.RootFolder{{Path: "/data/media/" + map[arr.Kind]string{arr.Sonarr: "shows", arr.Radarr: "movies", arr.Lidarr: "music"}[kind], FreeSpace: 1 << 40}},
+		Profiles:         []arr.QualityProfile{{ID: 1, Name: "Any"}, {ID: 7, Name: "HD Bluray + WEB"}},
+		Artists:          map[int]*Artist{},
+		Albums:           map[int]*Album{},
+		MetadataProfiles: []arr.QualityProfile{{ID: 1, Name: "Standard"}, {ID: 2, Name: "None"}},
 	}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(s.Close)
@@ -97,6 +105,7 @@ func New(t *testing.T, kind arr.Kind) *Server {
 var kodiFields = map[arr.Kind][]string{
 	arr.Sonarr: {"seriesMetadata", "seriesMetadataEpisodeGuide", "episodeMetadata", "episodeImageThumb", "seriesImages", "seasonImages", "episodeImages"},
 	arr.Radarr: {"movieMetadata", "useMovieNfo", "movieMetadataLanguage", "movieImages"},
+	arr.Lidarr: {"artistMetadata", "albumMetadata", "artistImages", "albumImages"},
 }
 
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +115,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	path := strings.TrimPrefix(r.URL.Path, "/api/v3")
+	path := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/api/v3"), "/api/v1")
+	if (s.kind == arr.Lidarr) != strings.HasPrefix(r.URL.Path, "/api/v1") {
+		http.NotFound(w, r) // the wrong version of the API
+		return
+	}
 	var body map[string]any
 	if r.Body != nil {
 		_ = json.NewDecoder(r.Body).Decode(&body)
@@ -114,6 +127,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	write := func(v any) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(v)
+	}
+	if s.kind == arr.Lidarr && s.serveMusic(w, r, path, body, write) {
+		return
 	}
 	if s.serveTitles(w, r, path, body, write) {
 		return
@@ -140,11 +156,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	case path == "/notification/schema":
 		write([]any{map[string]any{
 			"implementation": "Webhook", "name": "", "presets": []any{}, "supportsOnDownload": true, "supportsOnRename": true,
-			"supportsOnUpgrade": true, "onDownload": false, "onRename": false,
+			"supportsOnUpgrade": true, "supportsOnReleaseImport": s.kind == arr.Lidarr, "onDownload": false, "onRename": false,
 			"fields": []any{map[string]any{"name": "url"}, map[string]any{"name": "method", "value": 1}, map[string]any{"name": "username"}, map[string]any{"name": "password"}},
 		}})
 	case (path == "/notification" && r.Method == http.MethodPost) || (strings.HasPrefix(path, "/notification/") && r.Method == http.MethodPut):
-		h := &Hook{ID: 2, OnDownload: body["onDownload"] == true, Rename: body["onRename"] == true}
+		h := &Hook{ID: 2, OnDownload: body["onDownload"] == true || body["onReleaseImport"] == true, Rename: body["onRename"] == true}
 		for _, f := range fields(body) {
 			v, _ := f["value"].(string)
 			switch f["name"] {
@@ -216,6 +232,7 @@ func (s *Server) hookResource() map[string]any {
 	h := s.Hook
 	return map[string]any{
 		"id": h.ID, "name": arr.WebhookName, "implementation": "Webhook", "onDownload": h.OnDownload, "onRename": h.Rename,
+		"onReleaseImport":    h.OnDownload,
 		"supportsOnDownload": true, "supportsOnRename": true,
 		"fields": []any{
 			map[string]any{"name": "url", "value": h.URL},

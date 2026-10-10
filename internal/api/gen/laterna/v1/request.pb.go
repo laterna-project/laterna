@@ -22,14 +22,25 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// RequestKind is what a request is for. Searches and destinations use SERIES, MOVIE, MUSIC and
+// BOOK; search results and requests use SERIES, MOVIE, ARTIST, ALBUM and BOOK.
 type RequestKind int32
 
 const (
 	RequestKind_REQUEST_KIND_UNSPECIFIED RequestKind = 0
-	// A series, through Sonarr, by its TVDB ID.
+	// A series, through Sonarr, by its TVDB ID (external_id).
 	RequestKind_REQUEST_KIND_SERIES RequestKind = 1
-	// A movie, through Radarr, by its TMDB ID.
+	// A movie, through Radarr, by its TMDB ID (external_id).
 	RequestKind_REQUEST_KIND_MOVIE RequestKind = 2
+	// Music, through Lidarr: searches find artists and albums, a destination takes both.
+	RequestKind_REQUEST_KIND_MUSIC RequestKind = 3
+	// An artist, through Lidarr, by its MusicBrainz ID (external_key).
+	RequestKind_REQUEST_KIND_ARTIST RequestKind = 4
+	// An album, through Lidarr, by the MusicBrainz ID of its release group (external_key).
+	RequestKind_REQUEST_KIND_ALBUM RequestKind = 5
+	// A book, through LazyLibrarian, by its OpenLibrary work ID (external_key); asked for as an
+	// ebook.
+	RequestKind_REQUEST_KIND_BOOK RequestKind = 6
 )
 
 // Enum value maps for RequestKind.
@@ -38,11 +49,19 @@ var (
 		0: "REQUEST_KIND_UNSPECIFIED",
 		1: "REQUEST_KIND_SERIES",
 		2: "REQUEST_KIND_MOVIE",
+		3: "REQUEST_KIND_MUSIC",
+		4: "REQUEST_KIND_ARTIST",
+		5: "REQUEST_KIND_ALBUM",
+		6: "REQUEST_KIND_BOOK",
 	}
 	RequestKind_value = map[string]int32{
 		"REQUEST_KIND_UNSPECIFIED": 0,
 		"REQUEST_KIND_SERIES":      1,
 		"REQUEST_KIND_MOVIE":       2,
+		"REQUEST_KIND_MUSIC":       3,
+		"REQUEST_KIND_ARTIST":      4,
+		"REQUEST_KIND_ALBUM":       5,
+		"REQUEST_KIND_BOOK":        6,
 	}
 )
 
@@ -200,17 +219,20 @@ func (RequestStatus) EnumDescriptor() ([]byte, []int) {
 	return file_laterna_v1_request_proto_rawDescGZIP(), []int{2}
 }
 
-// RequestSeasons says which seasons of a series are requested.
+// RequestSeasons says which seasons of a series are requested, or which albums of an artist.
 type RequestSeasons int32
 
 const (
 	// Same as ALL.
 	RequestSeasons_REQUEST_SEASONS_UNSPECIFIED RequestSeasons = 0
-	// Every season, and the next ones as they air.
-	RequestSeasons_REQUEST_SEASONS_ALL    RequestSeasons = 1
-	RequestSeasons_REQUEST_SEASONS_FIRST  RequestSeasons = 2
+	// Every season, and the next ones as they air; every album of an artist (those the
+	// destination's metadata profile keeps).
+	RequestSeasons_REQUEST_SEASONS_ALL RequestSeasons = 1
+	// The first season, or the first album.
+	RequestSeasons_REQUEST_SEASONS_FIRST RequestSeasons = 2
+	// The latest season, or the latest album.
 	RequestSeasons_REQUEST_SEASONS_LATEST RequestSeasons = 3
-	// The seasons in season_numbers.
+	// The seasons in season_numbers (series only).
 	RequestSeasons_REQUEST_SEASONS_CHOSEN RequestSeasons = 4
 )
 
@@ -319,7 +341,7 @@ func (RequestSeriesType) EnumDescriptor() ([]byte, []int) {
 type RequestableTitle struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  RequestKind            `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
-	// TVDB ID of a series, TMDB ID of a movie.
+	// TVDB ID of a series, TMDB ID of a movie; 0 for the others.
 	ExternalId int64  `protobuf:"varint,2,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
 	Title      string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
 	// 0 if unknown.
@@ -334,8 +356,11 @@ type RequestableTitle struct {
 	RequestId string `protobuf:"bytes,9,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// Series: seasons, specials excluded.
 	SeasonCount int32 `protobuf:"varint,10,opt,name=season_count,json=seasonCount,proto3" json:"season_count,omitempty"`
-	// Network of a series, studio of a movie.
-	Network       string `protobuf:"bytes,11,opt,name=network,proto3" json:"network,omitempty"`
+	// Network of a series, studio of a movie, artist of an album, author of a book.
+	Network string `protobuf:"bytes,11,opt,name=network,proto3" json:"network,omitempty"`
+	// MusicBrainz ID of an artist or of an album's release group, OpenLibrary work ID of a book;
+	// empty for series and movies.
+	ExternalKey   string `protobuf:"bytes,12,opt,name=external_key,json=externalKey,proto3" json:"external_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -447,9 +472,17 @@ func (x *RequestableTitle) GetNetwork() string {
 	return ""
 }
 
+func (x *RequestableTitle) GetExternalKey() string {
+	if x != nil {
+		return x.ExternalKey
+	}
+	return ""
+}
+
 type SearchRequestableRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Kind  RequestKind            `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
+	// SERIES, MOVIE, MUSIC (artists and albums) or BOOK.
+	Kind RequestKind `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
 	// At least two characters.
 	Query         string `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -547,20 +580,25 @@ func (x *SearchRequestableResponse) GetResults() []*RequestableTitle {
 
 // RequestDestination is where requests of a kind land.
 type RequestDestination struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Kind        RequestKind            `protobuf:"varint,3,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
-	LibraryId   string                 `protobuf:"bytes,4,opt,name=library_id,json=libraryId,proto3" json:"library_id,omitempty"`
-	LibraryName string                 `protobuf:"bytes,5,opt,name=library_name,json=libraryName,proto3" json:"library_name,omitempty"`
-	// On the instance; administrators only (empty otherwise).
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// SERIES, MOVIE, MUSIC or BOOK.
+	Kind        RequestKind `protobuf:"varint,3,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
+	LibraryId   string      `protobuf:"bytes,4,opt,name=library_id,json=libraryId,proto3" json:"library_id,omitempty"`
+	LibraryName string      `protobuf:"bytes,5,opt,name=library_name,json=libraryName,proto3" json:"library_name,omitempty"`
+	// On the instance; administrators only (empty otherwise). Empty for books: LazyLibrarian decides
+	// where they go.
 	RootFolder         string `protobuf:"bytes,6,opt,name=root_folder,json=rootFolder,proto3" json:"root_folder,omitempty"`
 	QualityProfileId   int32  `protobuf:"varint,7,opt,name=quality_profile_id,json=qualityProfileId,proto3" json:"quality_profile_id,omitempty"`
 	QualityProfileName string `protobuf:"bytes,8,opt,name=quality_profile_name,json=qualityProfileName,proto3" json:"quality_profile_name,omitempty"`
 	// Series only.
-	SeriesType    RequestSeriesType `protobuf:"varint,9,opt,name=series_type,json=seriesType,proto3,enum=laterna.v1.RequestSeriesType" json:"series_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SeriesType RequestSeriesType `protobuf:"varint,9,opt,name=series_type,json=seriesType,proto3,enum=laterna.v1.RequestSeriesType" json:"series_type,omitempty"`
+	// Music only: the Lidarr metadata profile (which kinds of releases an artist's albums include).
+	MetadataProfileId   int32  `protobuf:"varint,10,opt,name=metadata_profile_id,json=metadataProfileId,proto3" json:"metadata_profile_id,omitempty"`
+	MetadataProfileName string `protobuf:"bytes,11,opt,name=metadata_profile_name,json=metadataProfileName,proto3" json:"metadata_profile_name,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *RequestDestination) Reset() {
@@ -656,9 +694,23 @@ func (x *RequestDestination) GetSeriesType() RequestSeriesType {
 	return RequestSeriesType_REQUEST_SERIES_TYPE_UNSPECIFIED
 }
 
+func (x *RequestDestination) GetMetadataProfileId() int32 {
+	if x != nil {
+		return x.MetadataProfileId
+	}
+	return 0
+}
+
+func (x *RequestDestination) GetMetadataProfileName() string {
+	if x != nil {
+		return x.MetadataProfileName
+	}
+	return ""
+}
+
 type ListRequestDestinationsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Unset lists both kinds.
+	// SERIES, MOVIE, MUSIC or BOOK; unset lists them all.
 	Kind          RequestKind `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -778,12 +830,17 @@ type MediaRequest struct {
 	Progress float64 `protobuf:"fixed64,21,opt,name=progress,proto3" json:"progress,omitempty"`
 	// AVAILABLE: the catalog item.
 	ItemId string `protobuf:"bytes,22,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
-	// Series: episodes in the catalog and episodes monitored on the instance.
+	// Series: episodes in the catalog and episodes monitored on the instance. Artist or album: tracks
+	// with a file and tracks monitored on Lidarr.
 	EpisodesAvailable int32                  `protobuf:"varint,23,opt,name=episodes_available,json=episodesAvailable,proto3" json:"episodes_available,omitempty"`
 	EpisodesWanted    int32                  `protobuf:"varint,24,opt,name=episodes_wanted,json=episodesWanted,proto3" json:"episodes_wanted,omitempty"`
 	AvailableAt       *timestamppb.Timestamp `protobuf:"bytes,25,opt,name=available_at,json=availableAt,proto3" json:"available_at,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// See RequestableTitle.external_key.
+	ExternalKey string `protobuf:"bytes,26,opt,name=external_key,json=externalKey,proto3" json:"external_key,omitempty"`
+	// Artist of an album, author of a book; empty otherwise.
+	Subtitle      string `protobuf:"bytes,27,opt,name=subtitle,proto3" json:"subtitle,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MediaRequest) Reset() {
@@ -991,15 +1048,33 @@ func (x *MediaRequest) GetAvailableAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *MediaRequest) GetExternalKey() string {
+	if x != nil {
+		return x.ExternalKey
+	}
+	return ""
+}
+
+func (x *MediaRequest) GetSubtitle() string {
+	if x != nil {
+		return x.Subtitle
+	}
+	return ""
+}
+
 type CreateRequestRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Kind  RequestKind            `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
+	// SERIES, MOVIE, ARTIST, ALBUM or BOOK.
+	Kind RequestKind `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
 	// TVDB ID of a series, TMDB ID of a movie (RequestableTitle.external_id).
 	ExternalId int64 `protobuf:"varint,2,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
 	// Empty takes the only destination of that kind open to the profile.
-	DestinationId string         `protobuf:"bytes,3,opt,name=destination_id,json=destinationId,proto3" json:"destination_id,omitempty"`
+	DestinationId string `protobuf:"bytes,3,opt,name=destination_id,json=destinationId,proto3" json:"destination_id,omitempty"`
+	// Series: which seasons; artist: which albums (ALL, FIRST or LATEST). Ignored for the others.
 	Seasons       RequestSeasons `protobuf:"varint,4,opt,name=seasons,proto3,enum=laterna.v1.RequestSeasons" json:"seasons,omitempty"`
 	SeasonNumbers []int32        `protobuf:"varint,5,rep,packed,name=season_numbers,json=seasonNumbers,proto3" json:"season_numbers,omitempty"`
+	// Artist, album or book (RequestableTitle.external_key).
+	ExternalKey   string `protobuf:"bytes,6,opt,name=external_key,json=externalKey,proto3" json:"external_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1067,6 +1142,13 @@ func (x *CreateRequestRequest) GetSeasonNumbers() []int32 {
 		return x.SeasonNumbers
 	}
 	return nil
+}
+
+func (x *CreateRequestRequest) GetExternalKey() string {
+	if x != nil {
+		return x.ExternalKey
+	}
+	return ""
 }
 
 type CreateRequestResponse struct {
@@ -1910,8 +1992,9 @@ func (x *RequestQualityProfile) GetName() string {
 }
 
 type GetRequestOptionsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kind          RequestKind            `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// SERIES, MOVIE or MUSIC; BOOK has no options.
+	Kind          RequestKind `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.RequestKind" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1957,8 +2040,10 @@ type GetRequestOptionsResponse struct {
 	state           protoimpl.MessageState   `protogen:"open.v1"`
 	RootFolders     []*RequestRootFolder     `protobuf:"bytes,1,rep,name=root_folders,json=rootFolders,proto3" json:"root_folders,omitempty"`
 	QualityProfiles []*RequestQualityProfile `protobuf:"bytes,2,rep,name=quality_profiles,json=qualityProfiles,proto3" json:"quality_profiles,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Music: Lidarr's metadata profiles.
+	MetadataProfiles []*RequestQualityProfile `protobuf:"bytes,3,rep,name=metadata_profiles,json=metadataProfiles,proto3" json:"metadata_profiles,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetRequestOptionsResponse) Reset() {
@@ -2005,6 +2090,13 @@ func (x *GetRequestOptionsResponse) GetQualityProfiles() []*RequestQualityProfil
 	return nil
 }
 
+func (x *GetRequestOptionsResponse) GetMetadataProfiles() []*RequestQualityProfile {
+	if x != nil {
+		return x.MetadataProfiles
+	}
+	return nil
+}
+
 type CreateRequestDestinationRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -2013,8 +2105,10 @@ type CreateRequestDestinationRequest struct {
 	RootFolder       string                 `protobuf:"bytes,4,opt,name=root_folder,json=rootFolder,proto3" json:"root_folder,omitempty"`
 	QualityProfileId int32                  `protobuf:"varint,5,opt,name=quality_profile_id,json=qualityProfileId,proto3" json:"quality_profile_id,omitempty"`
 	SeriesType       RequestSeriesType      `protobuf:"varint,6,opt,name=series_type,json=seriesType,proto3,enum=laterna.v1.RequestSeriesType" json:"series_type,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Music: Lidarr's metadata profile.
+	MetadataProfileId int32 `protobuf:"varint,7,opt,name=metadata_profile_id,json=metadataProfileId,proto3" json:"metadata_profile_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CreateRequestDestinationRequest) Reset() {
@@ -2089,6 +2183,13 @@ func (x *CreateRequestDestinationRequest) GetSeriesType() RequestSeriesType {
 	return RequestSeriesType_REQUEST_SERIES_TYPE_UNSPECIFIED
 }
 
+func (x *CreateRequestDestinationRequest) GetMetadataProfileId() int32 {
+	if x != nil {
+		return x.MetadataProfileId
+	}
+	return 0
+}
+
 type CreateRequestDestinationResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Destination   *RequestDestination    `protobuf:"bytes,1,opt,name=destination,proto3" json:"destination,omitempty"`
@@ -2141,9 +2242,10 @@ type UpdateRequestDestinationRequest struct {
 	RootFolder       *string                `protobuf:"bytes,4,opt,name=root_folder,json=rootFolder,proto3,oneof" json:"root_folder,omitempty"`
 	QualityProfileId *int32                 `protobuf:"varint,5,opt,name=quality_profile_id,json=qualityProfileId,proto3,oneof" json:"quality_profile_id,omitempty"`
 	// UNSPECIFIED leaves it unchanged.
-	SeriesType    RequestSeriesType `protobuf:"varint,6,opt,name=series_type,json=seriesType,proto3,enum=laterna.v1.RequestSeriesType" json:"series_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SeriesType        RequestSeriesType `protobuf:"varint,6,opt,name=series_type,json=seriesType,proto3,enum=laterna.v1.RequestSeriesType" json:"series_type,omitempty"`
+	MetadataProfileId *int32            `protobuf:"varint,7,opt,name=metadata_profile_id,json=metadataProfileId,proto3,oneof" json:"metadata_profile_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateRequestDestinationRequest) Reset() {
@@ -2216,6 +2318,13 @@ func (x *UpdateRequestDestinationRequest) GetSeriesType() RequestSeriesType {
 		return x.SeriesType
 	}
 	return RequestSeriesType_REQUEST_SERIES_TYPE_UNSPECIFIED
+}
+
+func (x *UpdateRequestDestinationRequest) GetMetadataProfileId() int32 {
+	if x != nil && x.MetadataProfileId != nil {
+		return *x.MetadataProfileId
+	}
+	return 0
 }
 
 type UpdateRequestDestinationResponse struct {
@@ -2347,7 +2456,7 @@ var File_laterna_v1_request_proto protoreflect.FileDescriptor
 const file_laterna_v1_request_proto_rawDesc = "" +
 	"\n" +
 	"\x18laterna/v1/request.proto\x12\n" +
-	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\x1a\x15laterna/v1/text.proto\"\xee\x02\n" +
+	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\x1a\x15laterna/v1/text.proto\"\x91\x03\n" +
 	"\x10RequestableTitle\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x1f\n" +
 	"\vexternal_id\x18\x02 \x01(\x03R\n" +
@@ -2363,12 +2472,13 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"request_id\x18\t \x01(\tR\trequestId\x12!\n" +
 	"\fseason_count\x18\n" +
 	" \x01(\x05R\vseasonCount\x12\x18\n" +
-	"\anetwork\x18\v \x01(\tR\anetwork\"]\n" +
+	"\anetwork\x18\v \x01(\tR\anetwork\x12!\n" +
+	"\fexternal_key\x18\f \x01(\tR\vexternalKey\"]\n" +
 	"\x18SearchRequestableRequest\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\"S\n" +
 	"\x19SearchRequestableResponse\x126\n" +
-	"\aresults\x18\x01 \x03(\v2\x1c.laterna.v1.RequestableTitleR\aresults\"\xe8\x02\n" +
+	"\aresults\x18\x01 \x03(\v2\x1c.laterna.v1.RequestableTitleR\aresults\"\xcc\x03\n" +
 	"\x12RequestDestination\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12+\n" +
@@ -2381,11 +2491,14 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x12quality_profile_id\x18\a \x01(\x05R\x10qualityProfileId\x120\n" +
 	"\x14quality_profile_name\x18\b \x01(\tR\x12qualityProfileName\x12>\n" +
 	"\vseries_type\x18\t \x01(\x0e2\x1d.laterna.v1.RequestSeriesTypeR\n" +
-	"seriesType\"M\n" +
+	"seriesType\x12.\n" +
+	"\x13metadata_profile_id\x18\n" +
+	" \x01(\x05R\x11metadataProfileId\x122\n" +
+	"\x15metadata_profile_name\x18\v \x01(\tR\x13metadataProfileName\"M\n" +
 	"\x1eListRequestDestinationsRequest\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\"e\n" +
 	"\x1fListRequestDestinationsResponse\x12B\n" +
-	"\fdestinations\x18\x01 \x03(\v2\x1e.laterna.v1.RequestDestinationR\fdestinations\"\xd3\a\n" +
+	"\fdestinations\x18\x01 \x03(\v2\x1e.laterna.v1.RequestDestinationR\fdestinations\"\x92\b\n" +
 	"\fMediaRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x1f\n" +
@@ -2420,14 +2533,17 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\aitem_id\x18\x16 \x01(\tR\x06itemId\x12-\n" +
 	"\x12episodes_available\x18\x17 \x01(\x05R\x11episodesAvailable\x12'\n" +
 	"\x0fepisodes_wanted\x18\x18 \x01(\x05R\x0eepisodesWanted\x12=\n" +
-	"\favailable_at\x18\x19 \x01(\v2\x1a.google.protobuf.TimestampR\vavailableAt\"\xe8\x01\n" +
+	"\favailable_at\x18\x19 \x01(\v2\x1a.google.protobuf.TimestampR\vavailableAt\x12!\n" +
+	"\fexternal_key\x18\x1a \x01(\tR\vexternalKey\x12\x1a\n" +
+	"\bsubtitle\x18\x1b \x01(\tR\bsubtitle\"\x8b\x02\n" +
 	"\x14CreateRequestRequest\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x1f\n" +
 	"\vexternal_id\x18\x02 \x01(\x03R\n" +
 	"externalId\x12%\n" +
 	"\x0edestination_id\x18\x03 \x01(\tR\rdestinationId\x124\n" +
 	"\aseasons\x18\x04 \x01(\x0e2\x1a.laterna.v1.RequestSeasonsR\aseasons\x12%\n" +
-	"\x0eseason_numbers\x18\x05 \x03(\x05R\rseasonNumbers\"K\n" +
+	"\x0eseason_numbers\x18\x05 \x03(\x05R\rseasonNumbers\x12!\n" +
+	"\fexternal_key\x18\x06 \x01(\tR\vexternalKey\"K\n" +
 	"\x15CreateRequestResponse\x122\n" +
 	"\arequest\x18\x01 \x01(\v2\x18.laterna.v1.MediaRequestR\arequest\"S\n" +
 	"\x15ListMyRequestsRequest\x12\x1d\n" +
@@ -2482,10 +2598,11 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"G\n" +
 	"\x18GetRequestOptionsRequest\x12+\n" +
-	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\"\xab\x01\n" +
+	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\"\xfb\x01\n" +
 	"\x19GetRequestOptionsResponse\x12@\n" +
 	"\froot_folders\x18\x01 \x03(\v2\x1d.laterna.v1.RequestRootFolderR\vrootFolders\x12L\n" +
-	"\x10quality_profiles\x18\x02 \x03(\v2!.laterna.v1.RequestQualityProfileR\x0fqualityProfiles\"\x90\x02\n" +
+	"\x10quality_profiles\x18\x02 \x03(\v2!.laterna.v1.RequestQualityProfileR\x0fqualityProfiles\x12N\n" +
+	"\x11metadata_profiles\x18\x03 \x03(\v2!.laterna.v1.RequestQualityProfileR\x10metadataProfiles\"\xc0\x02\n" +
 	"\x1fCreateRequestDestinationRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12+\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x1d\n" +
@@ -2495,9 +2612,10 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"rootFolder\x12,\n" +
 	"\x12quality_profile_id\x18\x05 \x01(\x05R\x10qualityProfileId\x12>\n" +
 	"\vseries_type\x18\x06 \x01(\x0e2\x1d.laterna.v1.RequestSeriesTypeR\n" +
-	"seriesType\"d\n" +
+	"seriesType\x12.\n" +
+	"\x13metadata_profile_id\x18\a \x01(\x05R\x11metadataProfileId\"d\n" +
 	" CreateRequestDestinationResponse\x12@\n" +
-	"\vdestination\x18\x01 \x01(\v2\x1e.laterna.v1.RequestDestinationR\vdestination\"\xdd\x02\n" +
+	"\vdestination\x18\x01 \x01(\v2\x1e.laterna.v1.RequestDestinationR\vdestination\"\xaa\x03\n" +
 	"\x1fUpdateRequestDestinationRequest\x12%\n" +
 	"\x0edestination_id\x18\x01 \x01(\tR\rdestinationId\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\"\n" +
@@ -2507,20 +2625,26 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"rootFolder\x88\x01\x01\x121\n" +
 	"\x12quality_profile_id\x18\x05 \x01(\x05H\x03R\x10qualityProfileId\x88\x01\x01\x12>\n" +
 	"\vseries_type\x18\x06 \x01(\x0e2\x1d.laterna.v1.RequestSeriesTypeR\n" +
-	"seriesTypeB\a\n" +
+	"seriesType\x123\n" +
+	"\x13metadata_profile_id\x18\a \x01(\x05H\x04R\x11metadataProfileId\x88\x01\x01B\a\n" +
 	"\x05_nameB\r\n" +
 	"\v_library_idB\x0e\n" +
 	"\f_root_folderB\x15\n" +
-	"\x13_quality_profile_id\"d\n" +
+	"\x13_quality_profile_idB\x16\n" +
+	"\x14_metadata_profile_id\"d\n" +
 	" UpdateRequestDestinationResponse\x12@\n" +
 	"\vdestination\x18\x01 \x01(\v2\x1e.laterna.v1.RequestDestinationR\vdestination\"H\n" +
 	"\x1fDeleteRequestDestinationRequest\x12%\n" +
 	"\x0edestination_id\x18\x01 \x01(\tR\rdestinationId\"\"\n" +
-	" DeleteRequestDestinationResponse*\\\n" +
+	" DeleteRequestDestinationResponse*\xbc\x01\n" +
 	"\vRequestKind\x12\x1c\n" +
 	"\x18REQUEST_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13REQUEST_KIND_SERIES\x10\x01\x12\x16\n" +
-	"\x12REQUEST_KIND_MOVIE\x10\x02*\xb9\x01\n" +
+	"\x12REQUEST_KIND_MOVIE\x10\x02\x12\x16\n" +
+	"\x12REQUEST_KIND_MUSIC\x10\x03\x12\x17\n" +
+	"\x13REQUEST_KIND_ARTIST\x10\x04\x12\x16\n" +
+	"\x12REQUEST_KIND_ALBUM\x10\x05\x12\x15\n" +
+	"\x11REQUEST_KIND_BOOK\x10\x06*\xb9\x01\n" +
 	"\x10RequestableState\x12!\n" +
 	"\x1dREQUESTABLE_STATE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dREQUESTABLE_STATE_REQUESTABLE\x10\x01\x12\x1f\n" +
@@ -2649,44 +2773,45 @@ var file_laterna_v1_request_proto_depIdxs = []int32{
 	0,  // 26: laterna.v1.GetRequestOptionsRequest.kind:type_name -> laterna.v1.RequestKind
 	28, // 27: laterna.v1.GetRequestOptionsResponse.root_folders:type_name -> laterna.v1.RequestRootFolder
 	29, // 28: laterna.v1.GetRequestOptionsResponse.quality_profiles:type_name -> laterna.v1.RequestQualityProfile
-	0,  // 29: laterna.v1.CreateRequestDestinationRequest.kind:type_name -> laterna.v1.RequestKind
-	4,  // 30: laterna.v1.CreateRequestDestinationRequest.series_type:type_name -> laterna.v1.RequestSeriesType
-	8,  // 31: laterna.v1.CreateRequestDestinationResponse.destination:type_name -> laterna.v1.RequestDestination
-	4,  // 32: laterna.v1.UpdateRequestDestinationRequest.series_type:type_name -> laterna.v1.RequestSeriesType
-	8,  // 33: laterna.v1.UpdateRequestDestinationResponse.destination:type_name -> laterna.v1.RequestDestination
-	6,  // 34: laterna.v1.RequestService.SearchRequestable:input_type -> laterna.v1.SearchRequestableRequest
-	9,  // 35: laterna.v1.RequestService.ListRequestDestinations:input_type -> laterna.v1.ListRequestDestinationsRequest
-	12, // 36: laterna.v1.RequestService.CreateRequest:input_type -> laterna.v1.CreateRequestRequest
-	14, // 37: laterna.v1.RequestService.ListMyRequests:input_type -> laterna.v1.ListMyRequestsRequest
-	16, // 38: laterna.v1.RequestService.GetRequest:input_type -> laterna.v1.GetRequestRequest
-	18, // 39: laterna.v1.RequestService.CancelRequest:input_type -> laterna.v1.CancelRequestRequest
-	20, // 40: laterna.v1.RequestService.ListRequests:input_type -> laterna.v1.ListRequestsRequest
-	22, // 41: laterna.v1.RequestService.ApproveRequest:input_type -> laterna.v1.ApproveRequestRequest
-	24, // 42: laterna.v1.RequestService.DeclineRequest:input_type -> laterna.v1.DeclineRequestRequest
-	26, // 43: laterna.v1.RequestService.DeleteRequest:input_type -> laterna.v1.DeleteRequestRequest
-	30, // 44: laterna.v1.RequestService.GetRequestOptions:input_type -> laterna.v1.GetRequestOptionsRequest
-	32, // 45: laterna.v1.RequestService.CreateRequestDestination:input_type -> laterna.v1.CreateRequestDestinationRequest
-	34, // 46: laterna.v1.RequestService.UpdateRequestDestination:input_type -> laterna.v1.UpdateRequestDestinationRequest
-	36, // 47: laterna.v1.RequestService.DeleteRequestDestination:input_type -> laterna.v1.DeleteRequestDestinationRequest
-	7,  // 48: laterna.v1.RequestService.SearchRequestable:output_type -> laterna.v1.SearchRequestableResponse
-	10, // 49: laterna.v1.RequestService.ListRequestDestinations:output_type -> laterna.v1.ListRequestDestinationsResponse
-	13, // 50: laterna.v1.RequestService.CreateRequest:output_type -> laterna.v1.CreateRequestResponse
-	15, // 51: laterna.v1.RequestService.ListMyRequests:output_type -> laterna.v1.ListMyRequestsResponse
-	17, // 52: laterna.v1.RequestService.GetRequest:output_type -> laterna.v1.GetRequestResponse
-	19, // 53: laterna.v1.RequestService.CancelRequest:output_type -> laterna.v1.CancelRequestResponse
-	21, // 54: laterna.v1.RequestService.ListRequests:output_type -> laterna.v1.ListRequestsResponse
-	23, // 55: laterna.v1.RequestService.ApproveRequest:output_type -> laterna.v1.ApproveRequestResponse
-	25, // 56: laterna.v1.RequestService.DeclineRequest:output_type -> laterna.v1.DeclineRequestResponse
-	27, // 57: laterna.v1.RequestService.DeleteRequest:output_type -> laterna.v1.DeleteRequestResponse
-	31, // 58: laterna.v1.RequestService.GetRequestOptions:output_type -> laterna.v1.GetRequestOptionsResponse
-	33, // 59: laterna.v1.RequestService.CreateRequestDestination:output_type -> laterna.v1.CreateRequestDestinationResponse
-	35, // 60: laterna.v1.RequestService.UpdateRequestDestination:output_type -> laterna.v1.UpdateRequestDestinationResponse
-	37, // 61: laterna.v1.RequestService.DeleteRequestDestination:output_type -> laterna.v1.DeleteRequestDestinationResponse
-	48, // [48:62] is the sub-list for method output_type
-	34, // [34:48] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	29, // 29: laterna.v1.GetRequestOptionsResponse.metadata_profiles:type_name -> laterna.v1.RequestQualityProfile
+	0,  // 30: laterna.v1.CreateRequestDestinationRequest.kind:type_name -> laterna.v1.RequestKind
+	4,  // 31: laterna.v1.CreateRequestDestinationRequest.series_type:type_name -> laterna.v1.RequestSeriesType
+	8,  // 32: laterna.v1.CreateRequestDestinationResponse.destination:type_name -> laterna.v1.RequestDestination
+	4,  // 33: laterna.v1.UpdateRequestDestinationRequest.series_type:type_name -> laterna.v1.RequestSeriesType
+	8,  // 34: laterna.v1.UpdateRequestDestinationResponse.destination:type_name -> laterna.v1.RequestDestination
+	6,  // 35: laterna.v1.RequestService.SearchRequestable:input_type -> laterna.v1.SearchRequestableRequest
+	9,  // 36: laterna.v1.RequestService.ListRequestDestinations:input_type -> laterna.v1.ListRequestDestinationsRequest
+	12, // 37: laterna.v1.RequestService.CreateRequest:input_type -> laterna.v1.CreateRequestRequest
+	14, // 38: laterna.v1.RequestService.ListMyRequests:input_type -> laterna.v1.ListMyRequestsRequest
+	16, // 39: laterna.v1.RequestService.GetRequest:input_type -> laterna.v1.GetRequestRequest
+	18, // 40: laterna.v1.RequestService.CancelRequest:input_type -> laterna.v1.CancelRequestRequest
+	20, // 41: laterna.v1.RequestService.ListRequests:input_type -> laterna.v1.ListRequestsRequest
+	22, // 42: laterna.v1.RequestService.ApproveRequest:input_type -> laterna.v1.ApproveRequestRequest
+	24, // 43: laterna.v1.RequestService.DeclineRequest:input_type -> laterna.v1.DeclineRequestRequest
+	26, // 44: laterna.v1.RequestService.DeleteRequest:input_type -> laterna.v1.DeleteRequestRequest
+	30, // 45: laterna.v1.RequestService.GetRequestOptions:input_type -> laterna.v1.GetRequestOptionsRequest
+	32, // 46: laterna.v1.RequestService.CreateRequestDestination:input_type -> laterna.v1.CreateRequestDestinationRequest
+	34, // 47: laterna.v1.RequestService.UpdateRequestDestination:input_type -> laterna.v1.UpdateRequestDestinationRequest
+	36, // 48: laterna.v1.RequestService.DeleteRequestDestination:input_type -> laterna.v1.DeleteRequestDestinationRequest
+	7,  // 49: laterna.v1.RequestService.SearchRequestable:output_type -> laterna.v1.SearchRequestableResponse
+	10, // 50: laterna.v1.RequestService.ListRequestDestinations:output_type -> laterna.v1.ListRequestDestinationsResponse
+	13, // 51: laterna.v1.RequestService.CreateRequest:output_type -> laterna.v1.CreateRequestResponse
+	15, // 52: laterna.v1.RequestService.ListMyRequests:output_type -> laterna.v1.ListMyRequestsResponse
+	17, // 53: laterna.v1.RequestService.GetRequest:output_type -> laterna.v1.GetRequestResponse
+	19, // 54: laterna.v1.RequestService.CancelRequest:output_type -> laterna.v1.CancelRequestResponse
+	21, // 55: laterna.v1.RequestService.ListRequests:output_type -> laterna.v1.ListRequestsResponse
+	23, // 56: laterna.v1.RequestService.ApproveRequest:output_type -> laterna.v1.ApproveRequestResponse
+	25, // 57: laterna.v1.RequestService.DeclineRequest:output_type -> laterna.v1.DeclineRequestResponse
+	27, // 58: laterna.v1.RequestService.DeleteRequest:output_type -> laterna.v1.DeleteRequestResponse
+	31, // 59: laterna.v1.RequestService.GetRequestOptions:output_type -> laterna.v1.GetRequestOptionsResponse
+	33, // 60: laterna.v1.RequestService.CreateRequestDestination:output_type -> laterna.v1.CreateRequestDestinationResponse
+	35, // 61: laterna.v1.RequestService.UpdateRequestDestination:output_type -> laterna.v1.UpdateRequestDestinationResponse
+	37, // 62: laterna.v1.RequestService.DeleteRequestDestination:output_type -> laterna.v1.DeleteRequestDestinationResponse
+	49, // [49:63] is the sub-list for method output_type
+	35, // [35:49] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_request_proto_init() }

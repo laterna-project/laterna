@@ -42,7 +42,7 @@ the server up. `docker compose logs -f laterna` shows what it does.
 
 - **Upgrading:** `docker compose pull --ignore-buildable && docker compose up -d --build`.
   `https-dns` builds its Caddy, an image no registry has: without `--ignore-buildable` the pull
-  fails on it and `up` never runs. `LATERNA_VERSION=0.8` follows the patches of 0.8.x; set the next
+  fails on it and `up` never runs. `LATERNA_VERSION=0.9` follows the patches of 0.9.x; set the next
   minor version yourself after reading its release notes. The server backs its database up before
   migrating it.
 - **These files:** `main` holds those of the latest release, and `git pull` brings the next
@@ -392,9 +392,11 @@ EXTERNAL_NETWORK=laterna-stack
 MEDIA_DIR=<the stack's DATA_DIR>/media
 ```
 
-In Laterna, Administration, Sonarr and Radarr: `http://sonarr:8989` and `http://radarr:7878`
-with their API keys, then let Laterna turn on Kodi metadata and install its webhook at
-`http://laterna:8096`. The CI of each repository starts both together. Sonarr and Radarr that run
+In Laterna, Administration, Integrations: `http://sonarr:8989`, `http://radarr:7878` and
+`http://lidarr:8686` with their API keys, then let Laterna turn on Kodi metadata and install its
+webhook at `http://laterna:8096`. LazyLibrarian (`http://lazylibrarian:5299`, its API key under
+Config, Interface) only fetches the books profiles ask for: it writes no metadata and takes no
+webhook. The CI of each repository starts Sonarr, Radarr and Laterna together. Instances that run
 elsewhere work the same way: `external-network` on their network, or their address and the
 server's.
 

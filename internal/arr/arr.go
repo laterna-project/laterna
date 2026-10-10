@@ -1,7 +1,7 @@
-// Package arr talks to Sonarr and Radarr (API v3), which write the NFO files and images Laterna
-// reads. It checks and sets up their Kodi metadata, installs the webhook that tells Laterna about
-// an import, asks for a refresh and lists the tracked folders. It knows nothing about the database
-// or the catalog.
+// Package arr talks to Sonarr and Radarr (API v3) and Lidarr (API v1), which write the NFO files
+// and images Laterna reads. It checks and sets up their Kodi metadata, installs the webhook that
+// tells Laterna about an import, asks for a refresh and lists the tracked folders; for requests, it
+// searches, adds and follows titles. It knows nothing about the database or the catalog.
 package arr
 
 import (
@@ -17,32 +17,45 @@ import (
 	"strings"
 )
 
-// Kind is Sonarr or Radarr.
+// Kind is Sonarr, Radarr or Lidarr.
 type Kind string
 
 // Known integrations.
 const (
 	Sonarr Kind = "sonarr"
 	Radarr Kind = "radarr"
+	Lidarr Kind = "lidarr"
 )
 
 // Kinds lists the integrations in display order.
-var Kinds = []Kind{Sonarr, Radarr}
+var Kinds = []Kind{Sonarr, Radarr, Lidarr}
 
 // Name is the display name.
 func (k Kind) Name() string {
-	if k == Radarr {
+	switch k {
+	case Radarr:
 		return "Radarr"
+	case Lidarr:
+		return "Lidarr"
+	case Sonarr:
 	}
 	return "Sonarr"
 }
 
-// WebhookName is the name of Laterna's webhook in Sonarr or Radarr.
+// api is the prefix of the API: Lidarr has its own numbering.
+func (k Kind) api() string {
+	if k == Lidarr {
+		return "/api/v1"
+	}
+	return "/api/v3"
+}
+
+// WebhookName is the name of Laterna's webhook in Sonarr, Radarr or Lidarr.
 const WebhookName = "Laterna"
 
 const maxResponse = 32 << 20
 
-// Client calls the API of a Sonarr or Radarr instance.
+// Client calls the API of a Sonarr, Radarr or Lidarr instance.
 type Client struct {
 	kind Kind
 	base string
@@ -58,7 +71,7 @@ func New(kind Kind, base, apiKey string, hc *http.Client) *Client {
 	return &Client{kind: kind, base: strings.TrimSuffix(base, "/"), key: apiKey, http: hc}
 }
 
-// Error is a refusal from Sonarr or Radarr, with its explanation.
+// Error is a refusal from Sonarr, Radarr or Lidarr, with its explanation.
 type Error struct {
 	Status  int
 	Message string
@@ -83,7 +96,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		}
 		r = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, c.base+"/api/v3"+path, r)
+	req, err := http.NewRequestWithContext(ctx, method, c.base+c.kind.api()+path, r)
 	if err != nil {
 		return err
 	}
@@ -163,6 +176,7 @@ func (c *Client) Status(ctx context.Context) (Status, error) {
 var kodiOptions = map[Kind][]string{
 	Sonarr: {"seriesMetadata", "episodeMetadata", "episodeImageThumb", "seriesImages", "seasonImages", "episodeImages"},
 	Radarr: {"movieMetadata", "movieImages"},
+	Lidarr: {"artistMetadata", "albumMetadata", "artistImages", "albumImages"},
 }
 
 // resource is a configuration object (metadata, notification) kept as is: it is sent back whole
@@ -250,6 +264,7 @@ func (c *Client) EnableKodi(ctx context.Context) error {
 var webhookEvents = map[Kind][]string{
 	Sonarr: {"Download", "Upgrade", "ImportComplete", "Rename", "SeriesDelete", "EpisodeFileDelete", "EpisodeFileDeleteForUpgrade"},
 	Radarr: {"Download", "Upgrade", "Rename", "MovieDelete", "MovieFileDelete", "MovieFileDeleteForUpgrade"},
+	Lidarr: {"ReleaseImport", "Upgrade", "Rename", "ArtistDelete", "AlbumDelete", "TrackRetag"},
 }
 
 // Webhook is Laterna's webhook on an instance.
@@ -342,13 +357,10 @@ func (c *Client) RemoveWebhook(ctx context.Context) error {
 
 // Refresh.
 
-// Refresh asks for a refresh of every series (or movie): the instance reads its sources again and
-// writes the missing NFO files and images. It returns the command ID.
+// Refresh asks for a refresh of every series, movie or artist: the instance reads its sources
+// again and writes the missing NFO files and images. It returns the command ID.
 func (c *Client) Refresh(ctx context.Context) (int, error) {
-	name := "RefreshSeries"
-	if c.kind == Radarr {
-		name = "RefreshMovie"
-	}
+	name := map[Kind]string{Sonarr: "RefreshSeries", Radarr: "RefreshMovie", Lidarr: "RefreshArtist"}[c.kind]
 	var cmd struct {
 		ID int `json:"id"`
 	}
@@ -376,7 +388,7 @@ func (c *Client) Command(ctx context.Context, id int) (done bool, failed string,
 
 // Tracked folders.
 
-// Folder is a tracked series or movie, with the folder the instance keeps it in.
+// Folder is a tracked series, movie or artist, with the folder the instance keeps it in.
 type Folder struct {
 	Title string
 	// Path is the folder as the instance sees it ("/tv/Anime/Dr. STONE").
@@ -388,8 +400,25 @@ type Folder struct {
 	HasFiles bool
 }
 
-// Folders lists the tracked series (Sonarr) or movies (Radarr).
+// Folders lists the tracked series (Sonarr), movies (Radarr) or artists (Lidarr).
 func (c *Client) Folders(ctx context.Context) ([]Folder, error) {
+	if c.kind == Lidarr {
+		var artists []struct {
+			Name       string `json:"artistName"`
+			Path       string `json:"path"`
+			Statistics struct {
+				TrackFileCount int `json:"trackFileCount"`
+			} `json:"statistics"`
+		}
+		if err := c.do(ctx, http.MethodGet, "/artist", nil, &artists); err != nil {
+			return nil, err
+		}
+		out := make([]Folder, len(artists))
+		for i, a := range artists {
+			out[i] = Folder{Title: a.Name, Path: a.Path, HasFiles: a.Statistics.TrackFileCount > 0}
+		}
+		return out, nil
+	}
 	if c.kind == Radarr {
 		var movies []struct {
 			Title     string `json:"title"`

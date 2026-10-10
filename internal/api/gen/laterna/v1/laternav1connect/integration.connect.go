@@ -49,15 +49,16 @@ const (
 
 // IntegrationServiceClient is a client for the laterna.v1.IntegrationService service.
 type IntegrationServiceClient interface {
-	// ListIntegrations returns the state of Sonarr and Radarr: connection, Kodi metadata, webhook,
-	// series or movies without an NFO. It queries the instances (a few seconds at most).
+	// ListIntegrations returns the state of each integration: connection and, for Sonarr, Radarr and
+	// Lidarr, Kodi metadata, webhook, series, movies or artists without an NFO. It queries the
+	// instances (a few seconds at most).
 	ListIntegrations(context.Context, *connect.Request[v1.ListIntegrationsRequest]) (*connect.Response[v1.ListIntegrationsResponse], error)
 	// SetIntegration stores the address and API key of an instance, after trying them.
 	SetIntegration(context.Context, *connect.Request[v1.SetIntegrationRequest]) (*connect.Response[v1.SetIntegrationResponse], error)
 	// DeleteIntegration forgets an instance and removes Laterna's webhook from it.
 	DeleteIntegration(context.Context, *connect.Request[v1.DeleteIntegrationRequest]) (*connect.Response[v1.DeleteIntegrationResponse], error)
 	// ConfigureIntegration sets an instance up for Laterna: each requested step changes its
-	// configuration.
+	// configuration. Not for LazyLibrarian (Integration.manages_metadata).
 	ConfigureIntegration(context.Context, *connect.Request[v1.ConfigureIntegrationRequest]) (*connect.Response[v1.ConfigureIntegrationResponse], error)
 }
 
@@ -130,15 +131,16 @@ func (c *integrationServiceClient) ConfigureIntegration(ctx context.Context, req
 
 // IntegrationServiceHandler is an implementation of the laterna.v1.IntegrationService service.
 type IntegrationServiceHandler interface {
-	// ListIntegrations returns the state of Sonarr and Radarr: connection, Kodi metadata, webhook,
-	// series or movies without an NFO. It queries the instances (a few seconds at most).
+	// ListIntegrations returns the state of each integration: connection and, for Sonarr, Radarr and
+	// Lidarr, Kodi metadata, webhook, series, movies or artists without an NFO. It queries the
+	// instances (a few seconds at most).
 	ListIntegrations(context.Context, *connect.Request[v1.ListIntegrationsRequest]) (*connect.Response[v1.ListIntegrationsResponse], error)
 	// SetIntegration stores the address and API key of an instance, after trying them.
 	SetIntegration(context.Context, *connect.Request[v1.SetIntegrationRequest]) (*connect.Response[v1.SetIntegrationResponse], error)
 	// DeleteIntegration forgets an instance and removes Laterna's webhook from it.
 	DeleteIntegration(context.Context, *connect.Request[v1.DeleteIntegrationRequest]) (*connect.Response[v1.DeleteIntegrationResponse], error)
 	// ConfigureIntegration sets an instance up for Laterna: each requested step changes its
-	// configuration.
+	// configuration. Not for LazyLibrarian (Integration.manages_metadata).
 	ConfigureIntegration(context.Context, *connect.Request[v1.ConfigureIntegrationRequest]) (*connect.Response[v1.ConfigureIntegrationResponse], error)
 }
 
