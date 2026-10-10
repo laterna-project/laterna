@@ -57,11 +57,18 @@ type RequestsChanged struct {
 	RequestIDs []ID
 }
 
-func (Resync) isEvent()           {}
-func (ThemesChanged) isEvent()    {}
-func (RequestsChanged) isEvent()  {}
-func (DownloadsChanged) isEvent() {}
-func (LibrariesChanged) isEvent() {}
-func (LibraryScanned) isEvent()   {}
-func (ItemsChanged) isEvent()     {}
-func (UserDataChanged) isEvent()  {}
+// NotificationsChanged is sent to a profile when its notifications change: one arrived, or some
+// were read or deleted, possibly from another device.
+type NotificationsChanged struct {
+	ProfileID ID
+}
+
+func (Resync) isEvent()               {}
+func (NotificationsChanged) isEvent() {}
+func (ThemesChanged) isEvent()        {}
+func (RequestsChanged) isEvent()      {}
+func (DownloadsChanged) isEvent()     {}
+func (LibrariesChanged) isEvent()     {}
+func (LibraryScanned) isEvent()       {}
+func (ItemsChanged) isEvent()         {}
+func (UserDataChanged) isEvent()      {}

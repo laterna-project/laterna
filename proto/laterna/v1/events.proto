@@ -37,6 +37,7 @@ message Event {
     DownloadsChanged downloads_changed = 8;
     ThemesChanged themes_changed = 9;
     RequestsChanged requests_changed = 10;
+    NotificationsChanged notifications_changed = 11;
   }
 }
 
@@ -95,3 +96,7 @@ message ThemesChanged {}
 message RequestsChanged {
   repeated string request_ids = 1;
 }
+
+// NotificationsChanged: the notifications of the profile changed (one arrived, or some were read or
+// deleted, possibly from another device); reload them (NotificationService).
+message NotificationsChanged {}

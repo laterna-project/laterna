@@ -152,6 +152,8 @@ type App struct {
 	posters posterURLs
 	// books are the books of recent request searches.
 	books bookCache
+	// arrived are the episodes that arrived and were not announced yet.
+	arrived newEpisodes
 	// upcoming is what Sonarr, Radarr and Lidarr expect in the coming days.
 	upcoming upcomingCache
 

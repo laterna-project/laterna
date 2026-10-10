@@ -101,7 +101,9 @@ States: pending, approved, downloading, available, declined, failed. The request
 pending request; an administrator can delete any.
 
 Each change is announced to the requester and to the administrators (`RequestsChanged`), and
-recorded in the activity log.
+recorded in the activity log. What matters to someone who is not looking (a request that waits,
+its approval, its refusal, its arrival, its failure) also makes a
+[notification](notifications.md).
 
 ## Not in this version
 

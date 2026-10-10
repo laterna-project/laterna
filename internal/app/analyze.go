@@ -59,6 +59,7 @@ func (a *App) analyzeFile(ctx context.Context, target string) error {
 	f.Info = info
 	var enrich, changed []domain.ID
 	var removed int64
+	var arrived *newEpisode
 	err = a.store.Write(ctx, func(q store.Q) error {
 		if err := q.SetFileAnalysis(ctx, f.ID, info, now); err != nil {
 			return err
@@ -72,7 +73,7 @@ func (a *App) analyzeFile(ctx context.Context, target string) error {
 		case domain.LibraryMovies:
 			enrich, err = a.placeMovie(ctx, q, lib, f, rel)
 		case domain.LibraryShows:
-			enrich, err = a.placeEpisode(ctx, q, lib, f, rel)
+			enrich, arrived, err = a.placeEpisode(ctx, q, lib, f, rel)
 		case domain.LibraryMusic:
 			enrich, err = a.placeTrack(ctx, q, lib, f, rel)
 		case domain.LibraryBooks, domain.LibraryPhotos: // analyzeBook, analyzePhoto
@@ -110,6 +111,9 @@ func (a *App) analyzeFile(ctx context.Context, target string) error {
 	if removed > 0 {
 		a.libraryChanged(lib.ID)
 	}
+	if arrived != nil {
+		a.episodeArrived(arrived.series, arrived.episode)
+	}
 	return nil
 }
 
@@ -136,25 +140,25 @@ func (a *App) placeMovie(ctx context.Context, q store.Q, lib domain.Library, f d
 }
 
 // placeEpisode files an episode file, creating the series and season if needed.
-func (a *App) placeEpisode(ctx context.Context, q store.Q, lib domain.Library, f domain.MediaFile, rel string) ([]domain.ID, error) {
+func (a *App) placeEpisode(ctx context.Context, q store.Q, lib domain.Library, f domain.MediaFile, rel string) ([]domain.ID, *newEpisode, error) {
 	e, ok := naming.ParseEpisode(rel)
 	if !ok {
 		a.log.InfoContext(ctx, "file not recognised as an episode, ignored", "path", f.Path)
-		return nil, q.SetFileAnalysisError(ctx, f.ID, "no episode number found in the name", a.now())
+		return nil, nil, q.SetFileAnalysisError(ctx, f.ID, "no episode number found in the name", a.now())
 	}
 	seriesKey := "series:" + e.SeriesDir
 	if e.SeriesDir == "" {
 		seriesKey = "series:/" + naming.Key(e.SeriesTitle)
 	}
 	if err := a.followMove(ctx, q, lib.ID, f.ID, seriesKey, true); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var enrich []domain.ID
 	series, created, err := a.findOrCreate(ctx, q, domain.Item{
 		LibraryID: lib.ID, Kind: domain.ItemSeries, GroupKey: seriesKey, Title: e.SeriesTitle, Year: e.SeriesYear,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if created {
 		enrich = append(enrich, series.ID)
@@ -165,11 +169,11 @@ func (a *App) placeEpisode(ctx context.Context, q store.Q, lib domain.Library, f
 		SortTitle: fmt.Sprintf("%04d", e.Season),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if created {
 		if err := q.CreateSeason(ctx, domain.Season{ItemID: season.ID, SeriesID: series.ID, Number: e.Season}); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		enrich = append(enrich, season.ID)
 	}
@@ -182,20 +186,23 @@ func (a *App) placeEpisode(ctx context.Context, q store.Q, lib domain.Library, f
 		SortTitle: fmt.Sprintf("%04d", e.Episode),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	// An episode the catalog did not have is announced to those who follow its series.
+	var arrived *newEpisode
 	if created {
 		if err := q.CreateEpisode(ctx, domain.Episode{
 			ItemID: episode.ID, SeriesID: series.ID, SeasonID: season.ID, SeasonNumber: e.Season,
 			Number: e.Episode, NumberEnd: e.EpisodeEnd, Absolute: e.Absolute,
 		}); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		arrived = &newEpisode{series: series.ID, episode: episode.ID}
 	}
 	if err := q.LinkFile(ctx, episode.ID, f.ID, "", 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return append(enrich, episode.ID), nil
+	return append(enrich, episode.ID), arrived, nil
 }
 
 // followMove keeps the identity of an item whose folder was renamed: if the file already belonged
