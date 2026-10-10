@@ -16,6 +16,7 @@ import (
 
 	"github.com/laterna-project/laterna/internal/arr"
 	"github.com/laterna-project/laterna/internal/auth"
+	"github.com/laterna-project/laterna/internal/bazarr"
 	"github.com/laterna-project/laterna/internal/domain"
 	"github.com/laterna-project/laterna/internal/jobs"
 	"github.com/laterna-project/laterna/internal/lazylibrarian"
@@ -116,27 +117,30 @@ func (a *App) arrClient(k arr.Kind, s integrationSettings) *arr.Client {
 // arrProblem explains a Sonarr, Radarr or Lidarr error to an administrator.
 func arrProblem(k arr.Kind, err error) domain.Text { return integrationProblem(k.Name(), err) }
 
-// integrationProblem explains an error of an integration (Sonarr, Radarr, Lidarr, LazyLibrarian)
-// to an administrator.
+// integrationProblem explains an error of an integration (Sonarr, Radarr, Lidarr, LazyLibrarian,
+// Bazarr) to an administrator.
 func integrationProblem(name string, err error) domain.Text {
 	var refused *arr.Error
 	var declined *lazylibrarian.Error
+	var rejected *bazarr.Error
 	switch {
-	case errors.Is(err, arr.ErrUnauthorized), errors.Is(err, lazylibrarian.ErrUnauthorized):
+	case errors.Is(err, arr.ErrUnauthorized), errors.Is(err, lazylibrarian.ErrUnauthorized), errors.Is(err, bazarr.ErrUnauthorized):
 		return domain.T("error.integration.unauthorized", "name", name)
 	case errors.As(err, &refused):
 		return domain.T("error.integration.refused", "name", name, "reason", refused)
 	case errors.As(err, &declined):
 		return domain.T("error.integration.refused", "name", name, "reason", declined)
+	case errors.As(err, &rejected):
+		return domain.T("error.integration.refused", "name", name, "reason", rejected)
 	case errors.Is(err, context.DeadlineExceeded):
 		return domain.T("error.integration.timeout", "name", name)
 	}
 	return domain.T("error.integration.unreachable", "name", name, "reason", err)
 }
 
-// Integrations returns the state of Sonarr, Radarr, Lidarr and LazyLibrarian.
+// Integrations returns the state of Sonarr, Radarr, Lidarr, LazyLibrarian and Bazarr.
 func (a *App) Integrations(ctx context.Context) ([]domain.Integration, error) {
-	out := make([]domain.Integration, 0, len(arr.Kinds)+1)
+	out := make([]domain.Integration, 0, len(arr.Kinds)+len(linkedPrograms))
 	for _, k := range arr.Kinds {
 		s, ok, err := a.loadIntegration(ctx, string(k))
 		if err != nil {
@@ -144,11 +148,14 @@ func (a *App) Integrations(ctx context.Context) ([]domain.Integration, error) {
 		}
 		out = append(out, a.integrationStatus(ctx, k, s, ok))
 	}
-	ll, err := a.lazyLibrarianStatus(ctx)
-	if err != nil {
-		return nil, err
+	for _, l := range linkedPrograms {
+		st, err := a.linkedStatus(ctx, l)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, st)
 	}
-	return append(out, ll), nil
+	return out, nil
 }
 
 // integrationStatus queries an instance: identity, Kodi metadata, webhook, and the NFO files
@@ -256,11 +263,11 @@ func (a *App) integrationLibraries(ctx context.Context, k arr.Kind) ([]domain.Li
 	return slices.DeleteFunc(libs, func(l domain.Library) bool { return l.Kind != libraryKind(k) }), nil
 }
 
-// SetIntegration stores the address and API key of Sonarr, Radarr, Lidarr or LazyLibrarian, after
-// trying them.
+// SetIntegration stores the address and API key of Sonarr, Radarr, Lidarr, LazyLibrarian or Bazarr,
+// after trying them.
 func (a *App) SetIntegration(ctx context.Context, p domain.Principal, kind domain.IntegrationKind, rawURL, apiKey string) (domain.Integration, error) {
-	if kind == domain.IntegrationLazyLibrarian {
-		return a.setLazyLibrarian(ctx, p, rawURL, apiKey)
+	if l, ok := linkedProgramOf(kind); ok {
+		return a.setLinked(ctx, p, l, rawURL, apiKey)
 	}
 	k, err := arrKind(kind)
 	if err != nil {
@@ -299,8 +306,8 @@ func (a *App) SetIntegration(ctx context.Context, p domain.Principal, kind domai
 // DeleteIntegration forgets an integration, and removes Laterna's webhook from Sonarr, Radarr or
 // Lidarr if it answers.
 func (a *App) DeleteIntegration(ctx context.Context, p domain.Principal, kind domain.IntegrationKind) error {
-	if kind == domain.IntegrationLazyLibrarian {
-		return a.deleteLazyLibrarian(ctx, p)
+	if l, ok := linkedProgramOf(kind); ok {
+		return a.deleteLinked(ctx, p, l)
 	}
 	k, err := arrKind(kind)
 	if err != nil {
@@ -327,10 +334,10 @@ func (a *App) DeleteIntegration(ctx context.Context, p domain.Principal, kind do
 
 // ConfigureIntegration sets Sonarr, Radarr or Lidarr up for Laterna: Kodi metadata, webhook,
 // refresh (see domain.IntegrationSetup). Each step changes the instance's configuration, so it only
-// happens when an administrator asks. LazyLibrarian has none of it.
+// happens when an administrator asks. LazyLibrarian and Bazarr have none of it.
 func (a *App) ConfigureIntegration(ctx context.Context, p domain.Principal, kind domain.IntegrationKind, setup domain.IntegrationSetup) (domain.Integration, error) {
-	if kind == domain.IntegrationLazyLibrarian {
-		return domain.Integration{}, domain.Precondition("integration.not_configurable", "name", lazyLibrarianName)
+	if l, ok := linkedProgramOf(kind); ok {
+		return domain.Integration{}, domain.Precondition("integration.not_configurable", "name", l.name)
 	}
 	k, err := arrKind(kind)
 	if err != nil {

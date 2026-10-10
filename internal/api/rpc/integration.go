@@ -20,6 +20,7 @@ var integrationKinds = map[domain.IntegrationKind]laternav1.IntegrationKind{
 	domain.IntegrationRadarr:        laternav1.IntegrationKind_INTEGRATION_KIND_RADARR,
 	domain.IntegrationLidarr:        laternav1.IntegrationKind_INTEGRATION_KIND_LIDARR,
 	domain.IntegrationLazyLibrarian: laternav1.IntegrationKind_INTEGRATION_KIND_LAZYLIBRARIAN,
+	domain.IntegrationBazarr:        laternav1.IntegrationKind_INTEGRATION_KIND_BAZARR,
 }
 
 func integrationKindFromMsg(k laternav1.IntegrationKind) domain.IntegrationKind {

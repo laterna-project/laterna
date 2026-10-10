@@ -57,11 +57,19 @@ type RequestsChanged struct {
 	RequestIDs []ID
 }
 
-func (Resync) isEvent()           {}
-func (ThemesChanged) isEvent()    {}
-func (RequestsChanged) isEvent()  {}
-func (DownloadsChanged) isEvent() {}
-func (LibrariesChanged) isEvent() {}
-func (LibraryScanned) isEvent()   {}
-func (ItemsChanged) isEvent()     {}
-func (UserDataChanged) isEvent()  {}
+// SubtitleSearchChanged is sent to the profile that asked for a subtitle when its search starts or
+// ends.
+type SubtitleSearchChanged struct {
+	ProfileID ID
+	FileID    ID
+}
+
+func (SubtitleSearchChanged) isEvent() {}
+func (Resync) isEvent()                {}
+func (ThemesChanged) isEvent()         {}
+func (RequestsChanged) isEvent()       {}
+func (DownloadsChanged) isEvent()      {}
+func (LibrariesChanged) isEvent()      {}
+func (LibraryScanned) isEvent()        {}
+func (ItemsChanged) isEvent()          {}
+func (UserDataChanged) isEvent()       {}

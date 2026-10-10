@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package laterna.v1;
+
+import "google/protobuf/timestamp.proto";
+import "laterna/v1/text.proto";
+
+option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
+
+// SubtitleService looks for a subtitle a file does not have. The search is handed to Bazarr
+// (IntegrationService), which asks its providers and saves the best subtitle next to the video;
+// Laterna then reads the subtitles of the file again. Laterna itself talks to no subtitle
+// provider.
+//
+// A search runs in the background: SearchSubtitle answers at once, and the end of the search is
+// announced through EventService (SubtitleSearchChanged), to the profile that asked. Once a
+// subtitle is found, the subtitles of the file are up to date: read them again
+// (PlaybackService.GetSubtitles during a playback).
+service SubtitleService {
+  // GetSubtitleSearch says whether a subtitle can be looked for a file, in which languages, and
+  // where the searches for that file stand.
+  rpc GetSubtitleSearch(GetSubtitleSearchRequest) returns (GetSubtitleSearchResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // SearchSubtitle asks for a subtitle of a movie or an episode in a language. Asking again for a
+  // search that is under way, or that found nothing in the last ten minutes, returns it as it
+  // stands. A profile may ask for 20 searches an hour.
+  rpc SearchSubtitle(SearchSubtitleRequest) returns (SearchSubtitleResponse);
+}
+
+enum SubtitleSearchState {
+  SUBTITLE_SEARCH_STATE_UNSPECIFIED = 0;
+  // Bazarr is looking; it gets two minutes.
+  SUBTITLE_SEARCH_STATE_SEARCHING = 1;
+  // A subtitle was saved next to the video, and the subtitles of the file were read again.
+  SUBTITLE_SEARCH_STATE_FOUND = 2;
+  // No provider has one.
+  SUBTITLE_SEARCH_STATE_NOT_FOUND = 3;
+  // The search could not go through (error says why): Bazarr does not answer, or does not follow
+  // this title.
+  SUBTITLE_SEARCH_STATE_FAILED = 4;
+}
+
+// SubtitleLanguage is a language subtitles can be looked up in: one of those enabled in Bazarr.
+message SubtitleLanguage {
+  // Two-letter code ("fr"), the one SearchSubtitle takes.
+  string code = 1;
+  // Its name as Bazarr writes it, in English.
+  string name = 2;
+}
+
+message SubtitleSearch {
+  string file_id = 1;
+  // Two-letter code of the language asked for.
+  string language = 2;
+  bool hearing_impaired = 3;
+  bool forced = 4;
+  SubtitleSearchState state = 5;
+  // Why a failed search could not go through, in the language of the request; error_text is the
+  // same for translation.
+  string error = 6;
+  Text error_text = 7;
+  google.protobuf.Timestamp started_at = 8;
+}
+
+message GetSubtitleSearchRequest {
+  // A file of a movie or an episode (MediaFile.id, or the file of a playback).
+  string file_id = 1;
+}
+
+message GetSubtitleSearchResponse {
+  // False when subtitles cannot be looked up: no Bazarr is linked, it does not answer, or the file
+  // is neither a movie nor an episode.
+  bool available = 1;
+  repeated SubtitleLanguage languages = 2;
+  // Searches for that file, under way or finished in the last half hour, oldest first.
+  repeated SubtitleSearch searches = 3;
+}
+
+message SearchSubtitleRequest {
+  string file_id = 1;
+  // Two-letter code, one of GetSubtitleSearchResponse.languages.
+  string language = 2;
+  // Subtitles for the deaf and hard of hearing.
+  bool hearing_impaired = 3;
+  // Subtitles of the foreign parts only.
+  bool forced = 4;
+}
+
+message SearchSubtitleResponse {
+  SubtitleSearch search = 1;
+}

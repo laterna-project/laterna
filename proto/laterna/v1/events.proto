@@ -37,6 +37,7 @@ message Event {
     DownloadsChanged downloads_changed = 8;
     ThemesChanged themes_changed = 9;
     RequestsChanged requests_changed = 10;
+    SubtitleSearchChanged subtitle_search_changed = 12;
   }
 }
 
@@ -94,4 +95,10 @@ message ThemesChanged {}
 // (RequestService).
 message RequestsChanged {
   repeated string request_ids = 1;
+}
+
+// SubtitleSearchChanged: a subtitle search of the profile started or ended; read where it stands
+// (SubtitleService.GetSubtitleSearch) and, once a subtitle is found, the subtitles of the file.
+message SubtitleSearchChanged {
+  string file_id = 1;
 }
