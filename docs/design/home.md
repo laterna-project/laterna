@@ -11,9 +11,10 @@ items, using the catalog's messages. Clients display the rows in the order recei
 |---|---|---|
 | 1 | In progress | resume, next up, continue reading |
 | 2 | New to watch | latest additions of each movie and series library |
-| 3 | Recommendations | recommended for you, then up to two "because you watched…" |
-| 4 | Music | recently played albums, then latest additions of each music library |
-| 5 | The rest | latest books, then latest photos |
+| 3 | Coming soon | what Sonarr, Radarr and Lidarr expect (see below) |
+| 4 | Recommendations | recommended for you, then up to two "because you watched…" |
+| 5 | Music | recently played albums, then latest additions of each music library |
+| 6 | The rest | latest books, then latest photos |
 
 - Empty rows are left out.
 - Inside a group, libraries follow the order chosen by the administrator
@@ -30,6 +31,33 @@ items, using the catalog's messages. Clients display the rows in the order recei
 
 `GetHome` is the heaviest call of the API and the one that sets the worst p95 in `task perf`
 (around 20 ms on the synthetic catalog).
+
+## Coming soon
+
+Sonarr, Radarr and Lidarr know what the libraries will get next. The row "Coming soon" lists the
+episodes, movies and albums they monitor, expect within two weeks and do not have yet, soonest
+first. An episode that aired less than a day ago and has not arrived is still listed: it is on its
+way.
+
+- Nothing of it is in the catalog, so the row has no items: its entries are `UpcomingRelease`
+  messages in `HomeRow.upcoming`. A client that does not know them would show an empty row, so the
+  row is only sent when the client asks (`GetHomeRequest.upcoming`).
+- A movie counts on the day it comes out at home (digital, else physical). Its day in theaters
+  brings nothing to a library. Movies and albums have a day, not a time (`all_day`).
+- The job `upcoming.refresh` reads the calendars every 30 minutes, when an integration is linked or
+  unlinked, and a minute after each import a webhook reports. The result is kept in memory:
+  `GetHome` never waits for an instance, and an instance that does not answer keeps its last
+  answer.
+- An entry links to the series or the artist when the catalog has it, with its images. Otherwise
+  the server serves the poster the instance names, through the route of request posters.
+
+A profile only sees what will land where it may look:
+
+- the library is the one of the series or the artist in the catalog; else the one a request
+  destination gives to the root folder on the instance; else any library of that kind, and the
+  profile then has to be allowed in all of them;
+- parental control uses the rating the catalog shows for the series, else the one the instance
+  gives. Music has none.
 
 ## Resume rules
 

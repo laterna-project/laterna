@@ -133,7 +133,7 @@ func TestPhotos(t *testing.T) {
 	if found, err := a.Search(ctx, p, "IMG", 10); err != nil || len(found) != 0 {
 		t.Errorf("search for a photo: %v %v", titles(found), err)
 	}
-	rows, err := a.Home(ctx, p, 0)
+	rows, err := a.Home(ctx, p, 0, false)
 	mustNil(t, err)
 	if !slices.ContainsFunc(rows, func(r HomeRow) bool { return r.Kind == RowLatestPhotos && len(r.Items) == 4 }) {
 		t.Error("recently added photos missing from the home page")

@@ -252,7 +252,7 @@ func TestLibraryAccessAndParentalControl(t *testing.T) {
 	if _, _, err := a.Movie(ctx, onTom, big); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("details of a forbidden movie: %v", err)
 	}
-	rows, err := a.Home(ctx, onTom, 0)
+	rows, err := a.Home(ctx, onTom, 0, false)
 	mustNil(t, err)
 	for _, r := range rows {
 		for _, v := range r.Items {

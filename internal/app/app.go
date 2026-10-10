@@ -152,6 +152,8 @@ type App struct {
 	posters posterURLs
 	// books are the books of recent request searches.
 	books bookCache
+	// upcoming is what Sonarr, Radarr and Lidarr expect in the coming days.
+	upcoming upcomingCache
 
 	// bus pushes events to subscribed clients; changes batches the item ones.
 	bus     *events.Bus[domain.Event]
