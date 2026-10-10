@@ -73,10 +73,15 @@ keeps its signature.
 
 A daily purge removes downloaded files that are no longer used and people with no credit left.
 
-## Sonarr and Radarr integration
+## Sonarr, Radarr and Lidarr integration
 
 The integration is optional (`IntegrationService`, administrators). Laterna never copies their
-database: it only reads the files they write.
+database: it only reads the files they write. Lidarr (music, API v1) is handled like Sonarr and
+Radarr: Kodi metadata (`artist.nfo`, `album.nfo`, artist and album images), the webhook on
+imports, upgrades, renames, retags and deletions, the full refresh (`RefreshArtist`), and the
+artists without an `artist.nfo`. LazyLibrarian (books) is linked too, for requests only
+(docs/design/requests.md): it writes no Kodi metadata and has no webhook, so only its connection
+is checked.
 
 - **Connection**: address and API key, stored in the database and tried before being saved. The
   key never comes back out through the API.
@@ -87,7 +92,7 @@ database: it only reads the files they write.
 - **Configuring the instance**, only on explicit request, since each step changes its
   configuration: enable Kodi metadata with the useful options and leave the others alone; install
   the webhook; ask for a full refresh, which is followed to its end and then by a scan.
-- **Webhook** `POST /hooks/{sonarr|radarr}`: Basic authentication with a secret handed to the
+- **Webhook** `POST /hooks/{sonarr|radarr|lidarr}`: Basic authentication with a secret handed to the
   instance and stored hashed. After an import, a rename or a deletion, the libraries concerned
   are rescanned **30 s later**, which leaves time for the NFO and images to be written. Events
   close together give a single scan.

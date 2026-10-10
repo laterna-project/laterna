@@ -10,15 +10,15 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/laterna-project/laterna/internal/arr"
 	"github.com/laterna-project/laterna/internal/domain"
 	"github.com/laterna-project/laterna/internal/store"
 )
 
-// Requests for movies and series (docs/design/requests.md). A profile searches Sonarr or Radarr and
-// asks for a title; an administrator approves it, unless the account's requests are approved at
-// once. The server then hands the title to the instance (request.submit) and follows it until the
-// catalog has it (requests.refresh).
+// Requests for movies, series, music and books (docs/design/requests.md). A profile searches
+// Sonarr, Radarr, Lidarr or LazyLibrarian (requests_sources.go) and asks for a title; an
+// administrator approves it, unless the account's requests are approved at once. The server then
+// hands the title to the instance (request.submit) and follows it until the catalog has it
+// (requests.refresh).
 
 const (
 	jobSubmitRequest   = "request.submit"
@@ -42,145 +42,76 @@ const (
 	maxSeasonNumber    = 10_000
 	requestPageSize    = 50
 	maxRequestPageSize = 200
+	maxExternalKey     = 100
 )
-
-// requestArr is the instance that handles a kind of request.
-func requestArr(k domain.RequestKind) arr.Kind {
-	if k == domain.RequestMovie {
-		return arr.Radarr
-	}
-	return arr.Sonarr
-}
-
-func validRequestKind(k domain.RequestKind) error {
-	if k != domain.RequestSeries && k != domain.RequestMovie {
-		return domain.Invalid("media_request.invalid_kind")
-	}
-	return nil
-}
-
-// requestClient returns the client of the instance for a kind. Without it, that kind cannot be
-// requested.
-func (a *App) requestClient(ctx context.Context, k domain.RequestKind) (*arr.Client, arr.Kind, error) {
-	ak := requestArr(k)
-	s, ok, err := a.loadIntegration(ctx, ak)
-	if err != nil {
-		return nil, ak, err
-	}
-	if !ok {
-		return nil, ak, domain.Precondition("media_request.unavailable", "name", ak.Name())
-	}
-	return a.arrClient(ak, s), ak, nil
-}
-
-// instanceError explains a failed call to Sonarr or Radarr: in full to an administrator, in short
-// to anyone else (the details go to the log).
-func (a *App) instanceError(ctx context.Context, p domain.Principal, k arr.Kind, err error) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	a.log.WarnContext(ctx, "requests: instance call failed", "kind", k, "err", err)
-	if p.CanAdminister() {
-		return domain.FromText(domain.ErrPrecondition, arrProblem(k, err))
-	}
-	return domain.Precondition("media_request.unavailable", "name", k.Name())
-}
 
 // Search.
 
-// SearchRequestable looks a title up on the instance for that kind and says, for each result, what
-// it is to the profile.
-func (a *App) SearchRequestable(ctx context.Context, p domain.Principal, kind domain.RequestKind, query string) ([]domain.RequestableTitle, error) {
-	if err := validRequestKind(kind); err != nil {
+// SearchRequestable looks titles up in the source of a family (series, movie, music, book) and says,
+// for each result, what it is to the profile.
+func (a *App) SearchRequestable(ctx context.Context, p domain.Principal, family domain.RequestKind, query string) ([]domain.RequestableTitle, error) {
+	if err := validRequestFamily(family); err != nil {
 		return nil, err
 	}
 	query = strings.TrimSpace(query)
 	if n := utf8.RuneCountInString(query); n < minRequestQuery || n > maxRequestQuery {
 		return nil, domain.Invalid("media_request.invalid_query", "min", minRequestQuery, "max", maxRequestQuery)
 	}
-	client, ak, err := a.requestClient(ctx, kind)
+	found, err := a.searchSource(ctx, p, family, query)
 	if err != nil {
 		return nil, err
 	}
-	found, err := client.Search(ctx, query)
-	if err != nil {
-		return nil, a.instanceError(ctx, p, ak, err)
-	}
-	// A result without an ID (not on TVDB or TMDB yet) cannot be requested.
-	found = slices.DeleteFunc(found, func(t arr.Title) bool { return t.ExternalID <= 0 })
 	found = found[:min(len(found), maxRequestResults)]
-	ids := make([]int64, len(found))
-	for i, t := range found {
-		ids[i] = t.ExternalID
+	byKind := map[domain.RequestKind][]sourceTitle{}
+	for _, t := range found {
+		byKind[t.Kind] = append(byKind[t.Kind], t)
 	}
-	visible, present, err := a.inCatalog(ctx, p, kind, ids)
-	if err != nil {
-		return nil, err
+	type states struct {
+		visible map[string]domain.ID
+		present map[string]bool
+		open    map[string]domain.ID
 	}
-	open, err := a.store.Read().OpenRequests(ctx, kind, ids)
-	if err != nil {
-		return nil, err
+	known := map[domain.RequestKind]states{}
+	for kind, titles := range byKind {
+		visible, present, err := a.inCatalog(ctx, p, kind, titles)
+		if err != nil {
+			return nil, err
+		}
+		keys := make([]string, len(titles))
+		for i, t := range titles {
+			keys[i] = t.Key()
+		}
+		open, err := a.store.Read().OpenRequests(ctx, kind, keys)
+		if err != nil {
+			return nil, err
+		}
+		known[kind] = states{visible: visible, present: present, open: open}
 	}
 	out := make([]domain.RequestableTitle, 0, len(found))
 	for _, t := range found {
-		r := domain.RequestableTitle{
-			Kind: kind, ExternalID: t.ExternalID, Title: t.Title, Year: t.Year, Overview: t.Overview, Poster: t.Poster,
-			Network: t.Network, SeasonCount: len(t.Seasons), State: domain.Requestable,
-		}
-		if item, ok := visible[t.ExternalID]; ok {
+		r, st, key := t.RequestableTitle, known[t.Kind], t.Key()
+		r.State = domain.Requestable
+		if item, ok := st.visible[key]; ok {
 			r.State, r.ItemID = domain.RequestableAvailable, &item
-		} else if req, ok := open[t.ExternalID]; ok {
+		} else if req, ok := st.open[key]; ok {
 			r.State, r.RequestID = domain.RequestableRequested, &req
-		} else if present[t.ExternalID] || (t.ArrID > 0 && t.Monitored) {
+		} else if st.present[key] || t.Tracked {
 			r.State = domain.RequestableTracked
 		}
-		a.rememberPoster(t.Poster)
+		a.rememberPoster(r.Poster)
 		out = append(out, r)
 	}
 	return out, nil
-}
-
-// inCatalog says which titles the catalog has (present), and the item of each that the profile
-// sees (visible).
-func (a *App) inCatalog(ctx context.Context, p domain.Principal, kind domain.RequestKind, ids []int64) (visible map[int64]domain.ID, present map[int64]bool, err error) {
-	read := a.store.Read()
-	items, err := read.ItemsWithExternalIDs(ctx, kind.ExternalProvider(), ids)
-	if err != nil {
-		return nil, nil, err
-	}
-	visible, present = map[int64]domain.ID{}, map[int64]bool{}
-	var itemIDs []domain.ID
-	for ext, list := range items {
-		present[ext] = true
-		for _, it := range list {
-			itemIDs = append(itemIDs, it.ItemID)
-		}
-	}
-	v, ok := p.Viewer()
-	if !ok || len(itemIDs) == 0 {
-		return visible, present, nil
-	}
-	views, err := read.ViewsByID(ctx, v, itemIDs)
-	if err != nil {
-		return nil, nil, err
-	}
-	for ext, list := range items {
-		for _, it := range list {
-			if _, ok := views[it.ItemID]; ok {
-				visible[ext] = it.ItemID
-				break
-			}
-		}
-	}
-	return visible, present, nil
 }
 
 // Requests.
 
 // NewRequest is a request a profile makes.
 type NewRequest struct {
-	Kind       domain.RequestKind
-	ExternalID int64
+	Kind domain.RequestKind
+	// ExternalID of a series or a movie, ExternalKey of the others.
+	ExternalID  int64
+	ExternalKey string
 	// DestinationID nil takes the only destination of that kind open to the profile.
 	DestinationID *domain.ID
 	Seasons       domain.RequestSeasons
@@ -199,41 +130,45 @@ func (a *App) CreateRequest(ctx context.Context, p domain.Principal, n NewReques
 	if err := validRequestKind(n.Kind); err != nil {
 		return domain.MediaRequest{}, err
 	}
-	if n.ExternalID <= 0 {
+	video := n.Kind == domain.RequestSeries || n.Kind == domain.RequestMovie
+	n.ExternalKey = strings.TrimSpace(n.ExternalKey)
+	if video && n.ExternalID <= 0 || !video && (n.ExternalKey == "" || len(n.ExternalKey) > maxExternalKey) {
 		return domain.MediaRequest{}, domain.Invalid("media_request.invalid_external_id")
+	}
+	if video {
+		n.ExternalKey = ""
+	} else {
+		n.ExternalID = 0
 	}
 	seasons, numbers, err := requestSeasons(n.Kind, n.Seasons, n.SeasonNumbers)
 	if err != nil {
 		return domain.MediaRequest{}, err
 	}
-	dest, err := a.destinationFor(ctx, p, n.Kind, n.DestinationID)
+	dest, err := a.destinationFor(ctx, p, n.Kind.Family(), n.DestinationID)
 	if err != nil {
 		return domain.MediaRequest{}, err
 	}
-	client, ak, err := a.requestClient(ctx, n.Kind)
+	title, ok, err := a.findSource(ctx, p, n.Kind, n.ExternalID, n.ExternalKey)
 	if err != nil {
 		return domain.MediaRequest{}, err
-	}
-	title, ok, err := client.Find(ctx, n.ExternalID)
-	if err != nil {
-		return domain.MediaRequest{}, a.instanceError(ctx, p, ak, err)
 	}
 	if !ok {
 		return domain.MediaRequest{}, domain.NotFound("media_request.title_not_found")
 	}
-	visible, present, err := a.inCatalog(ctx, p, n.Kind, []int64{n.ExternalID})
+	visible, present, err := a.inCatalog(ctx, p, n.Kind, []sourceTitle{title})
 	if err != nil {
 		return domain.MediaRequest{}, err
 	}
-	if _, ok := visible[n.ExternalID]; ok {
+	if _, ok := visible[title.Key()]; ok {
 		return domain.MediaRequest{}, domain.Conflict("media_request.available")
 	}
-	if present[n.ExternalID] || (title.ArrID > 0 && title.Monitored) {
+	if present[title.Key()] || title.Tracked {
 		return domain.MediaRequest{}, domain.Conflict("media_request.tracked")
 	}
 	now := a.now()
 	r := domain.MediaRequest{
-		ID: domain.NewID(), Kind: n.Kind, ExternalID: n.ExternalID, Title: title.Title, Year: title.Year, Poster: title.Poster,
+		ID: domain.NewID(), Kind: n.Kind, ExternalID: n.ExternalID, ExternalKey: n.ExternalKey, Title: title.Title,
+		Subtitle: title.Network, Year: title.Year, Poster: title.Poster,
 		Status: domain.RequestPending, Seasons: seasons, SeasonNumbers: numbers, Destination: &dest,
 		AccountID: p.Account.ID, Username: p.Account.Username, ProfileID: p.Profile.ID, ProfileName: p.Profile.Name,
 		CreatedAt: now, UpdatedAt: now,
@@ -279,13 +214,20 @@ func (a *App) CreateRequest(ctx context.Context, p domain.Principal, n NewReques
 	return requestFor(p, r), nil
 }
 
-// requestSeasons checks the seasons asked for: a movie has none; chosen seasons come sorted and
-// once each.
+// requestSeasons checks the seasons asked for: the albums of an artist (all, first or latest);
+// chosen seasons of a series come sorted and once each; the other kinds have none.
 func requestSeasons(kind domain.RequestKind, s domain.RequestSeasons, numbers []int) (domain.RequestSeasons, []int, error) {
 	if s == "" {
 		s = domain.SeasonsAll
 	}
-	if kind == domain.RequestMovie {
+	switch kind {
+	case domain.RequestSeries:
+	case domain.RequestArtist:
+		if s == domain.SeasonsChosen {
+			return "", nil, domain.Invalid("media_request.invalid_seasons")
+		}
+		return s, nil, nil
+	default:
 		return domain.SeasonsAll, nil, nil
 	}
 	switch s {
@@ -302,7 +244,7 @@ func requestSeasons(kind domain.RequestKind, s domain.RequestSeasons, numbers []
 }
 
 // destinationFor picks where a request lands: the destination asked for, or the only one of that
-// kind open to the profile (its account may browse the library).
+// family open to the profile (its account may browse the library).
 func (a *App) destinationFor(ctx context.Context, p domain.Principal, kind domain.RequestKind, id *domain.ID) (domain.RequestDestination, error) {
 	all, err := a.store.Read().RequestDestinations(ctx)
 	if err != nil {
@@ -481,7 +423,7 @@ func (a *App) ApproveRequest(ctx context.Context, p domain.Principal, id domain.
 		}
 		if ap.DestinationID != nil {
 			d, err := q.RequestDestination(ctx, *ap.DestinationID)
-			if store.IsNotFound(err) || (err == nil && d.Kind != r.Kind) {
+			if store.IsNotFound(err) || (err == nil && d.Kind != r.Kind.Family()) {
 				return domain.NotFound("media_request.destination_not_found")
 			}
 			if err != nil {
@@ -597,10 +539,10 @@ func (a *App) requestsChanged(profileID domain.ID, ids ...domain.ID) {
 // Destinations.
 
 // RequestDestinations lists the destinations the caller may request into (all of them for an
-// administrator, with how each is set on the instance); kind "" lists both kinds.
+// administrator, with how each is set on the instance); kind "" lists every family.
 func (a *App) RequestDestinations(ctx context.Context, p domain.Principal, kind domain.RequestKind) ([]domain.RequestDestination, error) {
 	if kind != "" {
-		if err := validRequestKind(kind); err != nil {
+		if err := validRequestFamily(kind); err != nil {
 			return nil, err
 		}
 	}
@@ -617,9 +559,14 @@ func (a *App) RequestDestinations(ctx context.Context, p domain.Principal, kind 
 	return out, nil
 }
 
-// RequestOptions reads from the instance for a kind its root folders and quality profiles.
+// RequestOptions reads from the instance for a family its root folders and quality profiles, and
+// Lidarr's metadata profiles. Books have none: LazyLibrarian decides where they go.
 func (a *App) RequestOptions(ctx context.Context, p domain.Principal, kind domain.RequestKind) (domain.RequestOptions, error) {
-	if err := validRequestKind(kind); err != nil {
+	if err := validRequestFamily(kind); err != nil {
+		return domain.RequestOptions{}, err
+	}
+	if kind == domain.RequestBook {
+		_, err := a.bookClient(ctx)
 		return domain.RequestOptions{}, err
 	}
 	client, ak, err := a.requestClient(ctx, kind)
@@ -628,13 +575,22 @@ func (a *App) RequestOptions(ctx context.Context, p domain.Principal, kind domai
 	}
 	roots, err := client.RootFolders(ctx)
 	if err != nil {
-		return domain.RequestOptions{}, a.instanceError(ctx, p, ak, err)
+		return domain.RequestOptions{}, a.instanceError(ctx, p, ak.Name(), err)
 	}
 	profiles, err := client.QualityProfiles(ctx)
 	if err != nil {
-		return domain.RequestOptions{}, a.instanceError(ctx, p, ak, err)
+		return domain.RequestOptions{}, a.instanceError(ctx, p, ak.Name(), err)
 	}
 	var out domain.RequestOptions
+	if kind == domain.RequestMusic {
+		meta, err := client.MetadataProfiles(ctx)
+		if err != nil {
+			return domain.RequestOptions{}, a.instanceError(ctx, p, ak.Name(), err)
+		}
+		for _, m := range meta {
+			out.MetadataProfiles = append(out.MetadataProfiles, domain.QualityProfile{ID: m.ID, Name: m.Name})
+		}
+	}
 	for _, r := range roots {
 		out.RootFolders = append(out.RootFolders, domain.RootFolder{Path: r.Path, FreeSpace: r.FreeSpace})
 	}
@@ -653,15 +609,19 @@ type DestinationChanges struct {
 	RootFolder       *string
 	QualityProfileID *int
 	SeriesType       domain.SeriesType
+	// MetadataProfileID is Lidarr's metadata profile (music).
+	MetadataProfileID *int
 }
 
 // CreateRequestDestination adds a destination, after checking its library and its settings on
 // the instance.
 func (a *App) CreateRequestDestination(ctx context.Context, p domain.Principal, ch DestinationChanges) (domain.RequestDestination, error) {
-	if err := validRequestKind(ch.Kind); err != nil {
+	if err := validRequestFamily(ch.Kind); err != nil {
 		return domain.RequestDestination{}, err
 	}
-	if ch.Name == nil || ch.LibraryID == nil || ch.RootFolder == nil || ch.QualityProfileID == nil {
+	onInstance := ch.Kind != domain.RequestBook
+	if ch.Name == nil || ch.LibraryID == nil || onInstance && (ch.RootFolder == nil || ch.QualityProfileID == nil) ||
+		ch.Kind == domain.RequestMusic && ch.MetadataProfileID == nil {
 		return domain.RequestDestination{}, domain.Invalid("media_request.destination_incomplete")
 	}
 	now := a.now()
@@ -750,10 +710,16 @@ func (a *App) applyDestination(ctx context.Context, p domain.Principal, d *domai
 	default:
 		return domain.Invalid("media_request.invalid_series_type")
 	}
-	if d.Kind == domain.RequestMovie {
+	if d.Kind != domain.RequestSeries {
 		d.SeriesType = domain.SeriesStandard
 	}
-	if ch.RootFolder == nil && ch.QualityProfileID == nil {
+	if d.Kind == domain.RequestBook {
+		// LazyLibrarian decides where books go: nothing to choose on the instance, which must be
+		// linked though.
+		_, err := a.bookClient(ctx)
+		return err
+	}
+	if ch.RootFolder == nil && ch.QualityProfileID == nil && ch.MetadataProfileID == nil {
 		return nil
 	}
 	opts, err := a.RequestOptions(ctx, p, d.Kind)
@@ -773,6 +739,13 @@ func (a *App) applyDestination(ctx context.Context, p domain.Principal, d *domai
 			return domain.Invalid("media_request.unknown_quality_profile", "id", *ch.QualityProfileID)
 		}
 		d.QualityProfileID, d.QualityProfileName = opts.QualityProfiles[i].ID, opts.QualityProfiles[i].Name
+	}
+	if ch.MetadataProfileID != nil && d.Kind == domain.RequestMusic {
+		i := slices.IndexFunc(opts.MetadataProfiles, func(q domain.QualityProfile) bool { return q.ID == *ch.MetadataProfileID })
+		if i < 0 {
+			return domain.Invalid("media_request.unknown_metadata_profile", "id", *ch.MetadataProfileID)
+		}
+		d.MetadataProfileID, d.MetadataProfileName = opts.MetadataProfiles[i].ID, opts.MetadataProfiles[i].Name
 	}
 	return nil
 }

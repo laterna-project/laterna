@@ -98,16 +98,19 @@ func (q *Queries) DeleteRequestDestination(ctx context.Context, id domain.ID) er
 }
 
 const insertRequest = `-- name: InsertRequest :exec
-INSERT INTO requests (id, kind, external_id, title, year, poster, status, seasons, season_numbers, destination_id,
-                      account_id, profile_id, created_at, updated_at, decided_at, decided_by)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO requests (id, kind, external_id, external_key, title, subtitle, year, poster, status, seasons,
+                      season_numbers, destination_id, account_id, profile_id, created_at, updated_at, decided_at,
+                      decided_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertRequestParams struct {
 	ID            domain.ID
 	Kind          string
 	ExternalID    int64
+	ExternalKey   string
 	Title         string
+	Subtitle      string
 	Year          int64
 	Poster        string
 	Status        string
@@ -127,7 +130,9 @@ func (q *Queries) InsertRequest(ctx context.Context, arg InsertRequestParams) er
 		arg.ID,
 		arg.Kind,
 		arg.ExternalID,
+		arg.ExternalKey,
 		arg.Title,
+		arg.Subtitle,
 		arg.Year,
 		arg.Poster,
 		arg.Status,
@@ -147,22 +152,25 @@ func (q *Queries) InsertRequest(ctx context.Context, arg InsertRequestParams) er
 const insertRequestDestination = `-- name: InsertRequestDestination :exec
 
 INSERT INTO request_destinations (id, name, name_key, kind, library_id, root_folder, quality_profile_id,
-                                  quality_profile_name, series_type, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                  quality_profile_name, series_type, metadata_profile_id, metadata_profile_name,
+                                  created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertRequestDestinationParams struct {
-	ID                 domain.ID
-	Name               string
-	NameKey            string
-	Kind               string
-	LibraryID          domain.ID
-	RootFolder         string
-	QualityProfileID   int64
-	QualityProfileName string
-	SeriesType         string
-	CreatedAt          int64
-	UpdatedAt          int64
+	ID                  domain.ID
+	Name                string
+	NameKey             string
+	Kind                string
+	LibraryID           domain.ID
+	RootFolder          string
+	QualityProfileID    int64
+	QualityProfileName  string
+	SeriesType          string
+	MetadataProfileID   int64
+	MetadataProfileName string
+	CreatedAt           int64
+	UpdatedAt           int64
 }
 
 // Requests for movies and series, and where they land (docs/design/requests.md).
@@ -177,6 +185,8 @@ func (q *Queries) InsertRequestDestination(ctx context.Context, arg InsertReques
 		arg.QualityProfileID,
 		arg.QualityProfileName,
 		arg.SeriesType,
+		arg.MetadataProfileID,
+		arg.MetadataProfileName,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -190,7 +200,11 @@ JOIN items i ON i.id = p.item_id
 WHERE p.provider = ? AND p.value = ?
   AND ((i.kind = 'movie' AND i.present = 1)
     OR (i.kind = 'series' AND EXISTS (SELECT 1 FROM episodes e JOIN items ei ON ei.id = e.item_id
-                                      WHERE e.series_id = i.id AND ei.present = 1)))
+                                      WHERE e.series_id = i.id AND ei.present = 1))
+    OR (i.kind = 'album' AND EXISTS (SELECT 1 FROM tracks t JOIN items ti ON ti.id = t.item_id
+                                     WHERE t.album_id = i.id AND ti.present = 1))
+    OR (i.kind = 'artist' AND EXISTS (SELECT 1 FROM tracks t JOIN items ti ON ti.id = t.item_id
+                                      WHERE t.artist_id = i.id AND ti.present = 1)))
 `
 
 type ItemWithExternalIDParams struct {
@@ -228,24 +242,27 @@ func (q *Queries) ItemWithExternalID(ctx context.Context, arg ItemWithExternalID
 
 const listRequestDestinations = `-- name: ListRequestDestinations :many
 SELECT d.id, d.name, d.kind, d.library_id, l.name AS library_name, d.root_folder, d.quality_profile_id,
-       d.quality_profile_name, d.series_type, d.created_at, d.updated_at
+       d.quality_profile_name, d.series_type, d.metadata_profile_id, d.metadata_profile_name, d.created_at,
+       d.updated_at
 FROM request_destinations d
 JOIN libraries l ON l.id = d.library_id
 ORDER BY d.kind, d.name_key
 `
 
 type ListRequestDestinationsRow struct {
-	ID                 domain.ID
-	Name               string
-	Kind               string
-	LibraryID          domain.ID
-	LibraryName        string
-	RootFolder         string
-	QualityProfileID   int64
-	QualityProfileName string
-	SeriesType         string
-	CreatedAt          int64
-	UpdatedAt          int64
+	ID                  domain.ID
+	Name                string
+	Kind                string
+	LibraryID           domain.ID
+	LibraryName         string
+	RootFolder          string
+	QualityProfileID    int64
+	QualityProfileName  string
+	SeriesType          string
+	MetadataProfileID   int64
+	MetadataProfileName string
+	CreatedAt           int64
+	UpdatedAt           int64
 }
 
 func (q *Queries) ListRequestDestinations(ctx context.Context) ([]ListRequestDestinationsRow, error) {
@@ -267,6 +284,8 @@ func (q *Queries) ListRequestDestinations(ctx context.Context) ([]ListRequestDes
 			&i.QualityProfileID,
 			&i.QualityProfileName,
 			&i.SeriesType,
+			&i.MetadataProfileID,
+			&i.MetadataProfileName,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -285,16 +304,17 @@ func (q *Queries) ListRequestDestinations(ctx context.Context) ([]ListRequestDes
 
 const openRequestFor = `-- name: OpenRequestFor :one
 SELECT id FROM requests
-WHERE kind = ? AND external_id = ? AND status IN ('pending', 'approved', 'downloading')
+WHERE kind = ? AND external_id = ? AND external_key = ? AND status IN ('pending', 'approved', 'downloading')
 `
 
 type OpenRequestForParams struct {
-	Kind       string
-	ExternalID int64
+	Kind        string
+	ExternalID  int64
+	ExternalKey string
 }
 
 func (q *Queries) OpenRequestFor(ctx context.Context, arg OpenRequestForParams) (domain.ID, error) {
-	row := q.db.QueryRowContext(ctx, openRequestFor, arg.Kind, arg.ExternalID)
+	row := q.db.QueryRowContext(ctx, openRequestFor, arg.Kind, arg.ExternalID, arg.ExternalKey)
 	var id domain.ID
 	err := row.Scan(&id)
 	return id, err
@@ -330,7 +350,8 @@ func (q *Queries) RequestPosters(ctx context.Context) ([]string, error) {
 const requestsOnTheirWay = `-- name: RequestsOnTheirWay :many
 SELECT id FROM requests
 WHERE status IN ('approved', 'downloading')
-   OR (status = 'available' AND kind = 'series' AND episodes_available < episodes_wanted AND available_at >= ?)
+   OR (status = 'available' AND kind IN ('series', 'artist') AND episodes_available < episodes_wanted
+       AND available_at >= ?)
 ORDER BY created_at
 `
 
@@ -409,20 +430,22 @@ func (q *Queries) UpdateRequest(ctx context.Context, arg UpdateRequestParams) er
 const updateRequestDestination = `-- name: UpdateRequestDestination :exec
 UPDATE request_destinations
 SET name = ?, name_key = ?, library_id = ?, root_folder = ?, quality_profile_id = ?, quality_profile_name = ?,
-    series_type = ?, updated_at = ?
+    series_type = ?, metadata_profile_id = ?, metadata_profile_name = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateRequestDestinationParams struct {
-	Name               string
-	NameKey            string
-	LibraryID          domain.ID
-	RootFolder         string
-	QualityProfileID   int64
-	QualityProfileName string
-	SeriesType         string
-	UpdatedAt          int64
-	ID                 domain.ID
+	Name                string
+	NameKey             string
+	LibraryID           domain.ID
+	RootFolder          string
+	QualityProfileID    int64
+	QualityProfileName  string
+	SeriesType          string
+	MetadataProfileID   int64
+	MetadataProfileName string
+	UpdatedAt           int64
+	ID                  domain.ID
 }
 
 func (q *Queries) UpdateRequestDestination(ctx context.Context, arg UpdateRequestDestinationParams) error {
@@ -434,6 +457,8 @@ func (q *Queries) UpdateRequestDestination(ctx context.Context, arg UpdateReques
 		arg.QualityProfileID,
 		arg.QualityProfileName,
 		arg.SeriesType,
+		arg.MetadataProfileID,
+		arg.MetadataProfileName,
 		arg.UpdatedAt,
 		arg.ID,
 	)

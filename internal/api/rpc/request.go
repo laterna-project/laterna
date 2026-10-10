@@ -20,6 +20,10 @@ type RequestService struct {
 var requestKinds = map[domain.RequestKind]laternav1.RequestKind{
 	domain.RequestSeries: laternav1.RequestKind_REQUEST_KIND_SERIES,
 	domain.RequestMovie:  laternav1.RequestKind_REQUEST_KIND_MOVIE,
+	domain.RequestMusic:  laternav1.RequestKind_REQUEST_KIND_MUSIC,
+	domain.RequestArtist: laternav1.RequestKind_REQUEST_KIND_ARTIST,
+	domain.RequestAlbum:  laternav1.RequestKind_REQUEST_KIND_ALBUM,
+	domain.RequestBook:   laternav1.RequestKind_REQUEST_KIND_BOOK,
 }
 
 var requestableStates = map[domain.RequestableState]laternav1.RequestableState{
@@ -118,6 +122,7 @@ func requestableMsg(t domain.RequestableTitle) *laternav1.RequestableTitle {
 		Kind: requestKinds[t.Kind], ExternalId: t.ExternalID, Title: t.Title, Year: clampInt32(t.Year), Overview: t.Overview,
 		PosterUrl: app.RequestPosterPath(t.Poster), State: requestableStates[t.State], ItemId: idString(t.ItemID),
 		RequestId: idString(t.RequestID), SeasonCount: clampInt32(t.SeasonCount), Network: t.Network,
+		ExternalKey: t.ExternalKey,
 	}
 }
 
@@ -125,7 +130,8 @@ func destinationMsg(d domain.RequestDestination) *laternav1.RequestDestination {
 	return &laternav1.RequestDestination{
 		Id: d.ID.String(), Name: d.Name, Kind: requestKinds[d.Kind], LibraryId: d.LibraryID.String(), LibraryName: d.LibraryName,
 		RootFolder: d.RootFolder, QualityProfileId: clampInt32(d.QualityProfileID), QualityProfileName: d.QualityProfileName,
-		SeriesType: seriesTypes[d.SeriesType],
+		SeriesType: seriesTypes[d.SeriesType], MetadataProfileId: clampInt32(d.MetadataProfileID),
+		MetadataProfileName: d.MetadataProfileName,
 	}
 }
 
@@ -137,7 +143,7 @@ func requestMsg(ctx context.Context, r domain.MediaRequest) *laternav1.MediaRequ
 		CreatedAt: timestamppb.New(r.CreatedAt), DecidedAt: optTimestamp(r.DecidedAt), DecidedBy: r.DecidedBy,
 		DeclineReason: r.DeclineReason, Progress: r.Progress, ItemId: idString(r.ItemID),
 		EpisodesAvailable: clampInt32(r.EpisodesAvailable), EpisodesWanted: clampInt32(r.EpisodesWanted),
-		AvailableAt: optTimestamp(r.AvailableAt),
+		AvailableAt: optTimestamp(r.AvailableAt), ExternalKey: r.ExternalKey, Subtitle: r.Subtitle,
 	}
 	for _, n := range r.SeasonNumbers {
 		msg.SeasonNumbers = append(msg.SeasonNumbers, clampInt32(n))
@@ -197,7 +203,7 @@ func (s *RequestService) CreateRequest(ctx context.Context, req *connect.Request
 		return nil, err
 	}
 	r, err := s.app.CreateRequest(ctx, principal(ctx), app.NewRequest{
-		Kind: requestKindFromMsg(m.GetKind()), ExternalID: m.GetExternalId(), DestinationID: dest,
+		Kind: requestKindFromMsg(m.GetKind()), ExternalID: m.GetExternalId(), ExternalKey: m.GetExternalKey(), DestinationID: dest,
 		Seasons: seasonsFromMsg(m.GetSeasons()), SeasonNumbers: intsFromMsg(m.GetSeasonNumbers()),
 	})
 	if err != nil {
@@ -320,6 +326,9 @@ func (s *RequestService) GetRequestOptions(ctx context.Context, req *connect.Req
 	for _, q := range opts.QualityProfiles {
 		resp.QualityProfiles = append(resp.QualityProfiles, &laternav1.RequestQualityProfile{Id: clampInt32(q.ID), Name: q.Name})
 	}
+	for _, q := range opts.MetadataProfiles {
+		resp.MetadataProfiles = append(resp.MetadataProfiles, &laternav1.RequestQualityProfile{Id: clampInt32(q.ID), Name: q.Name})
+	}
 	return connect.NewResponse(resp), nil
 }
 
@@ -330,10 +339,10 @@ func (s *RequestService) CreateRequestDestination(ctx context.Context, req *conn
 	if err != nil {
 		return nil, err
 	}
-	name, root, profile := m.GetName(), m.GetRootFolder(), int(m.GetQualityProfileId())
+	name, root, profile, meta := m.GetName(), m.GetRootFolder(), int(m.GetQualityProfileId()), int(m.GetMetadataProfileId())
 	d, err := s.app.CreateRequestDestination(ctx, principal(ctx), app.DestinationChanges{
 		Name: &name, Kind: requestKindFromMsg(m.GetKind()), LibraryID: &lib, RootFolder: &root, QualityProfileID: &profile,
-		SeriesType: seriesTypeFromMsg(m.GetSeriesType()),
+		SeriesType: seriesTypeFromMsg(m.GetSeriesType()), MetadataProfileID: &meta,
 	})
 	if err != nil {
 		return nil, err
@@ -350,7 +359,7 @@ func (s *RequestService) UpdateRequestDestination(ctx context.Context, req *conn
 	}
 	ch := app.DestinationChanges{
 		Name: m.Name, RootFolder: m.RootFolder, QualityProfileID: optInt(m.QualityProfileId),
-		SeriesType: seriesTypeFromMsg(m.GetSeriesType()),
+		SeriesType: seriesTypeFromMsg(m.GetSeriesType()), MetadataProfileID: optInt(m.MetadataProfileId),
 	}
 	if m.LibraryId != nil {
 		lib, err := parseID(m.GetLibraryId(), "library_id")

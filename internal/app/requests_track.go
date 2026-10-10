@@ -19,6 +19,7 @@ import (
 	"github.com/laterna-project/laterna/internal/arr"
 	"github.com/laterna-project/laterna/internal/domain"
 	"github.com/laterna-project/laterna/internal/jobs"
+	"github.com/laterna-project/laterna/internal/lazylibrarian"
 	"github.com/laterna-project/laterna/internal/media/images"
 	"github.com/laterna-project/laterna/internal/metadata/download"
 	"github.com/laterna-project/laterna/internal/store"
@@ -27,10 +28,11 @@ import (
 // What happens to a request once approved: handed to the instance, then followed until the catalog
 // has it. Posters of search results and requests are served by the server.
 
-// submitRequest hands an approved request to the instance (job request.submit): the title is added,
-// monitored and searched, or monitored and searched if the instance already has it. A refusal
-// fails the request at once; anything else is retried like any job, and fails it when the last
-// attempt fails (requestFailed).
+// submitRequest hands an approved request to its source (job request.submit): Sonarr, Radarr or
+// Lidarr add the title monitored and search for it (or monitor and search it if they already have
+// it), LazyLibrarian marks the ebook wanted and searches for it. A refusal fails the request at
+// once; anything else is retried like any job, and fails it when the last attempt fails
+// (requestFailed).
 func (a *App) submitRequest(ctx context.Context, target string) error {
 	id, err := domain.ParseID(target)
 	if err != nil {
@@ -43,23 +45,22 @@ func (a *App) submitRequest(ctx context.Context, target string) error {
 	if err != nil {
 		return err
 	}
-	ak := requestArr(r.Kind)
 	if r.Destination == nil {
 		return a.failRequest(ctx, r, domain.T("error.media_request.destination_required"))
 	}
-	client, _, err := a.requestClient(ctx, r.Kind)
-	if err != nil {
-		return a.failRequest(ctx, r, domain.T("error.media_request.unavailable", "name", ak.Name()))
-	}
-	arrID, err := client.Add(ctx, r.ExternalID, arr.AddOptions{
-		RootFolder: r.Destination.RootFolder, QualityProfileID: r.Destination.QualityProfileID,
-		SeriesType: string(r.Destination.SeriesType), Seasons: string(r.Seasons), SeasonNumbers: r.SeasonNumbers,
-	})
-	var refused *arr.Error
-	if errors.As(err, &refused) || errors.Is(err, arr.ErrUnauthorized) {
-		return a.failRequest(ctx, r, arrProblem(ak, err))
-	}
-	if err != nil {
+	arrID, err := a.handOver(ctx, r)
+	var (
+		expected *domain.Error
+		refused  *arr.Error
+		declined *lazylibrarian.Error
+	)
+	switch {
+	case errors.As(err, &expected):
+		return a.failRequest(ctx, r, expected.Text())
+	case errors.As(err, &refused), errors.As(err, &declined),
+		errors.Is(err, arr.ErrUnauthorized), errors.Is(err, lazylibrarian.ErrUnauthorized):
+		return a.failRequest(ctx, r, integrationProblem(sourceName(r.Kind), err))
+	case err != nil:
 		return err
 	}
 	err = a.store.Write(ctx, func(q store.Q) error {
@@ -80,9 +81,43 @@ func (a *App) submitRequest(ctx context.Context, target string) error {
 		return err
 	}
 	a.jobs.Kick()
-	a.log.InfoContext(ctx, "request handed to the instance", "request", id, "kind", ak, "title", r.Title, "arr_id", arrID)
+	a.log.InfoContext(ctx, "request handed to the instance", "request", id, "source", sourceName(r.Kind), "title", r.Title, "arr_id", arrID)
 	a.requestsChanged(r.ProfileID, r.ID)
 	return nil
+}
+
+// handOver gives a request to its source. It returns the title's ID there (series, movie, artist
+// or album; 0 for a book: LazyLibrarian goes by the external key).
+func (a *App) handOver(ctx context.Context, r domain.MediaRequest) (int, error) {
+	d := r.Destination
+	if r.Kind == domain.RequestBook {
+		client, err := a.bookClient(ctx)
+		if err != nil {
+			return 0, err
+		}
+		return 0, client.Want(ctx, r.ExternalKey)
+	}
+	client, _, err := a.requestClient(ctx, r.Kind)
+	if err != nil {
+		return 0, err
+	}
+	switch r.Kind {
+	case domain.RequestArtist, domain.RequestAlbum:
+		opts := arr.MusicOptions{
+			RootFolder: d.RootFolder, QualityProfileID: d.QualityProfileID, MetadataProfileID: d.MetadataProfileID,
+			Albums: string(r.Seasons),
+		}
+		if r.Kind == domain.RequestArtist {
+			return client.AddArtist(ctx, r.ExternalKey, opts)
+		}
+		id, _, err := client.AddAlbum(ctx, r.ExternalKey, opts)
+		return id, err
+	case domain.RequestSeries, domain.RequestMovie, domain.RequestMusic, domain.RequestBook:
+	}
+	return client.Add(ctx, r.ExternalID, arr.AddOptions{
+		RootFolder: d.RootFolder, QualityProfileID: d.QualityProfileID,
+		SeriesType: string(d.SeriesType), Seasons: string(r.Seasons), SeasonNumbers: r.SeasonNumbers,
+	})
 }
 
 // requestFailed fails a request whose hand-over failed for good (jobs.OnFailure).
@@ -95,7 +130,7 @@ func (a *App) requestFailed(ctx context.Context, target string, cause error) {
 	if err != nil || r.Status != domain.RequestApproved {
 		return
 	}
-	if err := a.failRequest(ctx, r, arrProblem(requestArr(r.Kind), cause)); err != nil {
+	if err := a.failRequest(ctx, r, integrationProblem(sourceName(r.Kind), cause)); err != nil {
 		a.log.WarnContext(ctx, "cannot mark the request failed", "request", id, "err", err)
 	}
 }
@@ -125,9 +160,9 @@ func (a *App) failRequest(ctx context.Context, r domain.MediaRequest, reason dom
 	return nil
 }
 
-// refreshRequests follows the requests on their way (job requests.refresh): what the instance is
-// downloading, then whether the catalog has the title. A series is available from its first
-// episode and keeps counting the episodes that arrive.
+// refreshRequests follows the requests on their way (job requests.refresh): what the source is
+// downloading, then whether the catalog has the title. A series or an artist is available from its
+// first episode or track, and keeps counting the episodes or tracks that arrive.
 func (a *App) refreshRequests(ctx context.Context, _ string) error {
 	read := a.store.Read()
 	now := a.now()
@@ -139,22 +174,57 @@ func (a *App) refreshRequests(ctx context.Context, _ string) error {
 	if err != nil {
 		return err
 	}
-	byKind := map[domain.RequestKind][]domain.MediaRequest{}
+	byFamily := map[domain.RequestKind][]domain.MediaRequest{}
 	for _, r := range list {
-		if r.ArrID > 0 {
-			byKind[r.Kind] = append(byKind[r.Kind], r)
+		// A book is followed by its key; the others once their source gave them an ID.
+		if r.ArrID > 0 || r.Kind == domain.RequestBook {
+			byFamily[r.Kind.Family()] = append(byFamily[r.Kind.Family()], r)
 		}
 	}
 	var errs []error
-	for kind, reqs := range byKind {
-		if err := a.refreshKind(ctx, kind, reqs); err != nil {
+	for family, reqs := range byFamily {
+		var err error
+		switch family {
+		case domain.RequestBook:
+			err = a.refreshBooks(ctx, reqs)
+		case domain.RequestMusic:
+			err = a.refreshMusic(ctx, reqs)
+		default:
+			err = a.refreshVideo(ctx, family, reqs)
+		}
+		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
 }
 
-func (a *App) refreshKind(ctx context.Context, kind domain.RequestKind, reqs []domain.MediaRequest) error {
+// progress is where a download stands: the share already there, from Size and Left.
+func progress(size, left float64) float64 {
+	if size <= 0 {
+		return 0
+	}
+	return (size - left) / size
+}
+
+// nextStatus sets a request available when the catalog has its item, downloading while its
+// source downloads it; out of the queue and not in the catalog yet, it is being imported.
+func nextStatus(r domain.MediaRequest, next *domain.MediaRequest, item *domain.ID, inQueue bool, share float64) {
+	switch {
+	case item != nil:
+		next.Status, next.ItemID = domain.RequestAvailable, item
+		next.Progress = 1
+		if inQueue {
+			next.Progress = share
+		}
+	case inQueue:
+		next.Status, next.Progress = domain.RequestDownloading, share
+	case r.Status == domain.RequestDownloading:
+		next.Progress = 1 // out of the queue: being imported
+	}
+}
+
+func (a *App) refreshVideo(ctx context.Context, kind domain.RequestKind, reqs []domain.MediaRequest) error {
 	client, ak, err := a.requestClient(ctx, kind)
 	if err != nil {
 		return nil //nolint:nilerr // the integration is gone: nothing to follow
@@ -170,11 +240,11 @@ func (a *App) refreshKind(ctx context.Context, kind domain.RequestKind, reqs []d
 	read := a.store.Read()
 	for _, r := range reqs {
 		next := r
-		items, err := read.ItemsWithExternalIDs(ctx, kind.ExternalProvider(), []int64{r.ExternalID})
+		items, err := read.ItemsWithExternalIDs(ctx, kind.ExternalProvider(), []string{r.Key()})
 		if err != nil {
 			return err
 		}
-		item := catalogItem(items[r.ExternalID], r.Destination)
+		item := catalogItem(items[r.Key()], r.Destination)
 		if kind == domain.RequestSeries {
 			t, err := client.Get(ctx, r.ArrID)
 			var gone *arr.Error
@@ -197,51 +267,130 @@ func (a *App) refreshKind(ctx context.Context, kind domain.RequestKind, reqs []d
 			}
 		}
 		d, inQueue := downloading[r.ArrID]
-		switch {
-		case item != nil:
-			next.Status, next.ItemID = domain.RequestAvailable, item
-			next.Progress = 1
-			if inQueue && d.Size > 0 {
-				next.Progress = float64(d.Size-d.Left) / float64(d.Size)
-			}
-		case inQueue:
-			next.Status = domain.RequestDownloading
-			if d.Size > 0 {
-				next.Progress = float64(d.Size-d.Left) / float64(d.Size)
-			}
-		case r.Status == domain.RequestDownloading:
-			next.Progress = 1 // out of the queue: being imported
-		}
-		if sameProgress(r, next) {
-			continue
-		}
-		becameAvailable := r.Status != domain.RequestAvailable && next.Status == domain.RequestAvailable
-		if becameAvailable {
-			at := a.now()
-			next.AvailableAt = &at
-		}
-		next.UpdatedAt = a.now()
-		if err := a.store.Write(ctx, func(q store.Q) error {
-			cur, err := q.Request(ctx, r.ID)
-			if store.IsNotFound(err) || (err == nil && cur.Status != r.Status) {
-				return nil // changed in the meantime: the next round sees it
-			}
-			if err != nil {
-				return err
-			}
-			return q.UpdateRequest(ctx, next)
-		}); err != nil {
+		nextStatus(r, &next, item, inQueue, progress(d.Size, d.Left))
+		if err := a.saveProgress(ctx, r, next, item); err != nil {
 			return err
 		}
-		if becameAvailable {
-			a.log.InfoContext(ctx, "request available", "request", r.ID, "title", r.Title)
-			a.record(ctx, domain.Activity{
-				Kind: domain.ActivityRequest, ProfileID: &r.ProfileID, ItemID: item,
-				Text: domain.T("activity.request_available", "title", r.Title, "profile", r.ProfileName),
-			})
-		}
-		a.requestsChanged(r.ProfileID, r.ID)
 	}
+	return nil
+}
+
+// refreshMusic follows artist and album requests on Lidarr: its queue album by album, its track
+// counts, then the catalog by MusicBrainz ID.
+func (a *App) refreshMusic(ctx context.Context, reqs []domain.MediaRequest) error {
+	client, ak, err := a.requestClient(ctx, domain.RequestMusic)
+	if err != nil {
+		return nil //nolint:nilerr // the integration is gone: nothing to follow
+	}
+	queue, err := client.Queue(ctx)
+	if err != nil {
+		return fmt.Errorf("%s queue: %w", ak, err)
+	}
+	read := a.store.Read()
+	for _, r := range reqs {
+		album := r.Kind == domain.RequestAlbum
+		next := r
+		items, err := read.ItemsWithExternalIDs(ctx, r.Kind.ExternalProvider(), []string{r.Key()})
+		if err != nil {
+			return err
+		}
+		item := catalogItem(items[r.Key()], r.Destination)
+		t, err := client.GetMusic(ctx, album, r.ArrID)
+		var gone *arr.Error
+		if errors.As(err, &gone) && gone.Status == http.StatusNotFound {
+			continue // removed from Lidarr: the request stays where it was
+		}
+		if err != nil {
+			return fmt.Errorf("%s %s %d: %w", ak, r.Kind, r.ArrID, err)
+		}
+		next.EpisodesWanted = t.Tracks
+		if item != nil {
+			next.EpisodesAvailable = t.TrackFiles
+			if t.Tracks > 0 {
+				next.EpisodesAvailable = min(t.TrackFiles, t.Tracks)
+			}
+		}
+		var size, left float64
+		inQueue := false
+		for _, d := range queue {
+			if album && d.AlbumID == r.ArrID || !album && d.ArrID == r.ArrID {
+				size, left, inQueue = size+d.Size, left+d.Left, true
+			}
+		}
+		nextStatus(r, &next, item, inQueue, progress(size, left))
+		if err := a.saveProgress(ctx, r, next, item); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// refreshBooks follows book requests on LazyLibrarian: "Snatched" while it downloads, "Have" once
+// filed, then the catalog by ISBN or by title and author.
+func (a *App) refreshBooks(ctx context.Context, reqs []domain.MediaRequest) error {
+	client, err := a.bookClient(ctx)
+	if err != nil {
+		return nil //nolint:nilerr // the integration is gone: nothing to follow
+	}
+	status, err := a.bookStatus(ctx, client)
+	if err != nil {
+		return fmt.Errorf("%s books: %w", lazyLibrarianName, err)
+	}
+	books, err := a.store.Read().CatalogBooks(ctx)
+	if err != nil {
+		return err
+	}
+	for _, r := range reqs {
+		b, known := status[r.ExternalKey]
+		next := r
+		item := catalogItem(matchBooks(books, r.Title, r.Subtitle, b.ISBN), r.Destination)
+		switch {
+		case item != nil:
+			next.Status, next.ItemID, next.Progress = domain.RequestAvailable, item, 1
+		case known && b.InLibrary():
+			next.Status, next.Progress = domain.RequestDownloading, 1 // filed: waiting for the scan
+		case known && b.Status == "Snatched":
+			next.Status = domain.RequestDownloading
+		}
+		if err := a.saveProgress(ctx, r, next, item); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// saveProgress writes where a request stands if that changed, and announces it; becoming
+// available goes to the activity log.
+func (a *App) saveProgress(ctx context.Context, r, next domain.MediaRequest, item *domain.ID) error {
+	if sameProgress(r, next) {
+		return nil
+	}
+	becameAvailable := r.Status != domain.RequestAvailable && next.Status == domain.RequestAvailable
+	if becameAvailable {
+		at := a.now()
+		next.AvailableAt = &at
+	}
+	next.UpdatedAt = a.now()
+	if err := a.store.Write(ctx, func(q store.Q) error {
+		cur, err := q.Request(ctx, r.ID)
+		if store.IsNotFound(err) || (err == nil && cur.Status != r.Status) {
+			return nil // changed in the meantime: the next round sees it
+		}
+		if err != nil {
+			return err
+		}
+		return q.UpdateRequest(ctx, next)
+	}); err != nil {
+		return err
+	}
+	if becameAvailable {
+		a.log.InfoContext(ctx, "request available", "request", r.ID, "title", r.Title)
+		a.record(ctx, domain.Activity{
+			Kind: domain.ActivityRequest, ProfileID: &r.ProfileID, ItemID: item,
+			Text: domain.T("activity.request_available", "title", r.Title, "profile", r.ProfileName),
+		})
+	}
+	a.requestsChanged(r.ProfileID, r.ID)
 	return nil
 }
 

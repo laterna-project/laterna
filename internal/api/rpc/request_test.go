@@ -122,4 +122,19 @@ func TestRequestsOverHTTP(t *testing.T) {
 	if _, err := requests.CancelRequest(ctx, withToken(&laternav1.CancelRequestRequest{RequestId: req.GetId()}, user)); errorCode(err) != "media_request.not_pending" {
 		t.Errorf("approved request withdrawn: %v", err)
 	}
+
+	// Music needs Lidarr, books LazyLibrarian; the integrations list them both.
+	if _, err := requests.SearchRequestable(ctx, withToken(&laternav1.SearchRequestableRequest{Kind: laternav1.RequestKind_REQUEST_KIND_MUSIC, Query: "daft"}, user)); errorCode(err) != "media_request.unavailable" {
+		t.Errorf("music without Lidarr: %v", err)
+	}
+	if _, err := requests.CreateRequest(ctx, withToken(&laternav1.CreateRequestRequest{Kind: laternav1.RequestKind_REQUEST_KIND_BOOK}, user)); errorCode(err) != "media_request.invalid_external_id" {
+		t.Errorf("book without a key: %v", err)
+	}
+	list, err := integrations.ListIntegrations(ctx, withToken(&laternav1.ListIntegrationsRequest{}, token))
+	if err != nil || len(list.Msg.GetIntegrations()) != 4 {
+		t.Fatalf("integrations: %v %v", list, err)
+	}
+	if ll := list.Msg.GetIntegrations()[3]; ll.GetKind() != laternav1.IntegrationKind_INTEGRATION_KIND_LAZYLIBRARIAN || ll.GetManagesMetadata() {
+		t.Errorf("LazyLibrarian: %v", ll)
+	}
 }

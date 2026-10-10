@@ -106,10 +106,11 @@ type RequestServiceClient interface {
 	// there.
 	DeleteRequest(context.Context, *connect.Request[v1.DeleteRequestRequest]) (*connect.Response[v1.DeleteRequestResponse], error)
 	// GetRequestOptions reads from the instance for that kind what a destination can use: its root
-	// folders and quality profiles.
+	// folders and quality profiles, and Lidarr's metadata profiles.
 	GetRequestOptions(context.Context, *connect.Request[v1.GetRequestOptionsRequest]) (*connect.Response[v1.GetRequestOptionsResponse], error)
 	// CreateRequestDestination adds a destination. Its library must be of the matching kind (shows
-	// for series, movies for movies) and its root folder one of the instance's.
+	// for series, movies for movies, music, books) and its root folder and profiles the instance's
+	// (none for books).
 	CreateRequestDestination(context.Context, *connect.Request[v1.CreateRequestDestinationRequest]) (*connect.Response[v1.CreateRequestDestinationResponse], error)
 	// UpdateRequestDestination changes a destination. Requests already approved keep where they
 	// went.
@@ -341,10 +342,11 @@ type RequestServiceHandler interface {
 	// there.
 	DeleteRequest(context.Context, *connect.Request[v1.DeleteRequestRequest]) (*connect.Response[v1.DeleteRequestResponse], error)
 	// GetRequestOptions reads from the instance for that kind what a destination can use: its root
-	// folders and quality profiles.
+	// folders and quality profiles, and Lidarr's metadata profiles.
 	GetRequestOptions(context.Context, *connect.Request[v1.GetRequestOptionsRequest]) (*connect.Response[v1.GetRequestOptionsResponse], error)
 	// CreateRequestDestination adds a destination. Its library must be of the matching kind (shows
-	// for series, movies for movies) and its root folder one of the instance's.
+	// for series, movies for movies, music, books) and its root folder and profiles the instance's
+	// (none for books).
 	CreateRequestDestination(context.Context, *connect.Request[v1.CreateRequestDestinationRequest]) (*connect.Response[v1.CreateRequestDestinationResponse], error)
 	// UpdateRequestDestination changes a destination. Requests already approved keep where they
 	// went.
