@@ -9,7 +9,7 @@ name: laterna
 
 services:
   laterna:
-    image: ${LATERNA_IMAGE:-ghcr.io/laterna-project/laterna}:${LATERNA_VERSION:-0.8}
+    image: ${LATERNA_IMAGE:-ghcr.io/laterna-project/laterna}:${LATERNA_VERSION:-0.9}
     restart: unless-stopped
     ports:
       - "${LATERNA_PORT:-8096}:8096"
