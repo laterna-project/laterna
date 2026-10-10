@@ -23,6 +23,8 @@ type HomeRowKind string
 const (
 	RowResume HomeRowKind = "resume"
 	RowNextUp HomeRowKind = "next_up"
+	// What Sonarr, Radarr and Lidarr expect in the coming days.
+	RowUpcoming HomeRowKind = "upcoming"
 	// Recommendations.
 	RowRecommended       HomeRowKind = "recommended"
 	RowBecauseYouWatched HomeRowKind = "because_you_watched"
@@ -47,6 +49,8 @@ type HomeRow struct {
 	// Source is the movie or series of a "Because you watched" row.
 	Source *domain.ID
 	Items  []domain.ItemView
+	// Upcoming is what a RowUpcoming row lists instead of items: nothing of it is in the catalog yet.
+	Upcoming []domain.Upcoming
 }
 
 // Home builds the home page of the profile. The server decides which rows there are and in what
@@ -54,13 +58,15 @@ type HomeRow struct {
 //
 //  1. what is in progress: resume, next up, continue reading;
 //  2. new things to watch: recently added in movie and series libraries;
-//  3. recommendations;
-//  4. music: recently played albums, then recently added;
-//  5. recently added books, then photos.
+//  3. what is coming, if upcoming asks for it: its entries are not items of the catalog, and a
+//     client has to know how to show them;
+//  4. recommendations;
+//  5. music: recently played albums, then recently added;
+//  6. recently added books, then photos.
 //
 // Within each group libraries follow their order (store.Libraries). rowSize caps the number of
 // items per row (0 means 20).
-func (a *App) Home(ctx context.Context, p domain.Principal, rowSize int) ([]HomeRow, error) {
+func (a *App) Home(ctx context.Context, p domain.Principal, rowSize int, upcoming bool) ([]HomeRow, error) {
 	v, err := viewerOf(p)
 	if err != nil {
 		return nil, err
@@ -128,7 +134,14 @@ func (a *App) Home(ctx context.Context, p domain.Principal, rowSize int) ([]Home
 		return nil, err
 	}
 
-	// 3. Recommendations.
+	// 3. What is coming.
+	if upcoming {
+		if list := a.upcomingFor(v, rowSize); len(list) > 0 {
+			rows = append(rows, HomeRow{Kind: RowUpcoming, Title: domain.T("home.upcoming"), Upcoming: list})
+		}
+	}
+
+	// 4. Recommendations.
 	recs, err := a.recommendRows(ctx, v, rowSize)
 	if err != nil {
 		return nil, err
@@ -137,7 +150,7 @@ func (a *App) Home(ctx context.Context, p domain.Principal, rowSize int) ([]Home
 		add(r)
 	}
 
-	// 4. Music.
+	// 5. Music.
 	albums, err := read.RecentAlbums(ctx, v, rowSize)
 	if err != nil {
 		return nil, err
@@ -147,7 +160,7 @@ func (a *App) Home(ctx context.Context, p domain.Principal, rowSize int) ([]Home
 		return nil, err
 	}
 
-	// 5. Books, then photos.
+	// 6. Books, then photos.
 	if err := latest(domain.LibraryBooks); err != nil {
 		return nil, err
 	}

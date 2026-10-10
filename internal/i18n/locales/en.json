@@ -356,6 +356,7 @@
   "home.recent_albums": "Recently played",
   "home.recommended": "Recommended for you",
   "home.resume": "Continue watching",
+  "home.upcoming": "Coming soon",
   "import.problem.name_refused": "Laterna does not accept this name: choose an existing profile",
   "import.problem.no_usable_profile": "The account with the same name has no usable profile",
   "list.separator": "; ",

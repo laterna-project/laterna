@@ -39,7 +39,8 @@ const (
 	jobBackupStore = "store.backup"
 	// Intro and credits of a file: chapters, then audio compared with the season's other episodes.
 	jobDetectSegments = "file.segments"
-	// Requests (jobSubmitRequest, jobRefreshRequests) are in requests.go.
+	// Requests (jobSubmitRequest, jobRefreshRequests) are in requests.go, the calendars
+	// (jobRefreshUpcoming) in upcoming.go.
 
 	// One scan at a time: it walks folders, often over the network.
 	classScan = "scan"
@@ -107,6 +108,7 @@ func (a *App) registerJobs() {
 	a.jobs.Register(jobArrRefresh, classArr, a.refreshArr, jobs.Timeout(2*time.Hour))
 	a.jobs.Register(jobSubmitRequest, classRequests, a.submitRequest, jobs.Timeout(2*time.Minute))
 	a.jobs.Register(jobRefreshRequests, classRequests, a.refreshRequests, jobs.Timeout(5*time.Minute))
+	a.jobs.Register(jobRefreshUpcoming, classRequests, a.refreshUpcoming, jobs.Timeout(5*time.Minute))
 	a.jobs.Register(jobTrickplay, classTrickplay, a.generateTrickplay, jobs.Timeout(2*time.Hour))
 	a.jobs.Register(jobDetectSegments, classSegments, a.detectSegments, jobs.Timeout(30*time.Minute))
 	a.jobs.Register(jobPrepareDownload, classPrepare, a.prepareDownload, jobs.Timeout(12*time.Hour))
@@ -174,6 +176,9 @@ func (a *App) periodic(ctx context.Context) {
 	defer purge.Stop()
 	requests := time.NewTicker(requestsEvery)
 	defer requests.Stop()
+	a.followUpcoming(ctx, 0)
+	upcoming := time.NewTicker(upcomingEvery)
+	defer upcoming.Stop()
 	var timer *time.Timer
 	arm := func() <-chan time.Time {
 		if timer != nil {
@@ -205,6 +210,8 @@ func (a *App) periodic(ctx context.Context) {
 			a.runPurges(ctx)
 		case <-requests.C:
 			a.followRequests(ctx, 0)
+		case <-upcoming.C:
+			a.followUpcoming(ctx, 0)
 		}
 	}
 }

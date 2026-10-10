@@ -47,6 +47,8 @@ type Server struct {
 	Profiles []arr.QualityProfile
 	// Queue is what the instance is downloading.
 	Queue []arr.Download
+	// Calendar is what the instance expects, each entry as the real one writes it.
+	Calendar []map[string]any
 	// Lidarr: what a search finds, the artists and albums it has, its metadata profiles.
 	Music            []MusicEntry
 	Artists          map[int]*Artist
@@ -135,6 +137,12 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch {
+	case path == "/calendar":
+		list := []any{}
+		for _, e := range s.Calendar {
+			list = append(list, e)
+		}
+		write(list)
 	case path == "/system/status":
 		write(map[string]any{"appName": s.kind.Name(), "version": "9.9.9"})
 	case path == "/metadata" && r.Method == http.MethodGet:

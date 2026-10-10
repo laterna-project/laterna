@@ -151,7 +151,7 @@ func TestBooks(t *testing.T) {
 
 	// Progress: "Continue reading", then read, then read again from the start.
 	mustNil(t, a.SaveReadingProgress(ctx, p, volume1.Item.ID, domain.ReadingProgress{Page: 1, Progression: 0.5}))
-	rows, err := a.Home(ctx, p, 0)
+	rows, err := a.Home(ctx, p, 0, false)
 	mustNil(t, err)
 	var reading, latest *HomeRow
 	for i := range rows {
@@ -161,7 +161,7 @@ func TestBooks(t *testing.T) {
 		case RowLatestBooks:
 			latest = &rows[i]
 		case RowResume, RowNextUp, RowRecommended, RowBecauseYouWatched, RowRecentAlbums, RowLatestMovies, RowLatestSeries,
-			RowLatestAlbums, RowLatestPhotos:
+			RowLatestAlbums, RowLatestPhotos, RowUpcoming:
 		}
 	}
 	if reading == nil || len(reading.Items) != 1 || reading.Items[0].Reading == nil || reading.Items[0].Reading.Page != 1 {
@@ -180,7 +180,7 @@ func TestBooks(t *testing.T) {
 	if !done.UserData.Played || done.UserData.PlayCount != 1 {
 		t.Errorf("book read once: %+v", done.UserData)
 	}
-	if rows, _ := a.Home(ctx, p, 0); slices.ContainsFunc(rows, func(r HomeRow) bool { return r.Kind == RowReading }) {
+	if rows, _ := a.Home(ctx, p, 0, false); slices.ContainsFunc(rows, func(r HomeRow) bool { return r.Kind == RowReading }) {
 		t.Error("a read book must not be listed to continue")
 	}
 	mustNil(t, a.SetPlayed(ctx, p, volume1.Item.ID, false))

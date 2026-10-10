@@ -53,13 +53,13 @@ func TestRecommendations(t *testing.T) {
 	}
 
 	// Nothing watched yet: no recommendation.
-	rows, err := a.Home(ctx, p, 0)
+	rows, err := a.Home(ctx, p, 0, false)
 	mustNil(t, err)
 	if slices.ContainsFunc(rows, func(r HomeRow) bool { return r.Kind == RowRecommended }) {
 		t.Errorf("recommendations without a taste: %+v", rows)
 	}
 	mustNil(t, a.SetPlayed(ctx, p, movies["Big Test Movie"].ID, true))
-	rows, err = a.Home(ctx, p, 1)
+	rows, err = a.Home(ctx, p, 1, false)
 	mustNil(t, err)
 	var rec, because *HomeRow
 	for i := range rows {
@@ -69,7 +69,7 @@ func TestRecommendations(t *testing.T) {
 		case RowBecauseYouWatched:
 			because = &rows[i]
 		case RowResume, RowNextUp, RowRecentAlbums, RowLatestMovies, RowLatestSeries, RowLatestAlbums, RowReading,
-			RowLatestBooks, RowLatestPhotos:
+			RowLatestBooks, RowLatestPhotos, RowUpcoming:
 		}
 	}
 	// The "Because" row takes the title closest to its source, "Recommended" the next one, and no

@@ -144,7 +144,7 @@ func TestMusic(t *testing.T) {
 		t.Errorf("conversion kept: %v", err)
 	}
 
-	rows, err := a.Home(ctx, p, 0)
+	rows, err := a.Home(ctx, p, 0, false)
 	mustNil(t, err)
 	var kinds []HomeRowKind
 	for _, r := range rows {

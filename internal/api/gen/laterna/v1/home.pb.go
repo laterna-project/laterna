@@ -9,6 +9,7 @@ package laternav1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -48,6 +49,10 @@ const (
 	HomeRowKind_HOME_ROW_KIND_RECOMMENDED HomeRowKind = 10
 	// Movies and series close to a movie or a series the profile watched recently (source_item_id).
 	HomeRowKind_HOME_ROW_KIND_BECAUSE_YOU_WATCHED HomeRowKind = 11
+	// Episodes, movies and albums that Sonarr, Radarr and Lidarr expect in the next two weeks and do
+	// not have yet, soonest first. Nothing of it is in the catalog: the row has no items, its entries
+	// are in HomeRow.upcoming. Only sent to a client that asks for it (GetHomeRequest.upcoming).
+	HomeRowKind_HOME_ROW_KIND_UPCOMING HomeRowKind = 12
 )
 
 // Enum value maps for HomeRowKind.
@@ -65,6 +70,7 @@ var (
 		9:  "HOME_ROW_KIND_LATEST_PHOTOS",
 		10: "HOME_ROW_KIND_RECOMMENDED",
 		11: "HOME_ROW_KIND_BECAUSE_YOU_WATCHED",
+		12: "HOME_ROW_KIND_UPCOMING",
 	}
 	HomeRowKind_value = map[string]int32{
 		"HOME_ROW_KIND_UNSPECIFIED":         0,
@@ -79,6 +85,7 @@ var (
 		"HOME_ROW_KIND_LATEST_PHOTOS":       9,
 		"HOME_ROW_KIND_RECOMMENDED":         10,
 		"HOME_ROW_KIND_BECAUSE_YOU_WATCHED": 11,
+		"HOME_ROW_KIND_UPCOMING":            12,
 	}
 )
 
@@ -109,6 +116,188 @@ func (HomeRowKind) EnumDescriptor() ([]byte, []int) {
 	return file_laterna_v1_home_proto_rawDescGZIP(), []int{0}
 }
 
+type UpcomingKind int32
+
+const (
+	UpcomingKind_UPCOMING_KIND_UNSPECIFIED UpcomingKind = 0
+	UpcomingKind_UPCOMING_KIND_EPISODE     UpcomingKind = 1
+	UpcomingKind_UPCOMING_KIND_MOVIE       UpcomingKind = 2
+	UpcomingKind_UPCOMING_KIND_ALBUM       UpcomingKind = 3
+)
+
+// Enum value maps for UpcomingKind.
+var (
+	UpcomingKind_name = map[int32]string{
+		0: "UPCOMING_KIND_UNSPECIFIED",
+		1: "UPCOMING_KIND_EPISODE",
+		2: "UPCOMING_KIND_MOVIE",
+		3: "UPCOMING_KIND_ALBUM",
+	}
+	UpcomingKind_value = map[string]int32{
+		"UPCOMING_KIND_UNSPECIFIED": 0,
+		"UPCOMING_KIND_EPISODE":     1,
+		"UPCOMING_KIND_MOVIE":       2,
+		"UPCOMING_KIND_ALBUM":       3,
+	}
+)
+
+func (x UpcomingKind) Enum() *UpcomingKind {
+	p := new(UpcomingKind)
+	*p = x
+	return p
+}
+
+func (x UpcomingKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (UpcomingKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_laterna_v1_home_proto_enumTypes[1].Descriptor()
+}
+
+func (UpcomingKind) Type() protoreflect.EnumType {
+	return &file_laterna_v1_home_proto_enumTypes[1]
+}
+
+func (x UpcomingKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use UpcomingKind.Descriptor instead.
+func (UpcomingKind) EnumDescriptor() ([]byte, []int) {
+	return file_laterna_v1_home_proto_rawDescGZIP(), []int{1}
+}
+
+// UpcomingRelease is an episode, a movie or an album that an instance monitors and does not have
+// yet. A profile only gets those of libraries it may browse, under its parental control.
+type UpcomingRelease struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Kind  UpcomingKind           `protobuf:"varint,1,opt,name=kind,proto3,enum=laterna.v1.UpcomingKind" json:"kind,omitempty"`
+	// Title of the episode, the movie or the album.
+	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	// Series of an episode, artist of an album; empty for a movie.
+	ParentTitle string `protobuf:"bytes,3,opt,name=parent_title,json=parentTitle,proto3" json:"parent_title,omitempty"`
+	// Season and number of an episode.
+	SeasonNumber  int32 `protobuf:"varint,4,opt,name=season_number,json=seasonNumber,proto3" json:"season_number,omitempty"`
+	EpisodeNumber int32 `protobuf:"varint,5,opt,name=episode_number,json=episodeNumber,proto3" json:"episode_number,omitempty"`
+	// When the episode airs. For a movie (the day it comes out at home, not in theaters) or an
+	// album, midnight UTC of that day.
+	ReleaseTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=release_time,json=releaseTime,proto3" json:"release_time,omitempty"`
+	// True when release_time is a day and not a moment: read its date in UTC, whatever the time zone
+	// of the device.
+	AllDay bool `protobuf:"varint,7,opt,name=all_day,json=allDay,proto3" json:"all_day,omitempty"`
+	// Series or artist in the catalog, when the profile sees it there; empty for a movie, or for a
+	// series or an artist that has nothing yet.
+	ItemId string `protobuf:"bytes,8,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	// Images of that series or artist.
+	Images []*Image `protobuf:"bytes,9,rep,name=images,proto3" json:"images,omitempty"`
+	// Without images, the poster the instance names (the album's cover for an album), served by the
+	// server: a path to append to the server's address. Empty without one.
+	PosterUrl     string `protobuf:"bytes,10,opt,name=poster_url,json=posterUrl,proto3" json:"poster_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpcomingRelease) Reset() {
+	*x = UpcomingRelease{}
+	mi := &file_laterna_v1_home_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpcomingRelease) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpcomingRelease) ProtoMessage() {}
+
+func (x *UpcomingRelease) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_home_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpcomingRelease.ProtoReflect.Descriptor instead.
+func (*UpcomingRelease) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_home_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *UpcomingRelease) GetKind() UpcomingKind {
+	if x != nil {
+		return x.Kind
+	}
+	return UpcomingKind_UPCOMING_KIND_UNSPECIFIED
+}
+
+func (x *UpcomingRelease) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *UpcomingRelease) GetParentTitle() string {
+	if x != nil {
+		return x.ParentTitle
+	}
+	return ""
+}
+
+func (x *UpcomingRelease) GetSeasonNumber() int32 {
+	if x != nil {
+		return x.SeasonNumber
+	}
+	return 0
+}
+
+func (x *UpcomingRelease) GetEpisodeNumber() int32 {
+	if x != nil {
+		return x.EpisodeNumber
+	}
+	return 0
+}
+
+func (x *UpcomingRelease) GetReleaseTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReleaseTime
+	}
+	return nil
+}
+
+func (x *UpcomingRelease) GetAllDay() bool {
+	if x != nil {
+		return x.AllDay
+	}
+	return false
+}
+
+func (x *UpcomingRelease) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+func (x *UpcomingRelease) GetImages() []*Image {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
+func (x *UpcomingRelease) GetPosterUrl() string {
+	if x != nil {
+		return x.PosterUrl
+	}
+	return ""
+}
+
 type HomeItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Item:
@@ -126,7 +315,7 @@ type HomeItem struct {
 
 func (x *HomeItem) Reset() {
 	*x = HomeItem{}
-	mi := &file_laterna_v1_home_proto_msgTypes[0]
+	mi := &file_laterna_v1_home_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -138,7 +327,7 @@ func (x *HomeItem) String() string {
 func (*HomeItem) ProtoMessage() {}
 
 func (x *HomeItem) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_home_proto_msgTypes[0]
+	mi := &file_laterna_v1_home_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -151,7 +340,7 @@ func (x *HomeItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeItem.ProtoReflect.Descriptor instead.
 func (*HomeItem) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_home_proto_rawDescGZIP(), []int{0}
+	return file_laterna_v1_home_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *HomeItem) GetItem() isHomeItem_Item {
@@ -268,14 +457,16 @@ type HomeRow struct {
 	SourceItemId string `protobuf:"bytes,5,opt,name=source_item_id,json=sourceItemId,proto3" json:"source_item_id,omitempty"`
 	// The title, for translation: "home.resume", "home.latest" (param "library": the name of the
 	// library), "home.because_you_watched" (param "title")...
-	TitleText     *Text `protobuf:"bytes,6,opt,name=title_text,json=titleText,proto3" json:"title_text,omitempty"`
+	TitleText *Text `protobuf:"bytes,6,opt,name=title_text,json=titleText,proto3" json:"title_text,omitempty"`
+	// Entries of a HOME_ROW_KIND_UPCOMING row; empty otherwise.
+	Upcoming      []*UpcomingRelease `protobuf:"bytes,7,rep,name=upcoming,proto3" json:"upcoming,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *HomeRow) Reset() {
 	*x = HomeRow{}
-	mi := &file_laterna_v1_home_proto_msgTypes[1]
+	mi := &file_laterna_v1_home_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -287,7 +478,7 @@ func (x *HomeRow) String() string {
 func (*HomeRow) ProtoMessage() {}
 
 func (x *HomeRow) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_home_proto_msgTypes[1]
+	mi := &file_laterna_v1_home_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -300,7 +491,7 @@ func (x *HomeRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeRow.ProtoReflect.Descriptor instead.
 func (*HomeRow) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_home_proto_rawDescGZIP(), []int{1}
+	return file_laterna_v1_home_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *HomeRow) GetKind() HomeRowKind {
@@ -345,17 +536,27 @@ func (x *HomeRow) GetTitleText() *Text {
 	return nil
 }
 
+func (x *HomeRow) GetUpcoming() []*UpcomingRelease {
+	if x != nil {
+		return x.Upcoming
+	}
+	return nil
+}
+
 type GetHomeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Items per row: 1 to 50; 0 means 20.
-	RowSize       int32 `protobuf:"varint,1,opt,name=row_size,json=rowSize,proto3" json:"row_size,omitempty"`
+	RowSize int32 `protobuf:"varint,1,opt,name=row_size,json=rowSize,proto3" json:"row_size,omitempty"`
+	// True to also get the row of what is coming (HOME_ROW_KIND_UPCOMING), for a client that shows
+	// its entries.
+	Upcoming      bool `protobuf:"varint,2,opt,name=upcoming,proto3" json:"upcoming,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetHomeRequest) Reset() {
 	*x = GetHomeRequest{}
-	mi := &file_laterna_v1_home_proto_msgTypes[2]
+	mi := &file_laterna_v1_home_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -367,7 +568,7 @@ func (x *GetHomeRequest) String() string {
 func (*GetHomeRequest) ProtoMessage() {}
 
 func (x *GetHomeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_home_proto_msgTypes[2]
+	mi := &file_laterna_v1_home_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -380,7 +581,7 @@ func (x *GetHomeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHomeRequest.ProtoReflect.Descriptor instead.
 func (*GetHomeRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_home_proto_rawDescGZIP(), []int{2}
+	return file_laterna_v1_home_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetHomeRequest) GetRowSize() int32 {
@@ -388,6 +589,13 @@ func (x *GetHomeRequest) GetRowSize() int32 {
 		return x.RowSize
 	}
 	return 0
+}
+
+func (x *GetHomeRequest) GetUpcoming() bool {
+	if x != nil {
+		return x.Upcoming
+	}
+	return false
 }
 
 type GetHomeResponse struct {
@@ -399,7 +607,7 @@ type GetHomeResponse struct {
 
 func (x *GetHomeResponse) Reset() {
 	*x = GetHomeResponse{}
-	mi := &file_laterna_v1_home_proto_msgTypes[3]
+	mi := &file_laterna_v1_home_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -411,7 +619,7 @@ func (x *GetHomeResponse) String() string {
 func (*GetHomeResponse) ProtoMessage() {}
 
 func (x *GetHomeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_home_proto_msgTypes[3]
+	mi := &file_laterna_v1_home_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -424,7 +632,7 @@ func (x *GetHomeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHomeResponse.ProtoReflect.Descriptor instead.
 func (*GetHomeResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_home_proto_rawDescGZIP(), []int{3}
+	return file_laterna_v1_home_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetHomeResponse) GetRows() []*HomeRow {
@@ -439,7 +647,20 @@ var File_laterna_v1_home_proto protoreflect.FileDescriptor
 const file_laterna_v1_home_proto_rawDesc = "" +
 	"\n" +
 	"\x15laterna/v1/home.proto\x12\n" +
-	"laterna.v1\x1a\x18laterna/v1/catalog.proto\x1a\x15laterna/v1/text.proto\"\xbd\x02\n" +
+	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/catalog.proto\x1a\x15laterna/v1/text.proto\"\xff\x02\n" +
+	"\x0fUpcomingRelease\x12,\n" +
+	"\x04kind\x18\x01 \x01(\x0e2\x18.laterna.v1.UpcomingKindR\x04kind\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12!\n" +
+	"\fparent_title\x18\x03 \x01(\tR\vparentTitle\x12#\n" +
+	"\rseason_number\x18\x04 \x01(\x05R\fseasonNumber\x12%\n" +
+	"\x0eepisode_number\x18\x05 \x01(\x05R\repisodeNumber\x12=\n" +
+	"\frelease_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vreleaseTime\x12\x17\n" +
+	"\aall_day\x18\a \x01(\bR\x06allDay\x12\x17\n" +
+	"\aitem_id\x18\b \x01(\tR\x06itemId\x12)\n" +
+	"\x06images\x18\t \x03(\v2\x11.laterna.v1.ImageR\x06images\x12\x1d\n" +
+	"\n" +
+	"poster_url\x18\n" +
+	" \x01(\tR\tposterUrl\"\xbd\x02\n" +
 	"\bHomeItem\x120\n" +
 	"\x05movie\x18\x01 \x01(\v2\x18.laterna.v1.MovieSummaryH\x00R\x05movie\x123\n" +
 	"\x06series\x18\x02 \x01(\v2\x19.laterna.v1.SeriesSummaryH\x00R\x06series\x12/\n" +
@@ -447,7 +668,7 @@ const file_laterna_v1_home_proto_rawDesc = "" +
 	"\x05album\x18\x04 \x01(\v2\x18.laterna.v1.AlbumSummaryH\x00R\x05album\x12-\n" +
 	"\x04book\x18\x05 \x01(\v2\x17.laterna.v1.BookSummaryH\x00R\x04book\x120\n" +
 	"\x05photo\x18\x06 \x01(\v2\x18.laterna.v1.PhotoSummaryH\x00R\x05photoB\x06\n" +
-	"\x04item\"\xee\x01\n" +
+	"\x04item\"\xa7\x02\n" +
 	"\aHomeRow\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.HomeRowKindR\x04kind\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1d\n" +
@@ -456,11 +677,13 @@ const file_laterna_v1_home_proto_rawDesc = "" +
 	"\x05items\x18\x04 \x03(\v2\x14.laterna.v1.HomeItemR\x05items\x12$\n" +
 	"\x0esource_item_id\x18\x05 \x01(\tR\fsourceItemId\x12/\n" +
 	"\n" +
-	"title_text\x18\x06 \x01(\v2\x10.laterna.v1.TextR\ttitleText\"+\n" +
+	"title_text\x18\x06 \x01(\v2\x10.laterna.v1.TextR\ttitleText\x127\n" +
+	"\bupcoming\x18\a \x03(\v2\x1b.laterna.v1.UpcomingReleaseR\bupcoming\"G\n" +
 	"\x0eGetHomeRequest\x12\x19\n" +
-	"\brow_size\x18\x01 \x01(\x05R\arowSize\":\n" +
+	"\brow_size\x18\x01 \x01(\x05R\arowSize\x12\x1a\n" +
+	"\bupcoming\x18\x02 \x01(\bR\bupcoming\":\n" +
 	"\x0fGetHomeResponse\x12'\n" +
-	"\x04rows\x18\x01 \x03(\v2\x13.laterna.v1.HomeRowR\x04rows*\x87\x03\n" +
+	"\x04rows\x18\x01 \x03(\v2\x13.laterna.v1.HomeRowR\x04rows*\xa3\x03\n" +
 	"\vHomeRowKind\x12\x1d\n" +
 	"\x19HOME_ROW_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14HOME_ROW_KIND_RESUME\x10\x01\x12\x19\n" +
@@ -474,7 +697,13 @@ const file_laterna_v1_home_proto_rawDesc = "" +
 	"\x1bHOME_ROW_KIND_LATEST_PHOTOS\x10\t\x12\x1d\n" +
 	"\x19HOME_ROW_KIND_RECOMMENDED\x10\n" +
 	"\x12%\n" +
-	"!HOME_ROW_KIND_BECAUSE_YOU_WATCHED\x10\v2V\n" +
+	"!HOME_ROW_KIND_BECAUSE_YOU_WATCHED\x10\v\x12\x1a\n" +
+	"\x16HOME_ROW_KIND_UPCOMING\x10\f*z\n" +
+	"\fUpcomingKind\x12\x1d\n" +
+	"\x19UPCOMING_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15UPCOMING_KIND_EPISODE\x10\x01\x12\x17\n" +
+	"\x13UPCOMING_KIND_MOVIE\x10\x02\x12\x17\n" +
+	"\x13UPCOMING_KIND_ALBUM\x10\x032V\n" +
 	"\vHomeService\x12G\n" +
 	"\aGetHome\x12\x1a.laterna.v1.GetHomeRequest\x1a\x1b.laterna.v1.GetHomeResponse\"\x03\x90\x02\x01BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
@@ -490,40 +719,48 @@ func file_laterna_v1_home_proto_rawDescGZIP() []byte {
 	return file_laterna_v1_home_proto_rawDescData
 }
 
-var file_laterna_v1_home_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_laterna_v1_home_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_laterna_v1_home_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_laterna_v1_home_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_laterna_v1_home_proto_goTypes = []any{
-	(HomeRowKind)(0),        // 0: laterna.v1.HomeRowKind
-	(*HomeItem)(nil),        // 1: laterna.v1.HomeItem
-	(*HomeRow)(nil),         // 2: laterna.v1.HomeRow
-	(*GetHomeRequest)(nil),  // 3: laterna.v1.GetHomeRequest
-	(*GetHomeResponse)(nil), // 4: laterna.v1.GetHomeResponse
-	(*MovieSummary)(nil),    // 5: laterna.v1.MovieSummary
-	(*SeriesSummary)(nil),   // 6: laterna.v1.SeriesSummary
-	(*Episode)(nil),         // 7: laterna.v1.Episode
-	(*AlbumSummary)(nil),    // 8: laterna.v1.AlbumSummary
-	(*BookSummary)(nil),     // 9: laterna.v1.BookSummary
-	(*PhotoSummary)(nil),    // 10: laterna.v1.PhotoSummary
-	(*Text)(nil),            // 11: laterna.v1.Text
+	(HomeRowKind)(0),              // 0: laterna.v1.HomeRowKind
+	(UpcomingKind)(0),             // 1: laterna.v1.UpcomingKind
+	(*UpcomingRelease)(nil),       // 2: laterna.v1.UpcomingRelease
+	(*HomeItem)(nil),              // 3: laterna.v1.HomeItem
+	(*HomeRow)(nil),               // 4: laterna.v1.HomeRow
+	(*GetHomeRequest)(nil),        // 5: laterna.v1.GetHomeRequest
+	(*GetHomeResponse)(nil),       // 6: laterna.v1.GetHomeResponse
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*Image)(nil),                 // 8: laterna.v1.Image
+	(*MovieSummary)(nil),          // 9: laterna.v1.MovieSummary
+	(*SeriesSummary)(nil),         // 10: laterna.v1.SeriesSummary
+	(*Episode)(nil),               // 11: laterna.v1.Episode
+	(*AlbumSummary)(nil),          // 12: laterna.v1.AlbumSummary
+	(*BookSummary)(nil),           // 13: laterna.v1.BookSummary
+	(*PhotoSummary)(nil),          // 14: laterna.v1.PhotoSummary
+	(*Text)(nil),                  // 15: laterna.v1.Text
 }
 var file_laterna_v1_home_proto_depIdxs = []int32{
-	5,  // 0: laterna.v1.HomeItem.movie:type_name -> laterna.v1.MovieSummary
-	6,  // 1: laterna.v1.HomeItem.series:type_name -> laterna.v1.SeriesSummary
-	7,  // 2: laterna.v1.HomeItem.episode:type_name -> laterna.v1.Episode
-	8,  // 3: laterna.v1.HomeItem.album:type_name -> laterna.v1.AlbumSummary
-	9,  // 4: laterna.v1.HomeItem.book:type_name -> laterna.v1.BookSummary
-	10, // 5: laterna.v1.HomeItem.photo:type_name -> laterna.v1.PhotoSummary
-	0,  // 6: laterna.v1.HomeRow.kind:type_name -> laterna.v1.HomeRowKind
-	1,  // 7: laterna.v1.HomeRow.items:type_name -> laterna.v1.HomeItem
-	11, // 8: laterna.v1.HomeRow.title_text:type_name -> laterna.v1.Text
-	2,  // 9: laterna.v1.GetHomeResponse.rows:type_name -> laterna.v1.HomeRow
-	3,  // 10: laterna.v1.HomeService.GetHome:input_type -> laterna.v1.GetHomeRequest
-	4,  // 11: laterna.v1.HomeService.GetHome:output_type -> laterna.v1.GetHomeResponse
-	11, // [11:12] is the sub-list for method output_type
-	10, // [10:11] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	1,  // 0: laterna.v1.UpcomingRelease.kind:type_name -> laterna.v1.UpcomingKind
+	7,  // 1: laterna.v1.UpcomingRelease.release_time:type_name -> google.protobuf.Timestamp
+	8,  // 2: laterna.v1.UpcomingRelease.images:type_name -> laterna.v1.Image
+	9,  // 3: laterna.v1.HomeItem.movie:type_name -> laterna.v1.MovieSummary
+	10, // 4: laterna.v1.HomeItem.series:type_name -> laterna.v1.SeriesSummary
+	11, // 5: laterna.v1.HomeItem.episode:type_name -> laterna.v1.Episode
+	12, // 6: laterna.v1.HomeItem.album:type_name -> laterna.v1.AlbumSummary
+	13, // 7: laterna.v1.HomeItem.book:type_name -> laterna.v1.BookSummary
+	14, // 8: laterna.v1.HomeItem.photo:type_name -> laterna.v1.PhotoSummary
+	0,  // 9: laterna.v1.HomeRow.kind:type_name -> laterna.v1.HomeRowKind
+	3,  // 10: laterna.v1.HomeRow.items:type_name -> laterna.v1.HomeItem
+	15, // 11: laterna.v1.HomeRow.title_text:type_name -> laterna.v1.Text
+	2,  // 12: laterna.v1.HomeRow.upcoming:type_name -> laterna.v1.UpcomingRelease
+	4,  // 13: laterna.v1.GetHomeResponse.rows:type_name -> laterna.v1.HomeRow
+	5,  // 14: laterna.v1.HomeService.GetHome:input_type -> laterna.v1.GetHomeRequest
+	6,  // 15: laterna.v1.HomeService.GetHome:output_type -> laterna.v1.GetHomeResponse
+	15, // [15:16] is the sub-list for method output_type
+	14, // [14:15] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_home_proto_init() }
@@ -533,7 +770,7 @@ func file_laterna_v1_home_proto_init() {
 	}
 	file_laterna_v1_catalog_proto_init()
 	file_laterna_v1_text_proto_init()
-	file_laterna_v1_home_proto_msgTypes[0].OneofWrappers = []any{
+	file_laterna_v1_home_proto_msgTypes[1].OneofWrappers = []any{
 		(*HomeItem_Movie)(nil),
 		(*HomeItem_Series)(nil),
 		(*HomeItem_Episode)(nil),
@@ -546,8 +783,8 @@ func file_laterna_v1_home_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_home_proto_rawDesc), len(file_laterna_v1_home_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   4,
+			NumEnums:      2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
