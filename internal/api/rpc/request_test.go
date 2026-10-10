@@ -131,7 +131,7 @@ func TestRequestsOverHTTP(t *testing.T) {
 		t.Errorf("book without a key: %v", err)
 	}
 	list, err := integrations.ListIntegrations(ctx, withToken(&laternav1.ListIntegrationsRequest{}, token))
-	if err != nil || len(list.Msg.GetIntegrations()) != 4 {
+	if err != nil || len(list.Msg.GetIntegrations()) != 5 {
 		t.Fatalf("integrations: %v %v", list, err)
 	}
 	if ll := list.Msg.GetIntegrations()[3]; ll.GetKind() != laternav1.IntegrationKind_INTEGRATION_KIND_LAZYLIBRARIAN || ll.GetManagesMetadata() {

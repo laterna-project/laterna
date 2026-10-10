@@ -81,7 +81,8 @@ Radarr: Kodi metadata (`artist.nfo`, `album.nfo`, artist and album images), the 
 imports, upgrades, renames, retags and deletions, the full refresh (`RefreshArtist`), and the
 artists without an `artist.nfo`. LazyLibrarian (books) is linked too, for requests only
 (docs/design/requests.md): it writes no Kodi metadata and has no webhook, so only its connection
-is checked.
+is checked. The same goes for Bazarr, linked for
+[subtitle searches](subtitles.md#asking-for-a-missing-subtitle).
 
 - **Connection**: address and API key, stored in the database and tried before being saved. The
   key never comes back out through the API.

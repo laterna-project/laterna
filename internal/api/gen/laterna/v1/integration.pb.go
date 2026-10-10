@@ -33,6 +33,8 @@ const (
 	IntegrationKind_INTEGRATION_KIND_LIDARR IntegrationKind = 3
 	// LazyLibrarian: books, for requests only.
 	IntegrationKind_INTEGRATION_KIND_LAZYLIBRARIAN IntegrationKind = 4
+	// Bazarr: subtitles, for the searches profiles ask for (SubtitleService).
+	IntegrationKind_INTEGRATION_KIND_BAZARR IntegrationKind = 5
 )
 
 // Enum value maps for IntegrationKind.
@@ -43,6 +45,7 @@ var (
 		2: "INTEGRATION_KIND_RADARR",
 		3: "INTEGRATION_KIND_LIDARR",
 		4: "INTEGRATION_KIND_LAZYLIBRARIAN",
+		5: "INTEGRATION_KIND_BAZARR",
 	}
 	IntegrationKind_value = map[string]int32{
 		"INTEGRATION_KIND_UNSPECIFIED":   0,
@@ -50,6 +53,7 @@ var (
 		"INTEGRATION_KIND_RADARR":        2,
 		"INTEGRATION_KIND_LIDARR":        3,
 		"INTEGRATION_KIND_LAZYLIBRARIAN": 4,
+		"INTEGRATION_KIND_BAZARR":        5,
 	}
 )
 
@@ -668,13 +672,14 @@ const file_laterna_v1_integration_proto_rawDesc = "" +
 	"webhookUrl\x12\x18\n" +
 	"\arefresh\x18\x04 \x01(\bR\arefresh\"Y\n" +
 	"\x1cConfigureIntegrationResponse\x129\n" +
-	"\vintegration\x18\x01 \x01(\v2\x17.laterna.v1.IntegrationR\vintegration*\xae\x01\n" +
+	"\vintegration\x18\x01 \x01(\v2\x17.laterna.v1.IntegrationR\vintegration*\xcb\x01\n" +
 	"\x0fIntegrationKind\x12 \n" +
 	"\x1cINTEGRATION_KIND_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17INTEGRATION_KIND_SONARR\x10\x01\x12\x1b\n" +
 	"\x17INTEGRATION_KIND_RADARR\x10\x02\x12\x1b\n" +
 	"\x17INTEGRATION_KIND_LIDARR\x10\x03\x12\"\n" +
-	"\x1eINTEGRATION_KIND_LAZYLIBRARIAN\x10\x042\xb4\x03\n" +
+	"\x1eINTEGRATION_KIND_LAZYLIBRARIAN\x10\x04\x12\x1b\n" +
+	"\x17INTEGRATION_KIND_BAZARR\x10\x052\xb4\x03\n" +
 	"\x12IntegrationService\x12f\n" +
 	"\x10ListIntegrations\x12#.laterna.v1.ListIntegrationsRequest\x1a$.laterna.v1.ListIntegrationsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12]\n" +
 	"\x0eSetIntegration\x12!.laterna.v1.SetIntegrationRequest\x1a\".laterna.v1.SetIntegrationResponse\"\x04\x88\xb5\x18\x04\x12f\n" +

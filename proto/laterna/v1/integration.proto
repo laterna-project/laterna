@@ -7,15 +7,16 @@ import "laterna/v1/text.proto";
 
 option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
 
-// IntegrationService connects Laterna to Sonarr, Radarr, Lidarr and LazyLibrarian. Administrators
-// only.
+// IntegrationService connects Laterna to Sonarr, Radarr, Lidarr, LazyLibrarian and Bazarr.
+// Administrators only.
 //
 // Laterna only reads local metadata: NFO files and images sitting next to the media. Sonarr, Radarr
 // and Lidarr write them ("Kodi (XBMC) / Emby" metadata) and tell Laterna about each import through
 // a webhook, which triggers a scan. Without an integration, NFO files are read again at the
 // periodic scan. The integration checks how the instances are set up, fixes it on request and
 // reacts right away. LazyLibrarian writes no such metadata and has no webhook: it is only linked
-// for requests (RequestService), and the folder watch notices the books it adds.
+// for requests (RequestService), and the folder watch notices the books it adds. Bazarr is only
+// linked for subtitle searches (SubtitleService).
 service IntegrationService {
   // ListIntegrations returns the state of each integration: connection and, for Sonarr, Radarr and
   // Lidarr, Kodi metadata, webhook, series, movies or artists without an NFO. It queries the
@@ -49,6 +50,8 @@ enum IntegrationKind {
   INTEGRATION_KIND_LIDARR = 3;
   // LazyLibrarian: books, for requests only.
   INTEGRATION_KIND_LAZYLIBRARIAN = 4;
+  // Bazarr: subtitles, for the searches profiles ask for (SubtitleService).
+  INTEGRATION_KIND_BAZARR = 5;
 }
 
 message Integration {

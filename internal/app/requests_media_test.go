@@ -123,11 +123,11 @@ func TestLidarrAndLazyLibrarianIntegrations(t *testing.T) {
 	}
 	list, err := a.Integrations(ctx)
 	mustNil(t, err)
-	if len(list) != 4 || !list[3].Reachable || list[3].URL != ll.URL {
+	if len(list) != 5 || !list[3].Reachable || list[3].URL != ll.URL {
 		t.Errorf("integrations: %+v", list)
 	}
 	mustNil(t, a.DeleteIntegration(ctx, admin, domain.IntegrationLazyLibrarian))
-	if list, _ := a.Integrations(ctx); len(list) != 4 || list[3].URL != "" {
+	if list, _ := a.Integrations(ctx); len(list) != 5 || list[3].URL != "" {
 		t.Errorf("forgotten: %+v", list)
 	}
 }

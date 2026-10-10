@@ -9,6 +9,8 @@ const (
 	IntegrationRadarr        IntegrationKind = "radarr"
 	IntegrationLidarr        IntegrationKind = "lidarr"
 	IntegrationLazyLibrarian IntegrationKind = "lazylibrarian"
+	// Bazarr finds subtitles: it is linked so that profiles can ask for one.
+	IntegrationBazarr IntegrationKind = "bazarr"
 )
 
 // Integration is the state of an integration as Laterna sees it.
@@ -34,7 +36,7 @@ type Integration struct {
 	WithoutNFO       int
 	WithoutNFOTitles []string
 	// ManagesMetadata means the instance writes Kodi metadata and takes a webhook and a refresh
-	// (Sonarr, Radarr, Lidarr), so the fields above apply. False for LazyLibrarian.
+	// (Sonarr, Radarr, Lidarr), so the fields above apply. False for LazyLibrarian and Bazarr.
 	ManagesMetadata bool
 }
 
