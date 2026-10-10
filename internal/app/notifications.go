@@ -171,16 +171,31 @@ func (a *App) notify(ctx context.Context, list ...domain.Notification) {
 	}
 	// What is reported already happened: it is written even if the request that caused it is gone.
 	ctx = context.WithoutCancel(ctx)
+	pushed := false
 	if err := a.store.Write(ctx, func(q store.Q) error {
 		for _, n := range list {
 			if err := q.AddNotification(ctx, n, maxNotifications); err != nil {
 				return err
+			}
+			// Devices that asked for it are told even when the app is closed.
+			subs, err := q.PushSubscriptions(ctx, n.ProfileID, now)
+			if err != nil {
+				return err
+			}
+			if len(subs) > 0 {
+				if err := a.jobs.Enqueue(ctx, q, jobPushNotification, n.ID.String(), priorityUser); err != nil {
+					return err
+				}
+				pushed = true
 			}
 		}
 		return nil
 	}); err != nil {
 		a.log.WarnContext(ctx, "notifications: cannot store", "count", len(list), "err", err)
 		return
+	}
+	if pushed {
+		a.jobs.Kick()
 	}
 	told := map[domain.ID]bool{}
 	for _, n := range list {

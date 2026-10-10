@@ -95,6 +95,7 @@ func (a *App) registerJobs() {
 	a.jobs.Class(classSegments, 1)
 	a.jobs.Class(classRequests, 1)
 	a.jobs.Class(classSubtitleSearch, 2)
+	a.jobs.Class(classPush, 2)
 	a.jobs.Register(jobScanLibrary, classScan, a.scanLibrary, jobs.Timeout(2*time.Hour))
 	// In the analysis class, at idle priority: after the analyses a scan just asked for, which
 	// create the items.
@@ -110,6 +111,7 @@ func (a *App) registerJobs() {
 	a.jobs.Register(jobSubmitRequest, classRequests, a.submitRequest, jobs.Timeout(2*time.Minute))
 	a.jobs.Register(jobRefreshRequests, classRequests, a.refreshRequests, jobs.Timeout(5*time.Minute))
 	a.jobs.Register(jobSearchSubtitle, classSubtitleSearch, a.searchSubtitle, jobs.Timeout(30*time.Minute), jobs.MaxAttempts(1))
+	a.jobs.Register(jobPushNotification, classPush, a.pushNotification, jobs.Timeout(5*time.Minute), jobs.MaxAttempts(1))
 	a.jobs.Register(jobRefreshUpcoming, classRequests, a.refreshUpcoming, jobs.Timeout(5*time.Minute))
 	a.jobs.Register(jobTrickplay, classTrickplay, a.generateTrickplay, jobs.Timeout(2*time.Hour))
 	a.jobs.Register(jobDetectSegments, classSegments, a.detectSegments, jobs.Timeout(30*time.Minute))

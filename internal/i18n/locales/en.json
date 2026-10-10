@@ -238,6 +238,7 @@
   "error.media_request.unknown_root_folder": "Unknown root folder: {path}",
   "error.metrics.token_required": "A metrics token is required",
   "error.notification.all_or_some": "Name notifications or ask for all of them, not both",
+  "error.notification.invalid_subscription": "This push subscription cannot be used",
   "error.notification.too_many": "At most {max} notifications at a time",
   "error.oidc.client_id_required": "A client ID is required",
   "error.oidc.client_secret_required": "A client secret is required",

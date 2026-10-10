@@ -14,6 +14,19 @@ option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna
 //
 // A change is announced through EventService (NotificationsChanged), to the devices of the
 // profile: a notification arrived, or some were read or deleted from another device.
+//
+// A device can also be told while the app is closed, by web push (RFC 8030): a browser subscribes
+// with the server's public key (GetPushConfig) and gives the server its subscription
+// (SubscribePush). Each notification of the profile picked on that device is then sent to it,
+// encrypted for it (RFC 8291): the push service of the browser only carries it. The message is a
+// JSON object:
+//
+//   {"id": "...", "kind": "request_available", "title": "<server name>",
+//    "body": "<the notification, in the language of the profile>",
+//    "item_id": "...", "request_id": "..."}
+//
+// kind is the NotificationKind in lower case without its prefix; item_id and request_id are left
+// out when there is none.
 service NotificationService {
   // ListNotifications lists the notifications of the profile, newest first, with how many it has
   // not read.
@@ -26,6 +39,20 @@ service NotificationService {
   }
   // DeleteNotifications removes notifications of the profile.
   rpc DeleteNotifications(DeleteNotificationsRequest) returns (DeleteNotificationsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // GetPushConfig returns the public key a browser subscribes to web push with, and the
+  // subscription this device has.
+  rpc GetPushConfig(GetPushConfigRequest) returns (GetPushConfigResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // SubscribePush stores the web push subscription of this device, in place of the one it had. It
+  // goes away with the session (sign-out, device revoked).
+  rpc SubscribePush(SubscribePushRequest) returns (SubscribePushResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // UnsubscribePush forgets the web push subscription of this device.
+  rpc UnsubscribePush(UnsubscribePushRequest) returns (UnsubscribePushResponse) {
     option idempotency_level = IDEMPOTENT;
   }
 }
@@ -99,3 +126,29 @@ message DeleteNotificationsRequest {
 }
 
 message DeleteNotificationsResponse {}
+
+message GetPushConfigRequest {}
+
+message GetPushConfigResponse {
+  // The server's key, as PushManager.subscribe takes it (applicationServerKey): an uncompressed
+  // P-256 point in base64url. It never changes.
+  string public_key = 1;
+  // Endpoint this device is subscribed with; empty if it is not. A browser whose own subscription
+  // has another endpoint subscribes again.
+  string endpoint = 2;
+}
+
+// SubscribePushRequest carries what PushSubscription.toJSON() gives.
+message SubscribePushRequest {
+  // Address of the push service for this device: https only.
+  string endpoint = 1;
+  // keys.p256dh and keys.auth, in base64url.
+  string p256dh = 2;
+  string auth = 3;
+}
+
+message SubscribePushResponse {}
+
+message UnsubscribePushRequest {}
+
+message UnsubscribePushResponse {}

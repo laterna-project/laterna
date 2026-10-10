@@ -409,6 +409,14 @@ type ProviderID struct {
 	Value    string
 }
 
+type PushSubscription struct {
+	SessionID domain.ID
+	Endpoint  string
+	P256dh    string
+	Auth      string
+	CreatedAt int64
+}
+
 type ReadingProgress struct {
 	ProfileID   domain.ID
 	ItemID      domain.ID
