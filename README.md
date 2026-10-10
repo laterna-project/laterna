@@ -22,13 +22,17 @@ server without a client.
   and a full on-GPU chain are detected by real attempts at startup, with fallbacks down to
   `libx264`.
 - **Instant subtitles.** Tracks, external files and fonts are extracted at import and served
-  separately, so switching subtitles restarts nothing. Burn-in is a last resort.
+  separately, so switching subtitles restarts nothing. Burn-in is a last resort. A missing
+  subtitle can be asked for: Bazarr finds it.
 - **Metadata from your files.** NFO files and artwork next to the media, as written by Sonarr,
   Radarr, Lidarr, Kodi or tinyMediaManager. No online lookup, no wrong match. Optional Sonarr,
   Radarr and Lidarr integration with webhooks.
 - **Requests.** Profiles ask for movies, series, music and books; an administrator approves, and
   Sonarr, Radarr, Lidarr or LazyLibrarian fetch them. Each request is followed until it can be
   watched, listened to or read.
+- **Notifications.** A profile is told what became of its requests and when episodes of the
+  series it follows arrive, in the app or by web push when it is closed. The home page shows what
+  Sonarr, Radarr and Lidarr expect next.
 - **Files keep their identity.** A renamed or moved file keeps its watch state, and a share that
   goes offline does not wipe a library.
 - **Households.** Accounts with profiles, PINs, per-library access and parental controls

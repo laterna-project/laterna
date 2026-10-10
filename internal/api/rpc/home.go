@@ -30,11 +30,27 @@ var homeRowKinds = map[app.HomeRowKind]laternav1.HomeRowKind{
 	app.RowReading:           laternav1.HomeRowKind_HOME_ROW_KIND_READING,
 	app.RowLatestBooks:       laternav1.HomeRowKind_HOME_ROW_KIND_LATEST_BOOKS,
 	app.RowLatestPhotos:      laternav1.HomeRowKind_HOME_ROW_KIND_LATEST_PHOTOS,
+	app.RowUpcoming:          laternav1.HomeRowKind_HOME_ROW_KIND_UPCOMING,
+}
+
+var upcomingKinds = map[domain.UpcomingKind]laternav1.UpcomingKind{
+	domain.UpcomingEpisode: laternav1.UpcomingKind_UPCOMING_KIND_EPISODE,
+	domain.UpcomingMovie:   laternav1.UpcomingKind_UPCOMING_KIND_MOVIE,
+	domain.UpcomingAlbum:   laternav1.UpcomingKind_UPCOMING_KIND_ALBUM,
+}
+
+func upcomingMsg(u domain.Upcoming) *laternav1.UpcomingRelease {
+	return &laternav1.UpcomingRelease{
+		Kind: upcomingKinds[u.Kind], Title: u.Title, ParentTitle: u.Parent,
+		SeasonNumber: clampInt32(u.Season), EpisodeNumber: clampInt32(u.Episode),
+		ReleaseTime: timestamppb.New(u.At), AllDay: u.AllDay,
+		ItemId: idString(u.ItemID), Images: imagesMsg(u.Images), PosterUrl: app.RequestPosterPath(u.Poster),
+	}
 }
 
 // GetHome returns the home page of the profile.
 func (s *HomeService) GetHome(ctx context.Context, req *connect.Request[laternav1.GetHomeRequest]) (*connect.Response[laternav1.GetHomeResponse], error) {
-	rows, err := s.app.Home(ctx, principal(ctx), int(req.Msg.GetRowSize()))
+	rows, err := s.app.Home(ctx, principal(ctx), int(req.Msg.GetRowSize()), req.Msg.GetUpcoming())
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +61,9 @@ func (s *HomeService) GetHome(ctx context.Context, req *connect.Request[laternav
 			msg.LibraryId = r.Library.ID.String()
 		}
 		msg.SourceItemId = idString(r.Source)
+		for _, u := range r.Upcoming {
+			msg.Upcoming = append(msg.Upcoming, upcomingMsg(u))
+		}
 		for _, v := range r.Items {
 			switch v.Item.Kind {
 			case domain.ItemMovie:
@@ -148,6 +167,12 @@ func eventMsg(e domain.Event) *laternav1.Event {
 		return &laternav1.Event{Kind: &laternav1.Event_RequestsChanged{RequestsChanged: &laternav1.RequestsChanged{
 			RequestIds: idsMsg(e.RequestIDs),
 		}}}
+	case domain.SubtitleSearchChanged:
+		return &laternav1.Event{Kind: &laternav1.Event_SubtitleSearchChanged{SubtitleSearchChanged: &laternav1.SubtitleSearchChanged{
+			FileId: e.FileID.String(),
+		}}}
+	case domain.NotificationsChanged:
+		return &laternav1.Event{Kind: &laternav1.Event_NotificationsChanged{NotificationsChanged: &laternav1.NotificationsChanged{}}}
 	}
 	// Unknown kind (cannot happen: the interface is sealed and checked by gochecksumtype): reload
 	// everything.

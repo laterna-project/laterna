@@ -121,8 +121,39 @@ playback starts, and `StartPlaybackResponse.subtitle_index` says which one was p
 - A client leaves `profile_subtitle` out when it reopens a playback after the viewer chose a
   subtitle (or none): the viewer's choice wins.
 
+## Asking for a missing subtitle
+
+A file has no subtitle in the viewer's language: the viewer asks for one from the player, and it
+shows up a moment later. Laterna looks nothing up itself. It hands the search to
+[Bazarr](https://www.bazarr.media/), when an administrator linked it (address and API key, like
+Sonarr and Radarr), and reads the result.
+
+- `SubtitleService.GetSubtitleSearch` says whether a subtitle can be looked for a file, and in
+  which languages: those enabled in Bazarr. `SearchSubtitle` starts a search for a movie or an
+  episode the profile sees.
+- The search is a job. It finds the video among what Bazarr follows: by the ID its NFO gives (TVDB
+  for the series, then season and episode; IMDb for a movie), else by the names of its folder and
+  file. Bazarr often sees the same files under other folders, so paths are never compared whole.
+- Bazarr is then asked to search and to save the best subtitle next to the video. Recent versions
+  answer at once and search in the background, older ones answer when they are done. Either way
+  Laterna reads what Bazarr has for the video until a new subtitle appears, for two minutes at
+  most.
+- Once it is there, the subtitles of the file are extracted again, as after a scan, and the search
+  ends as **found**. The viewer's devices hear of it (`SubtitleSearchChanged`) and read the list
+  again.
+- Nothing after two minutes ends as **not found**. Asking again within ten minutes returns that
+  answer without a new search: providers count what they are asked. A profile may ask for 20
+  searches an hour.
+- A search that cannot go through **fails** with its reason: Bazarr does not answer, does not
+  follow the title, or saved the subtitle where Laterna does not see it (the two do not share the
+  folder).
+
+Searches are kept in memory, half an hour after they end: they are a conversation with the
+viewer, not a record.
+
 ## Not done
 
 - WebVTT renditions inside the HLS playlist for native players (AVPlayer).
 - OCR of image subtitles (not planned).
 - A preferred audio language per profile: the audio is the file's default stream.
+- Choosing among the subtitles a provider offers: Bazarr picks the best one.

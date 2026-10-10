@@ -23,7 +23,7 @@ func TestHome(t *testing.T) {
 	a, p, films, shows := catalogApp(t)
 	ctx := context.Background()
 
-	rows, err := a.Home(ctx, p, 0)
+	rows, err := a.Home(ctx, p, 0, false)
 	mustNil(t, err)
 	// Nothing started: only the recently added rows, libraries by name.
 	if len(rows) != 2 || rows[0].Kind != RowLatestMovies || rows[0].Library.ID != films.ID || len(rows[0].Items) != 5 ||
@@ -44,7 +44,7 @@ func TestHome(t *testing.T) {
 	mustNil(t, a.store.Write(ctx, func(q store.Q) error {
 		return q.SaveProgress(ctx, p.Profile.ID, movie.ID, 30*time.Second, false, a.now())
 	}))
-	rows, err = a.Home(ctx, p, 3)
+	rows, err = a.Home(ctx, p, 3, false)
 	mustNil(t, err)
 	// What was watched also yields recommendations.
 	if len(rows) != 5 || !slices.Equal(rowKinds(rows), []HomeRowKind{RowResume, RowNextUp, RowLatestMovies, RowLatestSeries, RowRecommended}) ||
@@ -56,12 +56,12 @@ func TestHome(t *testing.T) {
 	mustNil(t, a.store.Write(ctx, func(q store.Q) error {
 		return q.SaveProgress(ctx, p.Profile.ID, eps[1].Item.ID, 10*time.Second, false, a.now())
 	}))
-	rows, err = a.Home(ctx, p, 0)
+	rows, err = a.Home(ctx, p, 0, false)
 	mustNil(t, err)
 	if len(rows) < 2 || rows[1].Kind == RowNextUp {
 		t.Errorf("started episode listed twice, also in \"Next up\"")
 	}
-	if _, err := a.Home(ctx, p, 51); !isKind(err, domain.ErrInvalid) {
+	if _, err := a.Home(ctx, p, 51, false); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("rows too long: %v", err)
 	}
 }
@@ -103,7 +103,7 @@ func TestReorderLibraries(t *testing.T) {
 	if got := libraryNames(); !slices.Equal(got, []string{"Shows", "Movies"}) {
 		t.Errorf("lists: %v", got)
 	}
-	rows, err := a.Home(ctx, p, 0)
+	rows, err := a.Home(ctx, p, 0, false)
 	mustNil(t, err)
 	if len(rows) != 2 || rows[0].Kind != RowLatestSeries || rows[1].Kind != RowLatestMovies {
 		t.Errorf("home: %v", rowKinds(rows))
@@ -194,7 +194,8 @@ func TestEvents(t *testing.T) {
 		}
 		mustNil(t, err)
 		switch e.(type) {
-		case domain.LibraryScanned, domain.UserDataChanged, domain.DownloadsChanged, domain.RequestsChanged:
+		case domain.LibraryScanned, domain.UserDataChanged, domain.DownloadsChanged, domain.RequestsChanged,
+			domain.NotificationsChanged, domain.SubtitleSearchChanged:
 			t.Errorf("event received by mistake: %T", e)
 		case domain.Resync, domain.LibrariesChanged, domain.ItemsChanged, domain.ThemesChanged:
 		}

@@ -189,29 +189,38 @@ func (s *CatalogService) Search(ctx context.Context, req *connect.Request[latern
 	}
 	out := make([]*laternav1.SearchResult, 0, len(views))
 	for _, v := range views {
-		switch v.Item.Kind {
-		case domain.ItemMovie:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_Movie{Movie: movieSummaryMsg(v)}})
-		case domain.ItemSeries:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_Series{Series: seriesSummaryMsg(v)}})
-		case domain.ItemEpisode:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_Episode{Episode: episodeMsg(ctx, v)}})
-		case domain.ItemArtist:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_Artist{Artist: artistSummaryMsg(ctx, v)}})
-		case domain.ItemAlbum:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_Album{Album: albumSummaryMsg(ctx, v)}})
-		case domain.ItemTrack:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_Track{Track: trackMsg(ctx, v)}})
-		case domain.ItemBookSeries:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_BookSeries{BookSeries: bookSeriesMsg(v)}})
-		case domain.ItemBook:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_Book{Book: bookSummaryMsg(ctx, v)}})
-		case domain.ItemPhotoAlbum:
-			out = append(out, &laternav1.SearchResult{Item: &laternav1.SearchResult_PhotoAlbum{PhotoAlbum: photoAlbumMsg(v)}})
-		case domain.ItemSeason, domain.ItemPhoto:
+		if msg := searchResultMsg(ctx, v); msg != nil {
+			out = append(out, msg)
 		}
 	}
 	return connect.NewResponse(&laternav1.SearchResponse{Results: out}), nil
+}
+
+// searchResultMsg is an item of any kind a list can show, as a list shows it; nil for the others (a
+// season, a photo).
+func searchResultMsg(ctx context.Context, v domain.ItemView) *laternav1.SearchResult {
+	switch v.Item.Kind {
+	case domain.ItemMovie:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_Movie{Movie: movieSummaryMsg(v)}}
+	case domain.ItemSeries:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_Series{Series: seriesSummaryMsg(v)}}
+	case domain.ItemEpisode:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_Episode{Episode: episodeMsg(ctx, v)}}
+	case domain.ItemArtist:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_Artist{Artist: artistSummaryMsg(ctx, v)}}
+	case domain.ItemAlbum:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_Album{Album: albumSummaryMsg(ctx, v)}}
+	case domain.ItemTrack:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_Track{Track: trackMsg(ctx, v)}}
+	case domain.ItemBookSeries:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_BookSeries{BookSeries: bookSeriesMsg(v)}}
+	case domain.ItemBook:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_Book{Book: bookSummaryMsg(ctx, v)}}
+	case domain.ItemPhotoAlbum:
+		return &laternav1.SearchResult{Item: &laternav1.SearchResult_PhotoAlbum{PhotoAlbum: photoAlbumMsg(v)}}
+	case domain.ItemSeason, domain.ItemPhoto:
+	}
+	return nil
 }
 
 // SetPlayed marks an item as played or unplayed.

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package laterna.v1;
 
+import "google/protobuf/timestamp.proto";
 import "laterna/v1/catalog.proto";
 import "laterna/v1/text.proto";
 
@@ -12,9 +13,9 @@ option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna
 // them.
 //
 // The order: what is in progress (resume, next up, continue reading); recently added in movie and
-// series libraries; recommendations; music (recently played albums, then recently added); recently
-// added books, then photos. Within each group, libraries follow the order chosen by the
-// administrator (LibraryService.ReorderLibraries).
+// series libraries; what is coming; recommendations; music (recently played albums, then recently
+// added); recently added books, then photos. Within each group, libraries follow the order chosen
+// by the administrator (LibraryService.ReorderLibraries).
 service HomeService {
   // GetHome returns the rows of the home page; empty rows are left out.
   rpc GetHome(GetHomeRequest) returns (GetHomeResponse) {
@@ -47,6 +48,44 @@ enum HomeRowKind {
   HOME_ROW_KIND_RECOMMENDED = 10;
   // Movies and series close to a movie or a series the profile watched recently (source_item_id).
   HOME_ROW_KIND_BECAUSE_YOU_WATCHED = 11;
+  // Episodes, movies and albums that Sonarr, Radarr and Lidarr expect in the next two weeks and do
+  // not have yet, soonest first. Nothing of it is in the catalog: the row has no items, its entries
+  // are in HomeRow.upcoming. Only sent to a client that asks for it (GetHomeRequest.upcoming).
+  HOME_ROW_KIND_UPCOMING = 12;
+}
+
+enum UpcomingKind {
+  UPCOMING_KIND_UNSPECIFIED = 0;
+  UPCOMING_KIND_EPISODE = 1;
+  UPCOMING_KIND_MOVIE = 2;
+  UPCOMING_KIND_ALBUM = 3;
+}
+
+// UpcomingRelease is an episode, a movie or an album that an instance monitors and does not have
+// yet. A profile only gets those of libraries it may browse, under its parental control.
+message UpcomingRelease {
+  UpcomingKind kind = 1;
+  // Title of the episode, the movie or the album.
+  string title = 2;
+  // Series of an episode, artist of an album; empty for a movie.
+  string parent_title = 3;
+  // Season and number of an episode.
+  int32 season_number = 4;
+  int32 episode_number = 5;
+  // When the episode airs. For a movie (the day it comes out at home, not in theaters) or an
+  // album, midnight UTC of that day.
+  google.protobuf.Timestamp release_time = 6;
+  // True when release_time is a day and not a moment: read its date in UTC, whatever the time zone
+  // of the device.
+  bool all_day = 7;
+  // Series or artist in the catalog, when the profile sees it there; empty for a movie, or for a
+  // series or an artist that has nothing yet.
+  string item_id = 8;
+  // Images of that series or artist.
+  repeated Image images = 9;
+  // Without images, the poster the instance names (the album's cover for an album), served by the
+  // server: a path to append to the server's address. Empty without one.
+  string poster_url = 10;
 }
 
 message HomeItem {
@@ -73,11 +112,16 @@ message HomeRow {
   // The title, for translation: "home.resume", "home.latest" (param "library": the name of the
   // library), "home.because_you_watched" (param "title")...
   Text title_text = 6;
+  // Entries of a HOME_ROW_KIND_UPCOMING row; empty otherwise.
+  repeated UpcomingRelease upcoming = 7;
 }
 
 message GetHomeRequest {
   // Items per row: 1 to 50; 0 means 20.
   int32 row_size = 1;
+  // True to also get the row of what is coming (HOME_ROW_KIND_UPCOMING), for a client that shows
+  // its entries.
+  bool upcoming = 2;
 }
 
 message GetHomeResponse {

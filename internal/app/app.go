@@ -28,6 +28,7 @@ import (
 	"github.com/laterna-project/laterna/internal/segments"
 	"github.com/laterna-project/laterna/internal/store"
 	"github.com/laterna-project/laterna/internal/telemetry"
+	"github.com/laterna-project/laterna/internal/webpush"
 )
 
 // Keys of settings in the database.
@@ -74,6 +75,9 @@ type Options struct {
 	// HTTPClient replaces the client used for downloads and for Sonarr and Radarr calls (tests);
 	// nil means the default client.
 	HTTPClient *http.Client
+	// PushHTTPClient replaces the client that calls push services (tests); nil means one that only
+	// reaches public addresses.
+	PushHTTPClient *http.Client
 }
 
 // App is the entry point of the use cases.
@@ -152,6 +156,18 @@ type App struct {
 	posters posterURLs
 	// books are the books of recent request searches.
 	books bookCache
+	// subSearches are the subtitle searches handed to Bazarr; the two durations are how long it
+	// gets to find one and how often it is asked.
+	subSearches        subtitleSearches
+	subtitleSearchWait time.Duration
+	subtitleSearchPoll time.Duration
+	// arrived are the episodes that arrived and were not announced yet.
+	arrived newEpisodes
+	// pushKeys is the key pair the server names itself with to push services; pushHTTP calls them.
+	pushKeys webpush.Keys
+	pushHTTP *http.Client
+	// upcoming is what Sonarr, Radarr and Lidarr expect in the coming days.
+	upcoming upcomingCache
 
 	// bus pushes events to subscribed clients; changes batches the item ones.
 	bus     *events.Bus[domain.Event]
@@ -171,8 +187,9 @@ func New(ctx context.Context, st *store.Store, opts Options) (*App, error) {
 		prober:     probe.New(opts.FFprobe), jobs: jobs.New(st, log), noAutoScans: opts.NoAutoScans, startedAt: time.Now(),
 		settingsChanged: make(chan struct{}, 1), logs: opts.Logs, dataDir: opts.DataDir, logDir: opts.LogDir,
 		watchResync: make(chan struct{}, 1), watchQuiet: cmp.Or(opts.WatchQuiet, defaultWatchQuiet),
-		segmentMin: cmp.Or(opts.SegmentMin, segments.DefaultMin),
-		cacheDir:   opts.CacheDir, resizing: make(chan struct{}, max(1, runtime.NumCPU()/2)),
+		segmentMin:         cmp.Or(opts.SegmentMin, segments.DefaultMin),
+		subtitleSearchWait: defaultSubtitleSearchWait, subtitleSearchPoll: defaultSubtitleSearchPoll,
+		cacheDir: opts.CacheDir, resizing: make(chan struct{}, max(1, runtime.NumCPU()/2)),
 		bus: events.New[domain.Event](), ffmpeg: opts.FFmpeg, ffprobe: opts.FFprobe,
 		plays: playSessions{byID: map[domain.ID]*playSession{}}, convs: conversions{byPath: map[string]*conversion{}},
 		preps:        preparations{byID: map[domain.ID]context.CancelFunc{}, lastAt: map[domain.ID]time.Time{}},
@@ -240,6 +257,12 @@ func New(ctx context.Context, st *store.Store, opts Options) (*App, error) {
 	}
 	// Outgoing calls are traced (Sonarr, Radarr, NFO images, OpenID Connect).
 	a.http.Transport = a.tracer.Transport(a.http.Transport)
+	a.pushHTTP = newPushClient()
+	if opts.PushHTTPClient != nil {
+		client := *opts.PushHTTPClient
+		a.pushHTTP = &client
+	}
+	a.pushHTTP.Transport = a.tracer.Transport(a.pushHTTP.Transport)
 	// One request every 250 ms per site: image CDNs (TVDB, TMDb) take that without complaining, and
 	// 500 photos arrive in two minutes.
 	a.download = download.New("Laterna/"+buildinfo.Version+" (+https://github.com/laterna-project/laterna)", 250*time.Millisecond, a.http)
@@ -261,6 +284,9 @@ func New(ctx context.Context, st *store.Store, opts Options) (*App, error) {
 	}
 	if err := a.loadOIDC(ctx); err != nil {
 		return nil, fmt.Errorf("app: %w", err)
+	}
+	if err := a.loadPushKeys(ctx); err != nil {
+		return nil, fmt.Errorf("app: push key: %w", err)
 	}
 	return a, nil
 }

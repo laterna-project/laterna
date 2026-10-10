@@ -289,6 +289,17 @@ type MetadataDir struct {
 	Signature string
 }
 
+type Notification struct {
+	ID        domain.ID
+	ProfileID domain.ID
+	Kind      string
+	Text      string
+	ItemID    *domain.ID
+	RequestID *domain.ID
+	CreatedAt int64
+	ReadAt    sql.NullInt64
+}
+
 type OfflinePlay struct {
 	ProfileID domain.ID
 	ItemID    domain.ID
@@ -396,6 +407,14 @@ type ProviderID struct {
 	ItemID   domain.ID
 	Provider string
 	Value    string
+}
+
+type PushSubscription struct {
+	SessionID domain.ID
+	Endpoint  string
+	P256dh    string
+	Auth      string
+	CreatedAt int64
 }
 
 type ReadingProgress struct {

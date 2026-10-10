@@ -57,3 +57,41 @@ type SubtitleSet struct {
 	Subtitles   []Subtitle
 	Fonts       []Font
 }
+
+// SubtitleWanted describes a subtitle a profile asks for.
+type SubtitleWanted struct {
+	// Language is a two-letter code ("fr"), one of those the search offers.
+	Language        string
+	HearingImpaired bool
+	Forced          bool
+}
+
+// SubtitleSearchState says where a subtitle search stands.
+type SubtitleSearchState string
+
+// States of a subtitle search.
+const (
+	SubtitleSearching    SubtitleSearchState = "searching"
+	SubtitleFound        SubtitleSearchState = "found"
+	SubtitleNotFound     SubtitleSearchState = "not_found"
+	SubtitleSearchFailed SubtitleSearchState = "failed"
+)
+
+// SubtitleSearch is a search for a subtitle of a file, handed to Bazarr.
+type SubtitleSearch struct {
+	FileID ID
+	SubtitleWanted
+	State SubtitleSearchState
+	// Error says why a failed search could not go through.
+	Error     *Text
+	StartedAt time.Time
+	// ProfileID is the profile that asked.
+	ProfileID ID
+}
+
+// SubtitleLanguage is a language subtitles can be looked up in.
+type SubtitleLanguage struct {
+	// Code is its two-letter code.
+	Code string
+	Name string
+}

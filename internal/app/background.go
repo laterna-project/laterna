@@ -39,7 +39,8 @@ const (
 	jobBackupStore = "store.backup"
 	// Intro and credits of a file: chapters, then audio compared with the season's other episodes.
 	jobDetectSegments = "file.segments"
-	// Requests (jobSubmitRequest, jobRefreshRequests) are in requests.go.
+	// Requests (jobSubmitRequest, jobRefreshRequests) are in requests.go, the calendars
+	// (jobRefreshUpcoming) in upcoming.go.
 
 	// One scan at a time: it walks folders, often over the network.
 	classScan = "scan"
@@ -93,6 +94,8 @@ func (a *App) registerJobs() {
 	a.jobs.Class(classConvert, 2)
 	a.jobs.Class(classSegments, 1)
 	a.jobs.Class(classRequests, 1)
+	a.jobs.Class(classSubtitleSearch, 2)
+	a.jobs.Class(classPush, 2)
 	a.jobs.Register(jobScanLibrary, classScan, a.scanLibrary, jobs.Timeout(2*time.Hour))
 	// In the analysis class, at idle priority: after the analyses a scan just asked for, which
 	// create the items.
@@ -107,6 +110,9 @@ func (a *App) registerJobs() {
 	a.jobs.Register(jobArrRefresh, classArr, a.refreshArr, jobs.Timeout(2*time.Hour))
 	a.jobs.Register(jobSubmitRequest, classRequests, a.submitRequest, jobs.Timeout(2*time.Minute))
 	a.jobs.Register(jobRefreshRequests, classRequests, a.refreshRequests, jobs.Timeout(5*time.Minute))
+	a.jobs.Register(jobSearchSubtitle, classSubtitleSearch, a.searchSubtitle, jobs.Timeout(30*time.Minute), jobs.MaxAttempts(1))
+	a.jobs.Register(jobPushNotification, classPush, a.pushNotification, jobs.Timeout(5*time.Minute), jobs.MaxAttempts(1))
+	a.jobs.Register(jobRefreshUpcoming, classRequests, a.refreshUpcoming, jobs.Timeout(5*time.Minute))
 	a.jobs.Register(jobTrickplay, classTrickplay, a.generateTrickplay, jobs.Timeout(2*time.Hour))
 	a.jobs.Register(jobDetectSegments, classSegments, a.detectSegments, jobs.Timeout(30*time.Minute))
 	a.jobs.Register(jobPrepareDownload, classPrepare, a.prepareDownload, jobs.Timeout(12*time.Hour))
@@ -153,6 +159,7 @@ func (a *App) Start(ctx context.Context) error {
 	a.background.Go(func() { _, _ = a.encoders() })
 	a.background.Go(func() { a.periodic(ctx) })
 	a.background.Go(func() { a.publishChanges(ctx) })
+	a.background.Go(func() { a.watchNewEpisodes(ctx) })
 	return nil
 }
 
@@ -173,6 +180,9 @@ func (a *App) periodic(ctx context.Context) {
 	defer purge.Stop()
 	requests := time.NewTicker(requestsEvery)
 	defer requests.Stop()
+	a.followUpcoming(ctx, 0)
+	upcoming := time.NewTicker(upcomingEvery)
+	defer upcoming.Stop()
 	var timer *time.Timer
 	arm := func() <-chan time.Time {
 		if timer != nil {
@@ -204,6 +214,8 @@ func (a *App) periodic(ctx context.Context) {
 			a.runPurges(ctx)
 		case <-requests.C:
 			a.followRequests(ctx, 0)
+		case <-upcoming.C:
+			a.followUpcoming(ctx, 0)
 		}
 	}
 }
@@ -233,6 +245,9 @@ func (a *App) runPurges(ctx context.Context) {
 	}
 	if err := a.purgePosters(ctx); err != nil {
 		a.log.WarnContext(ctx, "cannot purge cached request posters", "err", err)
+	}
+	if err := a.purgeNotifications(ctx); err != nil {
+		a.log.WarnContext(ctx, "cannot purge old notifications", "err", err)
 	}
 	a.enqueuePurges(ctx)
 }
