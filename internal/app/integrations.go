@@ -288,6 +288,7 @@ func (a *App) SetIntegration(ctx context.Context, p domain.Principal, kind domai
 		return domain.Integration{}, err
 	}
 	a.log.InfoContext(ctx, "integration saved", "kind", k, "url", rawURL)
+	a.followUpcoming(ctx, 0)
 	a.record(ctx, domain.Activity{
 		Kind: domain.ActivityIntegration, AccountID: &p.Account.ID,
 		Text: domain.T("activity.integration_linked", "actor", p.Account.Username, "name", k.Name(), "url", rawURL),
@@ -317,6 +318,7 @@ func (a *App) DeleteIntegration(ctx context.Context, p domain.Principal, kind do
 	if err := a.store.Write(ctx, func(q store.Q) error { return q.DeleteSetting(ctx, keyIntegration+string(k)) }); err != nil {
 		return err
 	}
+	a.followUpcoming(ctx, 0)
 	a.record(ctx, domain.Activity{
 		Kind: domain.ActivityIntegration, AccountID: &p.Account.ID, Text: domain.T("activity.integration_unlinked", "actor", p.Account.Username, "name", k.Name()),
 	})
@@ -454,6 +456,7 @@ func (a *App) ArrWebhook(ctx context.Context, kind, secret string, body []byte) 
 	}
 	a.jobs.Kick()
 	a.followRequests(ctx, requestsAfterImport)
+	a.followUpcoming(ctx, upcomingAfterImport)
 	a.log.InfoContext(ctx, "webhook: scan scheduled", "kind", k, "event", ev.Type, "path", ev.Path, "libraries", len(libs))
 	a.record(ctx, domain.Activity{
 		Kind: domain.ActivityWebhook, Text: domain.T("activity.webhook", "name", k.Name(), "event", ev.Type, "path", ev.Path),
