@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +13,7 @@ import (
 	"github.com/laterna-project/laterna/internal/bazarr"
 	"github.com/laterna-project/laterna/internal/bazarr/bazarrtest"
 	"github.com/laterna-project/laterna/internal/domain"
+	"github.com/laterna-project/laterna/internal/store"
 )
 
 // searchEnd waits for the searches of a file to end and returns them.
@@ -62,7 +64,7 @@ func TestSubtitleSearch(t *testing.T) {
 	fake.Set(func(s *bazarrtest.Server) {
 		s.Languages = []bazarr.Language{{Code: "en", Name: "English"}, {Code: "es", Name: "Spanish"}}
 		s.Disabled = []bazarr.Language{{Code: "de", Name: "German"}}
-		s.Movies = []*bazarr.Video{{ID: 3, Title: "Fonts", Path: seen + filepath.Base(file.Path)}}
+		s.Movies = []*bazarr.Video{{ID: 3, Title: "Fonts", Path: seen + filepath.Base(file.Path), ProfileID: 1}}
 		s.Find = func(_ bazarr.Video, w bazarr.Wanted) string {
 			if w.Language != "es" {
 				return ""
@@ -201,7 +203,7 @@ func TestBazarrVideo(t *testing.T) {
 	fake.Set(func(s *bazarrtest.Server) {
 		s.Series = []bazarr.Series{
 			{ID: 6, TvdbID: 999, Title: "Other", Path: "/tv/Other"},
-			{ID: 7, TvdbID: 101, Title: "Frieren", Path: "/tv/Sousou no Frieren"},
+			{ID: 7, TvdbID: 101, Title: "Frieren", Path: "/tv/Sousou no Frieren", ProfileID: 2},
 		}
 		s.Episodes = []*bazarr.Video{
 			{ID: 61, SeriesID: 6, Season: 1, Episode: 2, Path: "/tv/Other/Other S01E02.mkv"},
@@ -210,17 +212,17 @@ func TestBazarrVideo(t *testing.T) {
 		}
 		s.Movies = []*bazarr.Video{
 			{ID: 3, ImdbID: "tt0000001", Path: "/movies/Other (2020)/Other (2020).mkv"},
-			{ID: 4, Path: `D:\movies\Suzume (2022)\` + filepath.Base(fileOf(movie).Path)},
+			{ID: 4, Path: `D:\movies\Suzume (2022)\` + filepath.Base(fileOf(movie).Path), ProfileID: 1},
 		}
 	})
 	c := bazarr.New(fake.URL, bazarrtest.Key, nil)
 
 	v, ok, err := a.bazarrVideo(ctx, c, fileOf(eps[1].Item.ID), eps[1].Item.ID)
-	if err != nil || !ok || v.ID != 72 || v.SeriesID != 7 {
-		t.Errorf("episode by TVDB ID and numbers: %+v %v %v", v, ok, err)
+	if err != nil || !ok || v.ID != 72 || v.SeriesID != 7 || v.ProfileID != 2 {
+		t.Errorf("episode by TVDB ID and numbers, with the profile of its series: %+v %v %v", v, ok, err)
 	}
 	v, ok, err = a.bazarrVideo(ctx, c, fileOf(movie), movie)
-	if err != nil || !ok || v.ID != 4 || v.SeriesID != 0 {
+	if err != nil || !ok || v.ID != 4 || v.SeriesID != 0 || v.ProfileID != 1 {
 		t.Errorf("movie by file name: %+v %v %v", v, ok, err)
 	}
 	// Bazarr knows the series under another ID: nothing to go by.
@@ -233,5 +235,71 @@ func TestBazarrVideo(t *testing.T) {
 	fake.Set(func(s *bazarrtest.Server) { s.Series[1].Path = "/tv/" + strings.ToUpper(folder) })
 	if v, ok, err := a.bazarrVideo(ctx, c, fileOf(eps[0].Item.ID), eps[0].Item.ID); err != nil || !ok || v.ID != 71 {
 		t.Errorf("series by folder name: %+v %v %v", v, ok, err)
+	}
+}
+
+// A movie, or the series of an episode, that has no languages profile in Bazarr: Bazarr would take
+// the search and never find anything. The search fails at once and says why, without asking
+// Bazarr; once the title has a profile, asking again goes through.
+func TestSubtitleSearchWithoutProfile(t *testing.T) {
+	a, _ := startApp(t)
+	_, p := setupAdmin(t, a)
+	ctx := context.Background()
+	a.subtitleSearchWait, a.subtitleSearchPoll = 200*time.Millisecond, 10*time.Millisecond
+	now := a.now()
+	shows := domain.Library{ID: domain.NewID(), Name: "Shows", Kind: domain.LibraryShows, Paths: []string{t.TempDir()}, CreatedAt: now, UpdatedAt: now}
+	movies := domain.Library{ID: domain.NewID(), Name: "Movies", Kind: domain.LibraryMovies, Paths: []string{t.TempDir()}, CreatedAt: now, UpdatedAt: now}
+	mustNil(t, a.store.Write(ctx, func(q store.Q) error { return errors.Join(q.CreateLibrary(ctx, shows), q.CreateLibrary(ctx, movies)) }))
+	series := putInCatalog(t, a, shows, "Frieren", "tvdb", 101, 1)
+	movie := putInCatalog(t, a, movies, "Suzume", "imdb", 0, 0)
+	eps, err := a.Episodes(ctx, p, series, nil)
+	if err != nil || len(eps) != 1 {
+		t.Fatalf("episodes: %d %v", len(eps), err)
+	}
+	fileOf := func(item domain.ID) domain.MediaFile {
+		files, err := a.store.Read().ItemFiles(ctx, item)
+		mustNil(t, err)
+		return files[0].File
+	}
+	files := map[string]domain.MediaFile{"movie": fileOf(movie), "episode": fileOf(eps[0].Item.ID)}
+
+	fake := bazarrtest.New(t)
+	fake.Set(func(s *bazarrtest.Server) {
+		s.Series = []bazarr.Series{{ID: 7, TvdbID: 101, Title: "Frieren", Path: "/tv/Frieren"}}
+		s.Episodes = []*bazarr.Video{{ID: 71, SeriesID: 7, Season: 1, Episode: 1, Path: "/tv/Frieren/S01E01.mkv"}}
+		s.Movies = []*bazarr.Video{{ID: 4, Title: "Suzume", Path: "/movies/Suzume (2022)/" + filepath.Base(files["movie"].Path)}}
+	})
+	_, err = a.SetIntegration(ctx, p, domain.IntegrationBazarr, fake.URL, bazarrtest.Key)
+	mustNil(t, err)
+
+	wanted := domain.SubtitleWanted{Language: "fr"}
+	received := func() int {
+		n := 0
+		fake.Set(func(s *bazarrtest.Server) { n = len(s.Searches) })
+		return n
+	}
+	for name, file := range files {
+		_, err := a.SearchSubtitle(ctx, p, file.ID, wanted)
+		mustNil(t, err)
+		end := searchFor(t, searchEnd(t, a, p, file.ID), wanted)
+		if end.State != domain.SubtitleSearchFailed || end.Error == nil || end.Error.Key != "subtitle_search.no_profile" || end.Error.Params["name"] != "Bazarr" {
+			t.Errorf("%s without a languages profile: %+v", name, end)
+		}
+	}
+	if n := received(); n != 0 {
+		t.Errorf("Bazarr was asked %d times about titles without a languages profile", n)
+	}
+
+	// The administrator gives them one: asked again, the searches reach Bazarr, which finds nothing.
+	fake.Set(func(s *bazarrtest.Server) { s.Series[0].ProfileID, s.Movies[0].ProfileID = 1, 1 })
+	for name, file := range files {
+		_, err := a.SearchSubtitle(ctx, p, file.ID, wanted)
+		mustNil(t, err)
+		if end := searchFor(t, searchEnd(t, a, p, file.ID), wanted); end.State != domain.SubtitleNotFound || end.Error != nil {
+			t.Errorf("%s with a languages profile: %+v", name, end)
+		}
+	}
+	if n := received(); n != 2 {
+		t.Errorf("Bazarr was asked %d times once the titles had a languages profile, want 2", n)
 	}
 }

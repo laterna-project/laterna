@@ -33,11 +33,13 @@ type Server struct {
 	Languages []bazarr.Language
 	Disabled  []bazarr.Language
 	Series    []bazarr.Series
-	// Episodes and Movies are what Bazarr follows, with the subtitles it knows.
+	// Episodes and Movies are what Bazarr follows, with the subtitles it knows. A movie, or the
+	// series of an episode, whose ProfileID is 0 has no languages profile: a search for it is
+	// received and finds nothing.
 	Episodes []*bazarr.Video
 	Movies   []*bazarr.Video
 	// Find is what a search finds: the file of the subtitle it saves, or "" for none. Without it
-	// nothing is ever found.
+	// nothing is ever found. It is not asked about a title without a languages profile.
 	Find func(v bazarr.Video, w bazarr.Wanted) string
 	// Searches lists the searches received, in order.
 	Searches []Search
@@ -69,6 +71,14 @@ func subtitlesJSON(list []bazarr.Subtitle) []any {
 		out = append(out, m)
 	}
 	return out
+}
+
+// profileJSON writes a languages profile the way Bazarr does: null for a title that has none.
+func profileJSON(id int) any {
+	if id == 0 {
+		return nil
+	}
+	return id
 }
 
 func ids(r *http.Request, name string) []int {
@@ -108,7 +118,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/series":
 		list := []any{}
 		for _, se := range s.Series {
-			list = append(list, map[string]any{"sonarrSeriesId": se.ID, "tvdbId": se.TvdbID, "title": se.Title, "path": se.Path})
+			list = append(list, map[string]any{
+				"sonarrSeriesId": se.ID, "tvdbId": se.TvdbID, "title": se.Title, "path": se.Path, "profileId": profileJSON(se.ProfileID),
+			})
 		}
 		write(map[string]any{"data": list, "total": len(list)})
 	case r.URL.Path == "/api/episodes" && r.Method == http.MethodGet:
@@ -134,7 +146,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		for _, m := range s.Movies {
 			if len(wanted) == 0 || slices.Contains(wanted, m.ID) {
 				list = append(list, map[string]any{
-					"radarrId": m.ID, "imdbId": m.ImdbID, "title": m.Title, "path": m.Path, "subtitles": subtitlesJSON(m.Subtitles),
+					"radarrId": m.ID, "imdbId": m.ImdbID, "title": m.Title, "path": m.Path, "profileId": profileJSON(m.ProfileID),
+					"subtitles": subtitlesJSON(m.Subtitles),
 				})
 			}
 		}
@@ -156,7 +169,15 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			if v.ID != n {
 				continue
 			}
-			if s.Find != nil {
+			// Like the real one, whose background search fails for a title without a languages
+			// profile (that of its series for an episode): nothing is found, and nothing says so.
+			profile := v.ProfileID
+			for _, se := range s.Series {
+				if se.ID == series {
+					profile = se.ProfileID
+				}
+			}
+			if s.Find != nil && profile != 0 {
 				if path := s.Find(*v, wanted); path != "" {
 					v.Subtitles = append(v.Subtitles, bazarr.Subtitle{
 						Language: wanted.Language, Forced: wanted.Forced, HearingImpaired: wanted.HearingImpaired, Path: path,

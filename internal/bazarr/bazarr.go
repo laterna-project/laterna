@@ -176,16 +176,20 @@ type Series struct {
 	Title  string
 	// Path is its folder as Bazarr sees it.
 	Path string
+	// ProfileID is its languages profile, 0 when it has none: Bazarr then searches nothing for its
+	// episodes.
+	ProfileID int
 }
 
 // Series lists the series Bazarr follows.
 func (c *Client) Series(ctx context.Context) ([]Series, error) {
 	var page struct {
 		Data []struct {
-			ID     int    `json:"sonarrSeriesId"`
-			TvdbID int64  `json:"tvdbId"`
-			Title  string `json:"title"`
-			Path   string `json:"path"`
+			ID        int    `json:"sonarrSeriesId"`
+			TvdbID    int64  `json:"tvdbId"`
+			Title     string `json:"title"`
+			Path      string `json:"path"`
+			ProfileID int    `json:"profileId"`
 		} `json:"data"`
 	}
 	if err := c.do(ctx, http.MethodGet, "/series", url.Values{"start": {"0"}, "length": {"-1"}}, &page); err != nil {
@@ -193,7 +197,7 @@ func (c *Client) Series(ctx context.Context) ([]Series, error) {
 	}
 	out := make([]Series, 0, len(page.Data))
 	for _, s := range page.Data {
-		out = append(out, Series{ID: s.ID, TvdbID: s.TvdbID, Title: s.Title, Path: s.Path})
+		out = append(out, Series{ID: s.ID, TvdbID: s.TvdbID, Title: s.Title, Path: s.Path, ProfileID: s.ProfileID})
 	}
 	return out, nil
 }
@@ -209,7 +213,10 @@ type Video struct {
 	// ImdbID is the IMDb ID of a movie ("tt0113277"), when Bazarr has it.
 	ImdbID string
 	// Path is its file as Bazarr sees it.
-	Path      string
+	Path string
+	// ProfileID is the languages profile of a movie, 0 when it has none. Bazarr gives none for an
+	// episode, which goes by the profile of its series (Series.ProfileID).
+	ProfileID int
 	Subtitles []Subtitle
 }
 
@@ -273,6 +280,7 @@ func (c *Client) movies(ctx context.Context, q url.Values) ([]Video, error) {
 			ImdbID    string         `json:"imdbId"`
 			Title     string         `json:"title"`
 			Path      string         `json:"path"`
+			ProfileID int            `json:"profileId"`
 			Subtitles []subtitleJSON `json:"subtitles"`
 		} `json:"data"`
 	}
@@ -281,7 +289,9 @@ func (c *Client) movies(ctx context.Context, q url.Values) ([]Video, error) {
 	}
 	out := make([]Video, 0, len(page.Data))
 	for _, m := range page.Data {
-		out = append(out, Video{ID: m.ID, ImdbID: m.ImdbID, Title: m.Title, Path: m.Path, Subtitles: subtitles(m.Subtitles)})
+		out = append(out, Video{
+			ID: m.ID, ImdbID: m.ImdbID, Title: m.Title, Path: m.Path, ProfileID: m.ProfileID, Subtitles: subtitles(m.Subtitles),
+		})
 	}
 	return out, nil
 }
@@ -302,7 +312,9 @@ func (w Wanted) query() url.Values {
 
 // SearchEpisode asks Bazarr to look for a subtitle of an episode and to save the best one next to
 // the video. Recent versions answer at once and search in the background, older ones answer when
-// they are done: either way, what was found is read afterwards (Episode).
+// they are done: either way, what was found is read afterwards (Episode). A search for a title
+// without a languages profile is accepted too, and then dropped without a word (Bazarr 1.6 fails
+// in the background): check ProfileID first.
 func (c *Client) SearchEpisode(ctx context.Context, seriesID, episodeID int, w Wanted) error {
 	q := w.query()
 	q.Set("seriesid", strconv.Itoa(seriesID))
