@@ -13,6 +13,7 @@ what it was told about, and every device shows the same list.
 | `request_declined` | the requester | someone else declined it; the text carries the reason |
 | `request_available` | the requester | the catalog has what was asked for |
 | `request_failed` | the requester and the administrators | the request could not be handed to its source |
+| `request_choose` | the requester | the albums of an artist it asked for can be chosen |
 | `new_episodes` | the profiles that follow the series | episodes arrived |
 
 - Nobody is told about what they just did: an administrator's own request, approved at once, makes

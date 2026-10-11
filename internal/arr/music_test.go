@@ -85,7 +85,8 @@ func TestMusicTitles(t *testing.T) {
 	if found, _ := c.SearchMusic(ctx, "daft"); len(found) != 1 || found[0].Album || found[0].Poster != "https://images.example/daft.jpg" {
 		t.Errorf("artist: %+v", found)
 	}
-	if mp, err := c.MetadataProfiles(ctx); err != nil || len(mp) != 2 {
+	if mp, err := c.MetadataProfiles(ctx); err != nil || len(mp) != 2 ||
+		!slices.Equal(mp[0].PrimaryTypes, []string{"Album"}) || !slices.Equal(mp[0].SecondaryTypes, []string{"Studio"}) || len(mp[1].PrimaryTypes) != 0 {
 		t.Errorf("metadata profiles: %+v %v", mp, err)
 	}
 
@@ -144,6 +145,80 @@ func TestMusicTitles(t *testing.T) {
 	if q, err := c.Queue(ctx); err != nil || len(q) != 1 || q[0].AlbumID != albumID || q[0].ArrID != artistID || q[0].Left != 25 {
 		t.Errorf("queue: %+v %v", q, err)
 	}
+}
+
+// An artist whose albums are chosen later: added with nothing monitored, then only the albums
+// picked from Lidarr's list are monitored and searched.
+func TestChosenAlbums(t *testing.T) {
+	s := arrtest.New(t, arr.Lidarr)
+	s.Set(func(s *arrtest.Server) {
+		s.Music = []arrtest.MusicEntry{{MBID: "mb-air", Name: "Air", Albums: []arrtest.AlbumEntry{
+			{MBID: "rg-talkie", Title: "Talkie Walkie", Date: "2004-01-26"},
+			{MBID: "rg-moon", Title: "Moon Safari", Date: "1998-01-16", Cover: "https://images.example/moon.jpg"},
+			{MBID: "rg-virgin", Title: "The Virgin Suicides", Type: "Album", Secondary: []string{"Soundtrack"}, Date: "2000-02-23"},
+		}}}
+	})
+	c := arr.New(arr.Lidarr, s.URL, arrtest.Key, s.Client())
+	ctx := context.Background()
+	opts := arr.MusicOptions{RootFolder: "/data/media/music", QualityProfileID: 7, MetadataProfileID: 1, Albums: "chosen"}
+	artistID, err := c.AddArtist(ctx, "mb-air", opts)
+	if err != nil || artistID == 0 {
+		t.Fatalf("add artist: %d %v", artistID, err)
+	}
+	s.Get(func(s *arrtest.Server) {
+		if a := s.Artists[artistID]; a.MonitorNewItems != "none" {
+			t.Errorf("artist: %+v", a)
+		}
+		for _, al := range s.Albums {
+			if al.Monitored {
+				t.Errorf("monitored before the choice: %s", al.Title)
+			}
+		}
+		if len(s.Commands) != 0 {
+			t.Errorf("searched before the choice: %v", s.Commands)
+		}
+	})
+	// Asking again changes nothing.
+	if again, err := c.AddArtist(ctx, "mb-air", opts); err != nil || again != artistID {
+		t.Errorf("add again: %d %v", again, err)
+	}
+
+	albums, err := c.ArtistAlbums(ctx, artistID)
+	if err != nil || len(albums) != 3 {
+		t.Fatalf("albums: %+v %v", albums, err)
+	}
+	if a := albums[0]; a.MBID != "rg-moon" || a.Year != 1998 || a.Type != "Album" || a.Tracks != 10 || a.Files != 0 || a.Monitored ||
+		a.Poster != "https://images.example/moon.jpg" || !slices.Equal(albums[1].SecondaryTypes, []string{"Soundtrack"}) {
+		t.Errorf("albums, oldest first: %+v", albums)
+	}
+
+	if err := c.ChooseAlbums(ctx, artistID, []int{albums[0].ArrID, albums[2].ArrID}, false); err != nil {
+		t.Fatal(err)
+	}
+	s.Get(func(s *arrtest.Server) {
+		var monitored []string
+		for _, al := range s.Albums {
+			if al.Monitored {
+				monitored = append(monitored, al.Title)
+			}
+		}
+		slices.Sort(monitored)
+		if !slices.Equal(monitored, []string{"Moon Safari", "Talkie Walkie"}) {
+			t.Errorf("monitored: %v", monitored)
+		}
+		if a := s.Artists[artistID]; !a.Monitored || a.MonitorNewItems != "none" {
+			t.Errorf("artist after the choice: %+v", a)
+		}
+	})
+	// With the albums to come.
+	if err := c.ChooseAlbums(ctx, artistID, nil, true); err != nil {
+		t.Fatal(err)
+	}
+	s.Get(func(s *arrtest.Server) {
+		if a := s.Artists[artistID]; a.MonitorNewItems != "all" {
+			t.Errorf("artist with future albums: %+v", a)
+		}
+	})
 }
 
 func TestLidarrEvents(t *testing.T) {

@@ -32,7 +32,8 @@ import (
 // Lidarr add the title monitored and search for it (or monitor and search it if they already have
 // it), LazyLibrarian marks the ebook wanted and searches for it. A refusal fails the request at
 // once; anything else is retried like any job, and fails it when the last attempt fails
-// (requestFailed).
+// (requestFailed). An artist whose albums are to be chosen is added with nothing monitored, and
+// the request then waits for that choice (ChooseRequestAlbums).
 func (a *App) submitRequest(ctx context.Context, target string) error {
 	id, err := domain.ParseID(target)
 	if err != nil {
@@ -63,6 +64,12 @@ func (a *App) submitRequest(ctx context.Context, target string) error {
 	case err != nil:
 		return err
 	}
+	choosing := choosingAlbums(r)
+	if choosing {
+		// The profile is told once there is a list to choose from.
+		a.awaitDiscography(ctx, arrID)
+	}
+	handed := false
 	err = a.store.Write(ctx, func(q store.Q) error {
 		cur, err := q.Request(ctx, id)
 		if store.IsNotFound(err) || (err == nil && cur.Status != domain.RequestApproved) {
@@ -72,8 +79,15 @@ func (a *App) submitRequest(ctx context.Context, target string) error {
 			return err
 		}
 		cur.ArrID, cur.UpdatedAt = arrID, a.now()
+		if choosing {
+			cur.Status = domain.RequestChoosing
+		}
 		if err := q.UpdateRequest(ctx, cur); err != nil {
 			return err
+		}
+		handed = true
+		if choosing {
+			return nil // nothing to follow until the albums are chosen
 		}
 		return a.jobs.EnqueueAfter(ctx, q, jobRefreshRequests, "", priorityBackground, requestsAfterSubmit)
 	})
@@ -82,6 +96,9 @@ func (a *App) submitRequest(ctx context.Context, target string) error {
 	}
 	a.jobs.Kick()
 	a.log.InfoContext(ctx, "request handed to the instance", "request", id, "source", sourceName(r.Kind), "title", r.Title, "arr_id", arrID)
+	if choosing && handed {
+		a.notifyRequest(ctx, r, domain.NotificationRequestChoose, nil)
+	}
 	a.requestsChanged(r.ProfileID, r.ID)
 	return nil
 }

@@ -23,6 +23,8 @@ type AlbumEntry struct {
 	Title string
 	// Type is "Album" if empty.
 	Type string
+	// Secondary are its secondary types ("Live", "Compilation"); none for a studio release.
+	Secondary []string
 	// Date is the release date ("2013-05-17").
 	Date  string
 	Cover string
@@ -82,7 +84,25 @@ func (s *Server) serveMusic(w http.ResponseWriter, r *http.Request, path string,
 		}
 		write(list)
 	case path == "/metadataprofile":
-		write(s.MetadataProfiles)
+		// Lidarr lists every type with whether the profile allows it.
+		types := func(allowed []string, all ...string) []any {
+			var out []any
+			for _, name := range all {
+				out = append(out, map[string]any{
+					"albumType": map[string]any{"name": name}, "allowed": slices.Contains(allowed, name),
+				})
+			}
+			return out
+		}
+		var list []any
+		for _, p := range s.MetadataProfiles {
+			list = append(list, map[string]any{
+				"id": p.ID, "name": p.Name,
+				"primaryAlbumTypes":   types(p.PrimaryTypes, "Album", "EP", "Single", "Broadcast", "Other"),
+				"secondaryAlbumTypes": types(p.SecondaryTypes, "Studio", "Live", "Compilation", "Soundtrack"),
+			})
+		}
+		write(list)
 	case path == "/artist" && r.Method == http.MethodGet && q.Get("mbId") == "":
 		var list []any
 		for _, f := range s.Folders {
@@ -185,7 +205,7 @@ func (s *Server) validTarget(body map[string]any) bool {
 	meta, _ := body["metadataProfileId"].(float64)
 	root, _ := body["rootFolderPath"].(string)
 	return slices.ContainsFunc(s.Profiles, func(p arr.QualityProfile) bool { return p.ID == int(profile) }) &&
-		slices.ContainsFunc(s.MetadataProfiles, func(p arr.QualityProfile) bool { return p.ID == int(meta) }) &&
+		slices.ContainsFunc(s.MetadataProfiles, func(p arr.MetadataProfile) bool { return p.ID == int(meta) }) &&
 		slices.ContainsFunc(s.Roots, func(f arr.RootFolder) bool { return f.Path == root })
 }
 
@@ -276,9 +296,10 @@ func (s *Server) albumResource(e MusicEntry, al AlbumEntry) map[string]any {
 		kind = "Album"
 	}
 	m := map[string]any{
-		"foreignAlbumId": al.MBID, "title": al.Title, "albumType": kind, "releaseDate": al.Date + "T00:00:00Z",
-		"images": []any{map[string]any{"coverType": "cover", "remoteUrl": al.Cover}},
-		"artist": s.artistResource(e),
+		"foreignAlbumId": al.MBID, "title": al.Title, "albumType": kind, "secondaryTypes": al.Secondary,
+		"releaseDate": al.Date + "T00:00:00Z",
+		"images":      []any{map[string]any{"coverType": "cover", "remoteUrl": al.Cover}},
+		"artist":      s.artistResource(e),
 	}
 	if t := s.albumByMBID(al.MBID); t != nil {
 		m["id"], m["artistId"], m["monitored"] = t.ID, t.ArtistID, t.Monitored
@@ -286,7 +307,9 @@ func (s *Server) albumResource(e MusicEntry, al AlbumEntry) map[string]any {
 		if t.Monitored {
 			tracks = t.Tracks
 		}
-		m["statistics"] = map[string]any{"trackFileCount": t.TrackFiles, "trackCount": tracks}
+		m["statistics"] = map[string]any{
+			"trackFileCount": t.TrackFiles, "trackCount": tracks, "totalTrackCount": t.Tracks,
+		}
 	}
 	return m
 }

@@ -246,9 +246,6 @@ func TestMusicRequests(t *testing.T) {
 	}
 
 	// An artist for its latest album, from an administrator: approved at once.
-	if _, err := a.CreateRequest(ctx, admin, NewRequest{Kind: domain.RequestArtist, ExternalKey: "mb-justice", Seasons: domain.SeasonsChosen}); domain.CodeOf(err) != "media_request.invalid_seasons" {
-		t.Errorf("chosen albums: %v", err)
-	}
 	justice, err := a.CreateRequest(ctx, admin, NewRequest{Kind: domain.RequestArtist, ExternalKey: "mb-justice", Seasons: domain.SeasonsLatest})
 	mustNil(t, err)
 	if justice.Status != domain.RequestApproved || justice.Seasons != domain.SeasonsLatest {
@@ -266,6 +263,154 @@ func TestMusicRequests(t *testing.T) {
 			t.Errorf("albums of Justice: %v", monitored)
 		}
 	})
+}
+
+// An artist whose albums are chosen: Lidarr only lists the albums of an artist it has, so the
+// artist is added with nothing monitored, and the request waits for the choice.
+func TestChosenAlbums(t *testing.T) {
+	a, _, admin, _, _, _, _ := requestApp(t)
+	ctx := context.Background()
+	lidarr := arrtest.New(t, arr.Lidarr)
+	lidarr.Set(func(s *arrtest.Server) {
+		s.Music = []arrtest.MusicEntry{
+			{MBID: "mb-air", Name: "Air", Albums: []arrtest.AlbumEntry{
+				{MBID: "rg-moon", Title: "Moon Safari", Date: "1998-01-16", Cover: "https://images.example/moon.jpg"},
+				{MBID: "rg-virgin", Title: "The Virgin Suicides", Date: "2000-02-23", Secondary: []string{"Soundtrack"}},
+				{MBID: "rg-talkie", Title: "Talkie Walkie", Date: "2004-01-26"},
+			}},
+			{MBID: "mb-justice", Name: "Justice", Albums: []arrtest.AlbumEntry{{MBID: "rg-cross", Title: "Cross", Date: "2007-06-11"}}},
+		}
+	})
+	_, err := a.SetIntegration(ctx, admin, domain.IntegrationLidarr, lidarr.URL, arrtest.Key)
+	mustNil(t, err)
+	music := newLibrary(t, a, "Music", domain.LibraryMusic)
+	name, root, hd, standard := "Music", "/data/media/music", 7, 1
+	_, err = a.CreateRequestDestination(ctx, admin, DestinationChanges{
+		Name: &name, Kind: domain.RequestMusic, LibraryID: &music.ID, RootFolder: &root, QualityProfileID: &hd, MetadataProfileID: &standard,
+	})
+	mustNil(t, err)
+
+	// The administrator sees what each metadata profile keeps.
+	opts, err := a.RequestOptions(ctx, admin, domain.RequestMusic)
+	mustNil(t, err)
+	if p := opts.MetadataProfiles[0]; !slices.Equal(p.PrimaryTypes, []string{"Album"}) || !slices.Equal(p.SecondaryTypes, []string{"Studio"}) {
+		t.Errorf("metadata profile: %+v", p)
+	}
+
+	for _, who := range []string{"Lea", "Tom"} {
+		_, err = a.CreateAccount(ctx, admin, NewAccount{Username: who, Password: "a-password"})
+		mustNil(t, err)
+	}
+	_, user := login(t, a, "Lea", "a-password")
+	_, other := login(t, a, "Tom", "a-password")
+	air, err := a.CreateRequest(ctx, user, NewRequest{Kind: domain.RequestArtist, ExternalKey: "mb-air", Seasons: domain.SeasonsChosen})
+	mustNil(t, err)
+	if air.Status != domain.RequestPending || air.Seasons != domain.SeasonsChosen {
+		t.Fatalf("request: %+v", air)
+	}
+	if _, err := a.RequestAlbums(ctx, user, air.ID); domain.CodeOf(err) != "media_request.not_choosing" {
+		t.Errorf("albums before the artist is on Lidarr: %v", err)
+	}
+
+	// Approved: the artist is on Lidarr with nothing monitored, and the profile is told to choose.
+	_, err = a.ApproveRequest(ctx, admin, air.ID, Approval{})
+	mustNil(t, err)
+	mustNil(t, a.submitRequest(ctx, air.ID.String()))
+	air, _ = a.Request(ctx, admin, air.ID)
+	if air.Status != domain.RequestChoosing || air.ArrID == 0 {
+		t.Fatalf("after the hand-over: %+v", air)
+	}
+	monitored := func() []string {
+		var titles []string
+		lidarr.Get(func(s *arrtest.Server) {
+			for _, al := range s.Albums {
+				if al.ArtistID == air.ArrID && al.Monitored {
+					titles = append(titles, al.Title)
+				}
+			}
+		})
+		slices.Sort(titles)
+		return titles
+	}
+	if got := monitored(); len(got) != 0 {
+		t.Errorf("monitored before the choice: %v", got)
+	}
+	page, err := a.Notifications(ctx, user, "", 0)
+	mustNil(t, err)
+	if len(page.Notifications) == 0 || page.Notifications[0].Kind != domain.NotificationRequestChoose {
+		t.Errorf("notifications of the profile: %+v", page.Notifications)
+	}
+	// Nothing is followed while the request waits, and a second request for the artist is refused.
+	mustNil(t, a.refreshRequests(ctx, ""))
+	if got, _ := a.Request(ctx, user, air.ID); got.Status != domain.RequestChoosing {
+		t.Errorf("after a refresh: %+v", got)
+	}
+	if _, err := a.CreateRequest(ctx, other, NewRequest{Kind: domain.RequestArtist, ExternalKey: "mb-air"}); domain.CodeOf(err) == "" {
+		t.Errorf("second request for the artist: %v", err)
+	}
+	waiting, err := a.Requests(ctx, admin, []domain.RequestStatus{domain.RequestChoosing}, "", 0)
+	mustNil(t, err)
+	approved, err := a.Requests(ctx, admin, []domain.RequestStatus{domain.RequestApproved}, "", 0)
+	mustNil(t, err)
+	if len(waiting.Requests) != 1 || waiting.Requests[0].ID != air.ID || len(approved.Requests) != 0 {
+		t.Errorf("by status: %d choosing, %d approved", len(waiting.Requests), len(approved.Requests))
+	}
+
+	// The list comes from Lidarr, oldest first; only the profile and the administrators read it.
+	albums, err := a.RequestAlbums(ctx, user, air.ID)
+	mustNil(t, err)
+	if len(albums) != 3 || albums[0].Key != "rg-moon" || albums[0].Year != 1998 || albums[0].Poster == "" || albums[0].Type != "Album" ||
+		!slices.Equal(albums[1].SecondaryTypes, []string{"Soundtrack"}) || albums[2].Monitored || albums[2].Tracks != 10 {
+		t.Errorf("albums: %+v", albums)
+	}
+	if _, err := a.RequestAlbums(ctx, other, air.ID); domain.CodeOf(err) != "media_request.not_found" {
+		t.Errorf("the request of someone else: %v", err)
+	}
+	if _, err := a.ChooseRequestAlbums(ctx, other, air.ID, []string{"rg-moon"}, false); domain.CodeOf(err) != "media_request.not_found" {
+		t.Errorf("the choice of someone else: %v", err)
+	}
+	for code, keys := range map[string][]string{
+		"media_request.albums_required": nil,
+		"media_request.unknown_album":   {"rg-moon", "rg-cross"},
+	} {
+		if _, err := a.ChooseRequestAlbums(ctx, user, air.ID, keys, false); domain.CodeOf(err) != code {
+			t.Errorf("%s: %v", code, err)
+		}
+	}
+
+	// The choice, here by an administrator: those albums are monitored, the request goes on.
+	air, err = a.ChooseRequestAlbums(ctx, admin, air.ID, []string{"rg-talkie", "rg-moon", "rg-moon"}, true)
+	mustNil(t, err)
+	if air.Status != domain.RequestApproved || !slices.Equal(air.AlbumTitles, []string{"Moon Safari", "Talkie Walkie"}) {
+		t.Errorf("after the choice: %+v", air)
+	}
+	if got := monitored(); !slices.Equal(got, []string{"Moon Safari", "Talkie Walkie"}) {
+		t.Errorf("monitored after the choice: %v", got)
+	}
+	lidarr.Get(func(s *arrtest.Server) {
+		if artist := s.Artists[air.ArrID]; !artist.Monitored || artist.MonitorNewItems != "all" {
+			t.Errorf("artist on Lidarr: %+v", artist)
+		}
+	})
+	if _, err := a.ChooseRequestAlbums(ctx, user, air.ID, []string{"rg-virgin"}, false); domain.CodeOf(err) != "media_request.not_choosing" {
+		t.Errorf("a second choice: %v", err)
+	}
+	// It is followed like any artist from there: the tracks of the albums chosen are wanted.
+	mustNil(t, a.refreshRequests(ctx, ""))
+	if got, _ := a.Request(ctx, user, air.ID); got.EpisodesWanted != 20 {
+		t.Errorf("followed: %+v", got)
+	}
+
+	// A request that waits for its albums can be withdrawn by its profile.
+	justice, err := a.CreateRequest(ctx, user, NewRequest{Kind: domain.RequestArtist, ExternalKey: "mb-justice", Seasons: domain.SeasonsChosen})
+	mustNil(t, err)
+	_, err = a.ApproveRequest(ctx, admin, justice.ID, Approval{})
+	mustNil(t, err)
+	mustNil(t, a.submitRequest(ctx, justice.ID.String()))
+	mustNil(t, a.CancelRequest(ctx, user, justice.ID))
+	if _, err := a.Request(ctx, admin, justice.ID); domain.CodeOf(err) != "media_request.not_found" {
+		t.Errorf("withdrawn request: %v", err)
+	}
 }
 
 func TestBookRequests(t *testing.T) {
