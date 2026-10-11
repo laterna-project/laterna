@@ -25,6 +25,7 @@ var notificationKinds = map[domain.NotificationKind]laternav1.NotificationKind{
 	domain.NotificationRequestAvailable: laternav1.NotificationKind_NOTIFICATION_KIND_REQUEST_AVAILABLE,
 	domain.NotificationRequestFailed:    laternav1.NotificationKind_NOTIFICATION_KIND_REQUEST_FAILED,
 	domain.NotificationNewEpisodes:      laternav1.NotificationKind_NOTIFICATION_KIND_NEW_EPISODES,
+	domain.NotificationRequestChoose:    laternav1.NotificationKind_NOTIFICATION_KIND_REQUEST_CHOOSE,
 }
 
 func notificationMsg(ctx context.Context, n app.NotificationView) *laternav1.Notification {

@@ -128,6 +128,16 @@ shows up a moment later. Laterna looks nothing up itself. It hands the search to
 [Bazarr](https://www.bazarr.media/), when an administrator linked it (address and API key, like
 Sonarr and Radarr), and reads the result.
 
+Bazarr does the looking, so it has to be set up for it:
+
+- the **languages** to look subtitles up in, enabled (Settings, Languages): Laterna offers those;
+- at least one **provider** that covers the library in those languages. Providers of movie and
+  series subtitles have next to nothing for anime, which has providers of its own;
+- subtitles saved **next to the videos**, which is the default, in folders Laterna reads;
+- a **languages profile** on every series and movie, and a default one for those to come. Bazarr
+  looks nothing up for a title without a profile: 1.6 takes the search, then fails in the
+  background and reports nothing.
+
 - `SubtitleService.GetSubtitleSearch` says whether a subtitle can be looked for a file, and in
   which languages: those enabled in Bazarr. `SearchSubtitle` starts a search for a movie or an
   episode the profile sees.
@@ -145,8 +155,10 @@ Sonarr and Radarr), and reads the result.
   answer without a new search: providers count what they are asked. A profile may ask for 20
   searches an hour.
 - A search that cannot go through **fails** with its reason: Bazarr does not answer, does not
-  follow the title, or saved the subtitle where Laterna does not see it (the two do not share the
-  folder).
+  follow the title, has no languages profile for it, or saved the subtitle where Laterna does not
+  see it (the two do not share the folder). The profile is read before Bazarr is asked
+  (`profileId` of the movie, or of the series of an episode): without one the search would be
+  taken, never answered, and end as not found two minutes later.
 
 Searches are kept in memory, half an hour after they end: they are a conversation with the
 viewer, not a record.

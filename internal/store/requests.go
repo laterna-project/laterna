@@ -104,13 +104,31 @@ func (q Q) UpdateRequest(ctx context.Context, r domain.MediaRequest) error {
 			return err
 		}
 	}
+	titles := r.AlbumTitles
+	if titles == nil {
+		titles = []string{}
+	}
+	albums, err := json.Marshal(titles)
+	if err != nil {
+		return err
+	}
+	status, choosing := storedStatus(r.Status)
 	return translate(q.q.UpdateRequest(ctx, sqlc.UpdateRequestParams{
-		Status: string(r.Status), Seasons: string(r.Seasons), SeasonNumbers: string(seasons), DestinationID: destinationID(r),
+		Status: status, Seasons: string(r.Seasons), SeasonNumbers: string(seasons), DestinationID: destinationID(r),
 		UpdatedAt: toMillis(r.UpdatedAt), DecidedAt: nullMillis(r.DecidedAt), DecidedBy: r.DecidedBy,
 		DeclineReason: r.DeclineReason, Error: string(failure), ArrID: int64(r.ArrID), Progress: r.Progress, ItemID: r.ItemID,
 		EpisodesAvailable: int64(r.EpisodesAvailable), EpisodesWanted: int64(r.EpisodesWanted),
-		AvailableAt: nullMillis(r.AvailableAt), ID: r.ID,
+		AvailableAt: nullMillis(r.AvailableAt), Choosing: choosing, AlbumTitles: string(albums), ID: r.ID,
 	}))
+}
+
+// storedStatus is how a status is written: a request whose albums wait to be chosen is an approved
+// one with the choosing mark (the statuses are in a CHECK constraint, see migration 00032).
+func storedStatus(s domain.RequestStatus) (status string, choosing int64) {
+	if s == domain.RequestChoosing {
+		return string(domain.RequestApproved), 1
+	}
+	return string(s), 0
 }
 
 func seasonNumbers(n []int) []int {
@@ -154,7 +172,7 @@ type RequestQuery struct {
 func (q Q) Requests(ctx context.Context, rq RequestQuery) ([]domain.MediaRequest, error) {
 	var b query
 	b.add(`SELECT r.id, r.kind, r.external_id, r.external_key, r.title, r.subtitle, r.year, r.poster, r.status, r.seasons,
-		r.season_numbers,
+		r.season_numbers, r.choosing, r.album_titles,
 		r.account_id, a.username, r.profile_id, p.name, r.created_at, r.updated_at, r.decided_at, r.decided_by,
 		r.decline_reason, r.error, r.arr_id, r.progress, r.item_id, r.episodes_available, r.episodes_wanted,
 		r.available_at, d.id, d.name, d.kind, d.library_id, l.name, d.root_folder, d.quality_profile_id,
@@ -168,11 +186,14 @@ func (q Q) Requests(ctx context.Context, rq RequestQuery) ([]domain.MediaRequest
 		b.where("r.profile_id = ?", *rq.ProfileID)
 	}
 	if len(rq.Statuses) > 0 {
-		args := make([]any, len(rq.Statuses))
-		for i, s := range rq.Statuses {
-			args[i] = string(s)
+		// Approved and choosing share a stored status: the choosing mark tells them apart.
+		args := make([]any, 0, 2*len(rq.Statuses))
+		for _, s := range rq.Statuses {
+			status, choosing := storedStatus(s)
+			args = append(args, status, choosing)
 		}
-		b.where("r.status IN ("+placeholders(len(args))+")", args...)
+		pair := "(r.status = ? AND r.choosing = ?)"
+		b.where("("+strings.TrimSuffix(strings.Repeat(pair+" OR ", len(rq.Statuses)), " OR ")+")", args...)
 	}
 	if len(rq.IDs) > 0 {
 		args := make([]any, len(rq.IDs))
@@ -208,7 +229,8 @@ func scanRequest(rows *sql.Rows) (domain.MediaRequest, error) {
 	var (
 		r                                         domain.MediaRequest
 		kind, status, seasons, numbers, failure   string
-		year, arrID, available, wanted            int64
+		albums                                    string
+		year, arrID, available, wanted, choosing  int64
 		createdAt, updatedAt                      int64
 		decidedAt, availableAt                    sql.NullInt64
 		destID, destLibrary                       *domain.ID
@@ -218,7 +240,7 @@ func scanRequest(rows *sql.Rows) (domain.MediaRequest, error) {
 		destCreated, destUpdated                  sql.NullInt64
 	)
 	if err := rows.Scan(&r.ID, &kind, &r.ExternalID, &r.ExternalKey, &r.Title, &r.Subtitle, &year, &r.Poster, &status,
-		&seasons, &numbers,
+		&seasons, &numbers, &choosing, &albums,
 		&r.AccountID, &r.Username, &r.ProfileID, &r.ProfileName, &createdAt, &updatedAt, &decidedAt, &r.DecidedBy,
 		&r.DeclineReason, &failure, &arrID, &r.Progress, &r.ItemID, &available, &wanted,
 		&availableAt, &destID, &destName, &destKind, &destLibrary, &destLibName, &destRoot, &destProfile,
@@ -229,8 +251,14 @@ func scanRequest(rows *sql.Rows) (domain.MediaRequest, error) {
 	r.Year, r.ArrID, r.EpisodesAvailable, r.EpisodesWanted = int(year), int(arrID), int(available), int(wanted)
 	r.CreatedAt, r.UpdatedAt = fromMillis(createdAt), fromMillis(updatedAt)
 	r.DecidedAt, r.AvailableAt = optTime(decidedAt), optTime(availableAt)
+	if choosing != 0 && r.Status == domain.RequestApproved {
+		r.Status = domain.RequestChoosing
+	}
 	if err := json.Unmarshal([]byte(numbers), &r.SeasonNumbers); err != nil {
 		return r, fmt.Errorf("request %s: seasons: %w", r.ID, err)
+	}
+	if err := json.Unmarshal([]byte(albums), &r.AlbumTitles); err != nil {
+		return r, fmt.Errorf("request %s: albums: %w", r.ID, err)
 	}
 	if failure != "" {
 		r.Error = new(domain.Text)

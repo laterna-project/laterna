@@ -47,8 +47,20 @@ service RequestService {
   rpc GetRequest(GetRequestRequest) returns (GetRequestResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // CancelRequest withdraws a pending request of the profile.
+  // CancelRequest withdraws a request of the profile that is pending, or whose albums wait to be
+  // chosen.
   rpc CancelRequest(CancelRequestRequest) returns (CancelRequestResponse);
+  // ListRequestAlbums lists the albums of the artist of a request, as Lidarr has them: those its
+  // metadata profile keeps. For the profile of the request or an administrator, once the artist is
+  // on Lidarr. The list may be empty for a moment after the approval, while Lidarr reads the
+  // discography.
+  rpc ListRequestAlbums(ListRequestAlbumsRequest) returns (ListRequestAlbumsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // ChooseRequestAlbums says which albums a request asks for (status CHOOSING): they are monitored
+  // and searched, and the request goes on as APPROVED. By the profile of the request or an
+  // administrator.
+  rpc ChooseRequestAlbums(ChooseRequestAlbumsRequest) returns (ChooseRequestAlbumsResponse);
 
   // ListRequests lists the requests of every account, newest first.
   rpc ListRequests(ListRequestsRequest) returns (ListRequestsResponse) {
@@ -140,6 +152,9 @@ enum RequestStatus {
   REQUEST_STATUS_DECLINED = 5;
   // The instance refused it or could not be reached (error); an administrator can approve it again.
   REQUEST_STATUS_FAILED = 6;
+  // An artist whose albums are to be chosen (RequestSeasons CHOSEN): approved, the artist is on
+  // Lidarr with nothing monitored, and the request waits for ChooseRequestAlbums.
+  REQUEST_STATUS_CHOOSING = 7;
 }
 
 // RequestSeasons says which seasons of a series are requested, or which albums of an artist.
@@ -153,7 +168,8 @@ enum RequestSeasons {
   REQUEST_SEASONS_FIRST = 2;
   // The latest season, or the latest album.
   REQUEST_SEASONS_LATEST = 3;
-  // The seasons in season_numbers (series only).
+  // The seasons in season_numbers; for an artist, albums chosen later, from the list Lidarr has
+  // once the request is approved (REQUEST_STATUS_CHOOSING).
   REQUEST_SEASONS_CHOSEN = 4;
 }
 
@@ -275,6 +291,49 @@ message MediaRequest {
   string external_key = 26;
   // Artist of an album, author of a book; empty otherwise.
   string subtitle = 27;
+  // Artist with chosen albums: their titles, once chosen.
+  repeated string album_titles = 28;
+}
+
+// RequestAlbum is an album of a requested artist, as Lidarr has it.
+message RequestAlbum {
+  // MusicBrainz ID of its release group: what ChooseRequestAlbums takes.
+  string key = 1;
+  string title = 2;
+  // Year it came out; 0 if unknown.
+  int32 year = 3;
+  // Lidarr's primary type, as it names it: "Album", "EP", "Single", "Broadcast", "Other".
+  string type = 4;
+  // Its secondary types ("Live", "Compilation", "Soundtrack"...); none for a studio release.
+  repeated string secondary_types = 5;
+  int32 track_count = 6;
+  // Lidarr already monitors it.
+  bool monitored = 7;
+  // Every track has a file on Lidarr.
+  bool available = 8;
+  // Path to append to the server's address; empty without a cover.
+  string poster_url = 9;
+}
+
+message ListRequestAlbumsRequest {
+  string request_id = 1;
+}
+
+message ListRequestAlbumsResponse {
+  // Oldest first.
+  repeated RequestAlbum albums = 1;
+}
+
+message ChooseRequestAlbumsRequest {
+  string request_id = 1;
+  // RequestAlbum.key of each album asked for; at least one.
+  repeated string album_keys = 2;
+  // Also the albums that come out later.
+  bool future_albums = 3;
+}
+
+message ChooseRequestAlbumsResponse {
+  MediaRequest request = 1;
 }
 
 message CreateRequestRequest {
@@ -284,7 +343,8 @@ message CreateRequestRequest {
   int64 external_id = 2;
   // Empty takes the only destination of that kind open to the profile.
   string destination_id = 3;
-  // Series: which seasons; artist: which albums (ALL, FIRST or LATEST). Ignored for the others.
+  // Series: which seasons; artist: which albums (ALL, FIRST, LATEST, or CHOSEN to pick them once
+  // the request is approved). Ignored for the others.
   RequestSeasons seasons = 4;
   repeated int32 season_numbers = 5;
   // Artist, album or book (RequestableTitle.external_key).
@@ -377,6 +437,11 @@ message RequestRootFolder {
 message RequestQualityProfile {
   int32 id = 1;
   string name = 2;
+  // A metadata profile of Lidarr: the kinds of releases it keeps, as Lidarr names them. An album is
+  // kept when its primary type ("Album", "EP", "Single"...) and each of its secondary types
+  // ("Studio" for none, "Live", "Compilation"...) are in these lists.
+  repeated string primary_types = 3;
+  repeated string secondary_types = 4;
 }
 
 message GetRequestOptionsRequest {

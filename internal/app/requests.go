@@ -217,8 +217,9 @@ func (a *App) CreateRequest(ctx context.Context, p domain.Principal, n NewReques
 	return requestFor(p, r), nil
 }
 
-// requestSeasons checks the seasons asked for: the albums of an artist (all, first or latest);
-// chosen seasons of a series come sorted and once each; the other kinds have none.
+// requestSeasons checks the seasons asked for: the albums of an artist (all, first, latest, or
+// chosen later, once Lidarr lists them); chosen seasons of a series come sorted and once each; the
+// other kinds have none.
 func requestSeasons(kind domain.RequestKind, s domain.RequestSeasons, numbers []int) (domain.RequestSeasons, []int, error) {
 	if s == "" {
 		s = domain.SeasonsAll
@@ -226,9 +227,6 @@ func requestSeasons(kind domain.RequestKind, s domain.RequestSeasons, numbers []
 	switch kind {
 	case domain.RequestSeries:
 	case domain.RequestArtist:
-		if s == domain.SeasonsChosen {
-			return "", nil, domain.Invalid("media_request.invalid_seasons")
-		}
 		return s, nil, nil
 	default:
 		return domain.SeasonsAll, nil, nil
@@ -371,7 +369,9 @@ func (a *App) Request(ctx context.Context, p domain.Principal, id domain.ID) (do
 	return requestFor(p, r), nil
 }
 
-// CancelRequest withdraws a pending request of the profile; it no longer counts in the quota.
+// CancelRequest withdraws a request of the profile that is pending, or whose albums wait to be
+// chosen; it no longer counts in the quota. An artist already added to Lidarr stays there, with
+// nothing monitored.
 func (a *App) CancelRequest(ctx context.Context, p domain.Principal, id domain.ID) error {
 	if p.Profile == nil {
 		return domain.Precondition("profile.required")
@@ -386,7 +386,7 @@ func (a *App) CancelRequest(ctx context.Context, p domain.Principal, id domain.I
 		if err != nil {
 			return err
 		}
-		if r.Status != domain.RequestPending {
+		if r.Status != domain.RequestPending && r.Status != domain.RequestChoosing {
 			return domain.Precondition("media_request.not_pending")
 		}
 		return q.DeleteRequest(ctx, id)
@@ -601,7 +601,9 @@ func (a *App) RequestOptions(ctx context.Context, p domain.Principal, kind domai
 			return domain.RequestOptions{}, a.instanceError(ctx, p, ak.Name(), err)
 		}
 		for _, m := range meta {
-			out.MetadataProfiles = append(out.MetadataProfiles, domain.QualityProfile{ID: m.ID, Name: m.Name})
+			out.MetadataProfiles = append(out.MetadataProfiles, domain.QualityProfile{
+				ID: m.ID, Name: m.Name, PrimaryTypes: m.PrimaryTypes, SecondaryTypes: m.SecondaryTypes,
+			})
 		}
 	}
 	for _, r := range roots {

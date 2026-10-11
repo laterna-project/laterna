@@ -349,7 +349,7 @@ func (q *Queries) RequestPosters(ctx context.Context) ([]string, error) {
 
 const requestsOnTheirWay = `-- name: RequestsOnTheirWay :many
 SELECT id FROM requests
-WHERE status IN ('approved', 'downloading')
+WHERE (status IN ('approved', 'downloading') AND choosing = 0)
    OR (status = 'available' AND kind IN ('series', 'artist') AND episodes_available < episodes_wanted
        AND available_at >= ?)
 ORDER BY created_at
@@ -382,7 +382,7 @@ const updateRequest = `-- name: UpdateRequest :exec
 UPDATE requests
 SET status = ?, seasons = ?, season_numbers = ?, destination_id = ?, updated_at = ?, decided_at = ?, decided_by = ?,
     decline_reason = ?, error = ?, arr_id = ?, progress = ?, item_id = ?, episodes_available = ?,
-    episodes_wanted = ?, available_at = ?
+    episodes_wanted = ?, available_at = ?, choosing = ?, album_titles = ?
 WHERE id = ?
 `
 
@@ -402,6 +402,8 @@ type UpdateRequestParams struct {
 	EpisodesAvailable int64
 	EpisodesWanted    int64
 	AvailableAt       sql.NullInt64
+	Choosing          int64
+	AlbumTitles       string
 	ID                domain.ID
 }
 
@@ -422,6 +424,8 @@ func (q *Queries) UpdateRequest(ctx context.Context, arg UpdateRequestParams) er
 		arg.EpisodesAvailable,
 		arg.EpisodesWanted,
 		arg.AvailableAt,
+		arg.Choosing,
+		arg.AlbumTitles,
 		arg.ID,
 	)
 	return err

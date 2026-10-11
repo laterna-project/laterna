@@ -51,6 +51,12 @@ const (
 	// RequestServiceCancelRequestProcedure is the fully-qualified name of the RequestService's
 	// CancelRequest RPC.
 	RequestServiceCancelRequestProcedure = "/laterna.v1.RequestService/CancelRequest"
+	// RequestServiceListRequestAlbumsProcedure is the fully-qualified name of the RequestService's
+	// ListRequestAlbums RPC.
+	RequestServiceListRequestAlbumsProcedure = "/laterna.v1.RequestService/ListRequestAlbums"
+	// RequestServiceChooseRequestAlbumsProcedure is the fully-qualified name of the RequestService's
+	// ChooseRequestAlbums RPC.
+	RequestServiceChooseRequestAlbumsProcedure = "/laterna.v1.RequestService/ChooseRequestAlbums"
 	// RequestServiceListRequestsProcedure is the fully-qualified name of the RequestService's
 	// ListRequests RPC.
 	RequestServiceListRequestsProcedure = "/laterna.v1.RequestService/ListRequests"
@@ -93,8 +99,18 @@ type RequestServiceClient interface {
 	ListMyRequests(context.Context, *connect.Request[v1.ListMyRequestsRequest]) (*connect.Response[v1.ListMyRequestsResponse], error)
 	// GetRequest returns a request of the profile; an administrator may read any.
 	GetRequest(context.Context, *connect.Request[v1.GetRequestRequest]) (*connect.Response[v1.GetRequestResponse], error)
-	// CancelRequest withdraws a pending request of the profile.
+	// CancelRequest withdraws a request of the profile that is pending, or whose albums wait to be
+	// chosen.
 	CancelRequest(context.Context, *connect.Request[v1.CancelRequestRequest]) (*connect.Response[v1.CancelRequestResponse], error)
+	// ListRequestAlbums lists the albums of the artist of a request, as Lidarr has them: those its
+	// metadata profile keeps. For the profile of the request or an administrator, once the artist is
+	// on Lidarr. The list may be empty for a moment after the approval, while Lidarr reads the
+	// discography.
+	ListRequestAlbums(context.Context, *connect.Request[v1.ListRequestAlbumsRequest]) (*connect.Response[v1.ListRequestAlbumsResponse], error)
+	// ChooseRequestAlbums says which albums a request asks for (status CHOOSING): they are monitored
+	// and searched, and the request goes on as APPROVED. By the profile of the request or an
+	// administrator.
+	ChooseRequestAlbums(context.Context, *connect.Request[v1.ChooseRequestAlbumsRequest]) (*connect.Response[v1.ChooseRequestAlbumsResponse], error)
 	// ListRequests lists the requests of every account, newest first.
 	ListRequests(context.Context, *connect.Request[v1.ListRequestsRequest]) (*connect.Response[v1.ListRequestsResponse], error)
 	// ApproveRequest approves a pending or failed request, possibly into another destination or for
@@ -170,6 +186,19 @@ func NewRequestServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(requestServiceMethods.ByName("CancelRequest")),
 			connect.WithClientOptions(opts...),
 		),
+		listRequestAlbums: connect.NewClient[v1.ListRequestAlbumsRequest, v1.ListRequestAlbumsResponse](
+			httpClient,
+			baseURL+RequestServiceListRequestAlbumsProcedure,
+			connect.WithSchema(requestServiceMethods.ByName("ListRequestAlbums")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		chooseRequestAlbums: connect.NewClient[v1.ChooseRequestAlbumsRequest, v1.ChooseRequestAlbumsResponse](
+			httpClient,
+			baseURL+RequestServiceChooseRequestAlbumsProcedure,
+			connect.WithSchema(requestServiceMethods.ByName("ChooseRequestAlbums")),
+			connect.WithClientOptions(opts...),
+		),
 		listRequests: connect.NewClient[v1.ListRequestsRequest, v1.ListRequestsResponse](
 			httpClient,
 			baseURL+RequestServiceListRequestsProcedure,
@@ -233,6 +262,8 @@ type requestServiceClient struct {
 	listMyRequests           *connect.Client[v1.ListMyRequestsRequest, v1.ListMyRequestsResponse]
 	getRequest               *connect.Client[v1.GetRequestRequest, v1.GetRequestResponse]
 	cancelRequest            *connect.Client[v1.CancelRequestRequest, v1.CancelRequestResponse]
+	listRequestAlbums        *connect.Client[v1.ListRequestAlbumsRequest, v1.ListRequestAlbumsResponse]
+	chooseRequestAlbums      *connect.Client[v1.ChooseRequestAlbumsRequest, v1.ChooseRequestAlbumsResponse]
 	listRequests             *connect.Client[v1.ListRequestsRequest, v1.ListRequestsResponse]
 	approveRequest           *connect.Client[v1.ApproveRequestRequest, v1.ApproveRequestResponse]
 	declineRequest           *connect.Client[v1.DeclineRequestRequest, v1.DeclineRequestResponse]
@@ -271,6 +302,16 @@ func (c *requestServiceClient) GetRequest(ctx context.Context, req *connect.Requ
 // CancelRequest calls laterna.v1.RequestService.CancelRequest.
 func (c *requestServiceClient) CancelRequest(ctx context.Context, req *connect.Request[v1.CancelRequestRequest]) (*connect.Response[v1.CancelRequestResponse], error) {
 	return c.cancelRequest.CallUnary(ctx, req)
+}
+
+// ListRequestAlbums calls laterna.v1.RequestService.ListRequestAlbums.
+func (c *requestServiceClient) ListRequestAlbums(ctx context.Context, req *connect.Request[v1.ListRequestAlbumsRequest]) (*connect.Response[v1.ListRequestAlbumsResponse], error) {
+	return c.listRequestAlbums.CallUnary(ctx, req)
+}
+
+// ChooseRequestAlbums calls laterna.v1.RequestService.ChooseRequestAlbums.
+func (c *requestServiceClient) ChooseRequestAlbums(ctx context.Context, req *connect.Request[v1.ChooseRequestAlbumsRequest]) (*connect.Response[v1.ChooseRequestAlbumsResponse], error) {
+	return c.chooseRequestAlbums.CallUnary(ctx, req)
 }
 
 // ListRequests calls laterna.v1.RequestService.ListRequests.
@@ -329,8 +370,18 @@ type RequestServiceHandler interface {
 	ListMyRequests(context.Context, *connect.Request[v1.ListMyRequestsRequest]) (*connect.Response[v1.ListMyRequestsResponse], error)
 	// GetRequest returns a request of the profile; an administrator may read any.
 	GetRequest(context.Context, *connect.Request[v1.GetRequestRequest]) (*connect.Response[v1.GetRequestResponse], error)
-	// CancelRequest withdraws a pending request of the profile.
+	// CancelRequest withdraws a request of the profile that is pending, or whose albums wait to be
+	// chosen.
 	CancelRequest(context.Context, *connect.Request[v1.CancelRequestRequest]) (*connect.Response[v1.CancelRequestResponse], error)
+	// ListRequestAlbums lists the albums of the artist of a request, as Lidarr has them: those its
+	// metadata profile keeps. For the profile of the request or an administrator, once the artist is
+	// on Lidarr. The list may be empty for a moment after the approval, while Lidarr reads the
+	// discography.
+	ListRequestAlbums(context.Context, *connect.Request[v1.ListRequestAlbumsRequest]) (*connect.Response[v1.ListRequestAlbumsResponse], error)
+	// ChooseRequestAlbums says which albums a request asks for (status CHOOSING): they are monitored
+	// and searched, and the request goes on as APPROVED. By the profile of the request or an
+	// administrator.
+	ChooseRequestAlbums(context.Context, *connect.Request[v1.ChooseRequestAlbumsRequest]) (*connect.Response[v1.ChooseRequestAlbumsResponse], error)
 	// ListRequests lists the requests of every account, newest first.
 	ListRequests(context.Context, *connect.Request[v1.ListRequestsRequest]) (*connect.Response[v1.ListRequestsResponse], error)
 	// ApproveRequest approves a pending or failed request, possibly into another destination or for
@@ -402,6 +453,19 @@ func NewRequestServiceHandler(svc RequestServiceHandler, opts ...connect.Handler
 		connect.WithSchema(requestServiceMethods.ByName("CancelRequest")),
 		connect.WithHandlerOptions(opts...),
 	)
+	requestServiceListRequestAlbumsHandler := connect.NewUnaryHandler(
+		RequestServiceListRequestAlbumsProcedure,
+		svc.ListRequestAlbums,
+		connect.WithSchema(requestServiceMethods.ByName("ListRequestAlbums")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	requestServiceChooseRequestAlbumsHandler := connect.NewUnaryHandler(
+		RequestServiceChooseRequestAlbumsProcedure,
+		svc.ChooseRequestAlbums,
+		connect.WithSchema(requestServiceMethods.ByName("ChooseRequestAlbums")),
+		connect.WithHandlerOptions(opts...),
+	)
 	requestServiceListRequestsHandler := connect.NewUnaryHandler(
 		RequestServiceListRequestsProcedure,
 		svc.ListRequests,
@@ -468,6 +532,10 @@ func NewRequestServiceHandler(svc RequestServiceHandler, opts ...connect.Handler
 			requestServiceGetRequestHandler.ServeHTTP(w, r)
 		case RequestServiceCancelRequestProcedure:
 			requestServiceCancelRequestHandler.ServeHTTP(w, r)
+		case RequestServiceListRequestAlbumsProcedure:
+			requestServiceListRequestAlbumsHandler.ServeHTTP(w, r)
+		case RequestServiceChooseRequestAlbumsProcedure:
+			requestServiceChooseRequestAlbumsHandler.ServeHTTP(w, r)
 		case RequestServiceListRequestsProcedure:
 			requestServiceListRequestsHandler.ServeHTTP(w, r)
 		case RequestServiceApproveRequestProcedure:
@@ -515,6 +583,14 @@ func (UnimplementedRequestServiceHandler) GetRequest(context.Context, *connect.R
 
 func (UnimplementedRequestServiceHandler) CancelRequest(context.Context, *connect.Request[v1.CancelRequestRequest]) (*connect.Response[v1.CancelRequestResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.RequestService.CancelRequest is not implemented"))
+}
+
+func (UnimplementedRequestServiceHandler) ListRequestAlbums(context.Context, *connect.Request[v1.ListRequestAlbumsRequest]) (*connect.Response[v1.ListRequestAlbumsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.RequestService.ListRequestAlbums is not implemented"))
+}
+
+func (UnimplementedRequestServiceHandler) ChooseRequestAlbums(context.Context, *connect.Request[v1.ChooseRequestAlbumsRequest]) (*connect.Response[v1.ChooseRequestAlbumsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.RequestService.ChooseRequestAlbums is not implemented"))
 }
 
 func (UnimplementedRequestServiceHandler) ListRequests(context.Context, *connect.Request[v1.ListRequestsRequest]) (*connect.Response[v1.ListRequestsResponse], error) {

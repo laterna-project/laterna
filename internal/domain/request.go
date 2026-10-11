@@ -27,8 +27,11 @@ type RequestStatus string
 
 // Request states, in the order a request goes through them.
 const (
-	RequestPending     RequestStatus = "pending"
-	RequestApproved    RequestStatus = "approved"
+	RequestPending  RequestStatus = "pending"
+	RequestApproved RequestStatus = "approved"
+	// RequestChoosing is an approved artist whose albums are to be chosen (SeasonsChosen): it is
+	// on Lidarr with nothing monitored.
+	RequestChoosing    RequestStatus = "choosing"
 	RequestDownloading RequestStatus = "downloading"
 	RequestAvailable   RequestStatus = "available"
 	RequestDeclined    RequestStatus = "declined"
@@ -37,7 +40,7 @@ const (
 
 // Open means the request is on its way: a second one for the same title is refused.
 func (s RequestStatus) Open() bool {
-	return s == RequestPending || s == RequestApproved || s == RequestDownloading
+	return s == RequestPending || s == RequestApproved || s == RequestChoosing || s == RequestDownloading
 }
 
 // RequestSeasons says which seasons of a series are requested.
@@ -48,7 +51,8 @@ const (
 	SeasonsAll    RequestSeasons = "all"
 	SeasonsFirst  RequestSeasons = "first"
 	SeasonsLatest RequestSeasons = "latest"
-	// SeasonsChosen asks for the seasons of MediaRequest.SeasonNumbers.
+	// SeasonsChosen asks for the seasons of MediaRequest.SeasonNumbers; for an artist, for albums
+	// chosen once Lidarr lists them (RequestChoosing).
 	SeasonsChosen RequestSeasons = "chosen"
 )
 
@@ -109,6 +113,8 @@ type MediaRequest struct {
 	Status        RequestStatus
 	Seasons       RequestSeasons
 	SeasonNumbers []int
+	// AlbumTitles are the albums chosen for an artist (SeasonsChosen), once chosen.
+	AlbumTitles []string
 	// Destination is nil once its destination was deleted.
 	Destination *RequestDestination
 	AccountID   ID
@@ -226,6 +232,28 @@ type RootFolder struct {
 type QualityProfile struct {
 	ID   int
 	Name string
+	// PrimaryTypes and SecondaryTypes are the kinds of releases a metadata profile keeps, as Lidarr
+	// names them ("Album", "EP"...; "Studio", "Live"...).
+	PrimaryTypes   []string
+	SecondaryTypes []string
+}
+
+// ArtistAlbum is an album of a requested artist, as Lidarr has it.
+type ArtistAlbum struct {
+	// Key is the MusicBrainz ID of its release group.
+	Key   string
+	Title string
+	Year  int
+	// Type is Lidarr's primary type ("Album", "EP", "Single"...); SecondaryTypes are empty for a
+	// studio release.
+	Type           string
+	SecondaryTypes []string
+	Tracks         int
+	Monitored      bool
+	// Available means every track has a file on Lidarr.
+	Available bool
+	// Poster is the cover's address; the server serves it to devices.
+	Poster string
 }
 
 // Key is the request's external ID as text: its key, or the number of a series or a movie.

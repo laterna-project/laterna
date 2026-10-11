@@ -72,11 +72,40 @@ limit), whatever becomes of them; administrators have no quota.
   of seasons can be asked for instead. Sonarr then monitors those seasons and new episodes as they
   air.
 - For an **artist** the default is every album (those its metadata profile keeps), and the next
-  ones as they come out; the first or the latest album can be asked for instead.
+  ones as they come out; the first or the latest album can be asked for instead, or albums
+  **chosen** from the artist's list (see below).
 - An **album** is requested alone: its artist is added to Lidarr if needed, monitored but with none
   of its other albums.
 - A **book** is requested as an ebook: LazyLibrarian marks it wanted and searches for it.
   Audiobooks are not requested: no library plays them yet.
+
+### Choosing the albums of an artist
+
+Sonarr tells how many seasons a series has before it is added, so seasons are picked when the
+request is made. Lidarr does not do that for albums: it only knows the discography of an artist it
+has. The choice therefore comes after the approval:
+
+1. The request asks for an artist with albums "to choose". Nothing else is decided yet.
+2. Once approved, the artist is added to Lidarr with **nothing monitored** and no search. Lidarr
+   reads the discography, which takes a few seconds. An artist Lidarr already has is left as it is.
+3. The request waits (`CHOOSING`). Its profile is told (notification `request_choose`), and the
+   request shows the artist's albums as Lidarr has them (`ListRequestAlbums`): title, year, kind
+   (album, EP, single; live, compilation, soundtrack), and whether Lidarr already monitors or has
+   it. The list holds what the destination's metadata profile keeps: an EP only shows if that
+   profile keeps EPs.
+4. The profile of the request **or an administrator** picks the albums (`ChooseRequestAlbums`), and
+   says whether the albums that come out later are wanted too. Lidarr monitors and searches those
+   albums only, and the request goes on like any other.
+
+A request can be withdrawn by its profile while it waits; the artist then stays on Lidarr,
+unmonitored. A request left waiting keeps the title "requested": nobody else can ask for that
+artist until it is chosen, withdrawn or deleted.
+
+In the database the wait is a mark next to the status `approved` (`requests.choosing`), because the
+statuses sit in a CHECK constraint that SQLite cannot alter without rebuilding the table.
+
+Administrators see, for each of Lidarr's metadata profiles, the kinds of releases it keeps
+(`GetRequestOptions`), to pick the one a music destination uses.
 
 ## After approval
 

@@ -53,7 +53,7 @@ type Server struct {
 	Music            []MusicEntry
 	Artists          map[int]*Artist
 	Albums           map[int]*Album
-	MetadataProfiles []arr.QualityProfile
+	MetadataProfiles []arr.MetadataProfile
 }
 
 // Entry is a title a search can find.
@@ -93,11 +93,14 @@ func New(t *testing.T, kind arr.Kind) *Server {
 	t.Helper()
 	s := &Server{
 		kind: kind, KodiOptions: map[string]bool{}, reads: map[int]int{}, Titles: map[int]*Title{},
-		Roots:            []arr.RootFolder{{Path: "/data/media/" + map[arr.Kind]string{arr.Sonarr: "shows", arr.Radarr: "movies", arr.Lidarr: "music"}[kind], FreeSpace: 1 << 40}},
-		Profiles:         []arr.QualityProfile{{ID: 1, Name: "Any"}, {ID: 7, Name: "HD Bluray + WEB"}},
-		Artists:          map[int]*Artist{},
-		Albums:           map[int]*Album{},
-		MetadataProfiles: []arr.QualityProfile{{ID: 1, Name: "Standard"}, {ID: 2, Name: "None"}},
+		Roots:    []arr.RootFolder{{Path: "/data/media/" + map[arr.Kind]string{arr.Sonarr: "shows", arr.Radarr: "movies", arr.Lidarr: "music"}[kind], FreeSpace: 1 << 40}},
+		Profiles: []arr.QualityProfile{{ID: 1, Name: "Any"}, {ID: 7, Name: "HD Bluray + WEB"}},
+		Artists:  map[int]*Artist{},
+		Albums:   map[int]*Album{},
+		MetadataProfiles: []arr.MetadataProfile{
+			{ID: 1, Name: "Standard", PrimaryTypes: []string{"Album"}, SecondaryTypes: []string{"Studio"}},
+			{ID: 2, Name: "None"},
+		},
 	}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(s.Close)

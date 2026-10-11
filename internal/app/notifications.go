@@ -235,6 +235,8 @@ func (a *App) notifyRequest(ctx context.Context, r domain.MediaRequest, kind dom
 		n.Text = domain.T("notification.request_available", "title", r.Title)
 	case domain.NotificationRequestFailed:
 		n.Text = domain.T("notification.request_failed", "title", r.Title)
+	case domain.NotificationRequestChoose:
+		n.Text = domain.T("notification.request_choose", "title", r.Title)
 	case domain.NotificationRequestPending, domain.NotificationNewEpisodes:
 		return
 	}

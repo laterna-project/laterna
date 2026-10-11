@@ -72,6 +72,8 @@ enum NotificationKind {
   // Episodes arrived for a series the profile follows: one of its favorites, or one it played or
   // started an episode of. Episodes that arrive together make one notification.
   NOTIFICATION_KIND_NEW_EPISODES = 6;
+  // The albums of an artist the profile asked for can be chosen (REQUEST_STATUS_CHOOSING).
+  NOTIFICATION_KIND_REQUEST_CHOOSE = 7;
 }
 
 message Notification {
