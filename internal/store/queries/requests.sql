@@ -33,7 +33,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 UPDATE requests
 SET status = ?, seasons = ?, season_numbers = ?, destination_id = ?, updated_at = ?, decided_at = ?, decided_by = ?,
     decline_reason = ?, error = ?, arr_id = ?, progress = ?, item_id = ?, episodes_available = ?,
-    episodes_wanted = ?, available_at = ?
+    episodes_wanted = ?, available_at = ?, choosing = ?, album_titles = ?
 WHERE id = ?;
 
 -- name: RequestPosters :many
@@ -54,7 +54,7 @@ WHERE kind = ? AND external_id = ? AND external_key = ? AND status IN ('pending'
 
 -- name: RequestsOnTheirWay :many
 SELECT id FROM requests
-WHERE status IN ('approved', 'downloading')
+WHERE (status IN ('approved', 'downloading') AND choosing = 0)
    OR (status = 'available' AND kind IN ('series', 'artist') AND episodes_available < episodes_wanted
        AND available_at >= ?)
 ORDER BY created_at;

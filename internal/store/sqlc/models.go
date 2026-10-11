@@ -453,6 +453,8 @@ type Request struct {
 	EpisodesAvailable int64
 	EpisodesWanted    int64
 	AvailableAt       sql.NullInt64
+	Choosing          int64
+	AlbumTitles       string
 }
 
 type RequestDestination struct {

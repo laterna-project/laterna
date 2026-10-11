@@ -168,6 +168,9 @@ const (
 	RequestStatus_REQUEST_STATUS_DECLINED RequestStatus = 5
 	// The instance refused it or could not be reached (error); an administrator can approve it again.
 	RequestStatus_REQUEST_STATUS_FAILED RequestStatus = 6
+	// An artist whose albums are to be chosen (RequestSeasons CHOSEN): approved, the artist is on
+	// Lidarr with nothing monitored, and the request waits for ChooseRequestAlbums.
+	RequestStatus_REQUEST_STATUS_CHOOSING RequestStatus = 7
 )
 
 // Enum value maps for RequestStatus.
@@ -180,6 +183,7 @@ var (
 		4: "REQUEST_STATUS_AVAILABLE",
 		5: "REQUEST_STATUS_DECLINED",
 		6: "REQUEST_STATUS_FAILED",
+		7: "REQUEST_STATUS_CHOOSING",
 	}
 	RequestStatus_value = map[string]int32{
 		"REQUEST_STATUS_UNSPECIFIED": 0,
@@ -189,6 +193,7 @@ var (
 		"REQUEST_STATUS_AVAILABLE":   4,
 		"REQUEST_STATUS_DECLINED":    5,
 		"REQUEST_STATUS_FAILED":      6,
+		"REQUEST_STATUS_CHOOSING":    7,
 	}
 )
 
@@ -232,7 +237,8 @@ const (
 	RequestSeasons_REQUEST_SEASONS_FIRST RequestSeasons = 2
 	// The latest season, or the latest album.
 	RequestSeasons_REQUEST_SEASONS_LATEST RequestSeasons = 3
-	// The seasons in season_numbers (series only).
+	// The seasons in season_numbers; for an artist, albums chosen later, from the list Lidarr has
+	// once the request is approved (REQUEST_STATUS_CHOOSING).
 	RequestSeasons_REQUEST_SEASONS_CHOSEN RequestSeasons = 4
 )
 
@@ -838,7 +844,9 @@ type MediaRequest struct {
 	// See RequestableTitle.external_key.
 	ExternalKey string `protobuf:"bytes,26,opt,name=external_key,json=externalKey,proto3" json:"external_key,omitempty"`
 	// Artist of an album, author of a book; empty otherwise.
-	Subtitle      string `protobuf:"bytes,27,opt,name=subtitle,proto3" json:"subtitle,omitempty"`
+	Subtitle string `protobuf:"bytes,27,opt,name=subtitle,proto3" json:"subtitle,omitempty"`
+	// Artist with chosen albums: their titles, once chosen.
+	AlbumTitles   []string `protobuf:"bytes,28,rep,name=album_titles,json=albumTitles,proto3" json:"album_titles,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1062,6 +1070,324 @@ func (x *MediaRequest) GetSubtitle() string {
 	return ""
 }
 
+func (x *MediaRequest) GetAlbumTitles() []string {
+	if x != nil {
+		return x.AlbumTitles
+	}
+	return nil
+}
+
+// RequestAlbum is an album of a requested artist, as Lidarr has it.
+type RequestAlbum struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// MusicBrainz ID of its release group: what ChooseRequestAlbums takes.
+	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	// Year it came out; 0 if unknown.
+	Year int32 `protobuf:"varint,3,opt,name=year,proto3" json:"year,omitempty"`
+	// Lidarr's primary type, as it names it: "Album", "EP", "Single", "Broadcast", "Other".
+	Type string `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	// Its secondary types ("Live", "Compilation", "Soundtrack"...); none for a studio release.
+	SecondaryTypes []string `protobuf:"bytes,5,rep,name=secondary_types,json=secondaryTypes,proto3" json:"secondary_types,omitempty"`
+	TrackCount     int32    `protobuf:"varint,6,opt,name=track_count,json=trackCount,proto3" json:"track_count,omitempty"`
+	// Lidarr already monitors it.
+	Monitored bool `protobuf:"varint,7,opt,name=monitored,proto3" json:"monitored,omitempty"`
+	// Every track has a file on Lidarr.
+	Available bool `protobuf:"varint,8,opt,name=available,proto3" json:"available,omitempty"`
+	// Path to append to the server's address; empty without a cover.
+	PosterUrl     string `protobuf:"bytes,9,opt,name=poster_url,json=posterUrl,proto3" json:"poster_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestAlbum) Reset() {
+	*x = RequestAlbum{}
+	mi := &file_laterna_v1_request_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestAlbum) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestAlbum) ProtoMessage() {}
+
+func (x *RequestAlbum) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_request_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestAlbum.ProtoReflect.Descriptor instead.
+func (*RequestAlbum) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RequestAlbum) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *RequestAlbum) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *RequestAlbum) GetYear() int32 {
+	if x != nil {
+		return x.Year
+	}
+	return 0
+}
+
+func (x *RequestAlbum) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *RequestAlbum) GetSecondaryTypes() []string {
+	if x != nil {
+		return x.SecondaryTypes
+	}
+	return nil
+}
+
+func (x *RequestAlbum) GetTrackCount() int32 {
+	if x != nil {
+		return x.TrackCount
+	}
+	return 0
+}
+
+func (x *RequestAlbum) GetMonitored() bool {
+	if x != nil {
+		return x.Monitored
+	}
+	return false
+}
+
+func (x *RequestAlbum) GetAvailable() bool {
+	if x != nil {
+		return x.Available
+	}
+	return false
+}
+
+func (x *RequestAlbum) GetPosterUrl() string {
+	if x != nil {
+		return x.PosterUrl
+	}
+	return ""
+}
+
+type ListRequestAlbumsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRequestAlbumsRequest) Reset() {
+	*x = ListRequestAlbumsRequest{}
+	mi := &file_laterna_v1_request_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRequestAlbumsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRequestAlbumsRequest) ProtoMessage() {}
+
+func (x *ListRequestAlbumsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_request_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRequestAlbumsRequest.ProtoReflect.Descriptor instead.
+func (*ListRequestAlbumsRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListRequestAlbumsRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+type ListRequestAlbumsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Oldest first.
+	Albums        []*RequestAlbum `protobuf:"bytes,1,rep,name=albums,proto3" json:"albums,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRequestAlbumsResponse) Reset() {
+	*x = ListRequestAlbumsResponse{}
+	mi := &file_laterna_v1_request_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRequestAlbumsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRequestAlbumsResponse) ProtoMessage() {}
+
+func (x *ListRequestAlbumsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_request_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRequestAlbumsResponse.ProtoReflect.Descriptor instead.
+func (*ListRequestAlbumsResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListRequestAlbumsResponse) GetAlbums() []*RequestAlbum {
+	if x != nil {
+		return x.Albums
+	}
+	return nil
+}
+
+type ChooseRequestAlbumsRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RequestId string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	// RequestAlbum.key of each album asked for; at least one.
+	AlbumKeys []string `protobuf:"bytes,2,rep,name=album_keys,json=albumKeys,proto3" json:"album_keys,omitempty"`
+	// Also the albums that come out later.
+	FutureAlbums  bool `protobuf:"varint,3,opt,name=future_albums,json=futureAlbums,proto3" json:"future_albums,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChooseRequestAlbumsRequest) Reset() {
+	*x = ChooseRequestAlbumsRequest{}
+	mi := &file_laterna_v1_request_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChooseRequestAlbumsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChooseRequestAlbumsRequest) ProtoMessage() {}
+
+func (x *ChooseRequestAlbumsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_request_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChooseRequestAlbumsRequest.ProtoReflect.Descriptor instead.
+func (*ChooseRequestAlbumsRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ChooseRequestAlbumsRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *ChooseRequestAlbumsRequest) GetAlbumKeys() []string {
+	if x != nil {
+		return x.AlbumKeys
+	}
+	return nil
+}
+
+func (x *ChooseRequestAlbumsRequest) GetFutureAlbums() bool {
+	if x != nil {
+		return x.FutureAlbums
+	}
+	return false
+}
+
+type ChooseRequestAlbumsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Request       *MediaRequest          `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChooseRequestAlbumsResponse) Reset() {
+	*x = ChooseRequestAlbumsResponse{}
+	mi := &file_laterna_v1_request_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChooseRequestAlbumsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChooseRequestAlbumsResponse) ProtoMessage() {}
+
+func (x *ChooseRequestAlbumsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_request_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChooseRequestAlbumsResponse.ProtoReflect.Descriptor instead.
+func (*ChooseRequestAlbumsResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ChooseRequestAlbumsResponse) GetRequest() *MediaRequest {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
 type CreateRequestRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// SERIES, MOVIE, ARTIST, ALBUM or BOOK.
@@ -1070,7 +1396,8 @@ type CreateRequestRequest struct {
 	ExternalId int64 `protobuf:"varint,2,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
 	// Empty takes the only destination of that kind open to the profile.
 	DestinationId string `protobuf:"bytes,3,opt,name=destination_id,json=destinationId,proto3" json:"destination_id,omitempty"`
-	// Series: which seasons; artist: which albums (ALL, FIRST or LATEST). Ignored for the others.
+	// Series: which seasons; artist: which albums (ALL, FIRST, LATEST, or CHOSEN to pick them once
+	// the request is approved). Ignored for the others.
 	Seasons       RequestSeasons `protobuf:"varint,4,opt,name=seasons,proto3,enum=laterna.v1.RequestSeasons" json:"seasons,omitempty"`
 	SeasonNumbers []int32        `protobuf:"varint,5,rep,packed,name=season_numbers,json=seasonNumbers,proto3" json:"season_numbers,omitempty"`
 	// Artist, album or book (RequestableTitle.external_key).
@@ -1081,7 +1408,7 @@ type CreateRequestRequest struct {
 
 func (x *CreateRequestRequest) Reset() {
 	*x = CreateRequestRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[7]
+	mi := &file_laterna_v1_request_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1093,7 +1420,7 @@ func (x *CreateRequestRequest) String() string {
 func (*CreateRequestRequest) ProtoMessage() {}
 
 func (x *CreateRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[7]
+	mi := &file_laterna_v1_request_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1106,7 +1433,7 @@ func (x *CreateRequestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRequestRequest.ProtoReflect.Descriptor instead.
 func (*CreateRequestRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{7}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CreateRequestRequest) GetKind() RequestKind {
@@ -1160,7 +1487,7 @@ type CreateRequestResponse struct {
 
 func (x *CreateRequestResponse) Reset() {
 	*x = CreateRequestResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[8]
+	mi := &file_laterna_v1_request_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1172,7 +1499,7 @@ func (x *CreateRequestResponse) String() string {
 func (*CreateRequestResponse) ProtoMessage() {}
 
 func (x *CreateRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[8]
+	mi := &file_laterna_v1_request_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1185,7 +1512,7 @@ func (x *CreateRequestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRequestResponse.ProtoReflect.Descriptor instead.
 func (*CreateRequestResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{8}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CreateRequestResponse) GetRequest() *MediaRequest {
@@ -1207,7 +1534,7 @@ type ListMyRequestsRequest struct {
 
 func (x *ListMyRequestsRequest) Reset() {
 	*x = ListMyRequestsRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[9]
+	mi := &file_laterna_v1_request_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1219,7 +1546,7 @@ func (x *ListMyRequestsRequest) String() string {
 func (*ListMyRequestsRequest) ProtoMessage() {}
 
 func (x *ListMyRequestsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[9]
+	mi := &file_laterna_v1_request_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1232,7 +1559,7 @@ func (x *ListMyRequestsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyRequestsRequest.ProtoReflect.Descriptor instead.
 func (*ListMyRequestsRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{9}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListMyRequestsRequest) GetPageToken() string {
@@ -1260,7 +1587,7 @@ type ListMyRequestsResponse struct {
 
 func (x *ListMyRequestsResponse) Reset() {
 	*x = ListMyRequestsResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[10]
+	mi := &file_laterna_v1_request_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1272,7 +1599,7 @@ func (x *ListMyRequestsResponse) String() string {
 func (*ListMyRequestsResponse) ProtoMessage() {}
 
 func (x *ListMyRequestsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[10]
+	mi := &file_laterna_v1_request_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1285,7 +1612,7 @@ func (x *ListMyRequestsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyRequestsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyRequestsResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{10}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListMyRequestsResponse) GetRequests() []*MediaRequest {
@@ -1311,7 +1638,7 @@ type GetRequestRequest struct {
 
 func (x *GetRequestRequest) Reset() {
 	*x = GetRequestRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[11]
+	mi := &file_laterna_v1_request_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1323,7 +1650,7 @@ func (x *GetRequestRequest) String() string {
 func (*GetRequestRequest) ProtoMessage() {}
 
 func (x *GetRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[11]
+	mi := &file_laterna_v1_request_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1336,7 +1663,7 @@ func (x *GetRequestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequestRequest.ProtoReflect.Descriptor instead.
 func (*GetRequestRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{11}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetRequestRequest) GetRequestId() string {
@@ -1355,7 +1682,7 @@ type GetRequestResponse struct {
 
 func (x *GetRequestResponse) Reset() {
 	*x = GetRequestResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[12]
+	mi := &file_laterna_v1_request_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1367,7 +1694,7 @@ func (x *GetRequestResponse) String() string {
 func (*GetRequestResponse) ProtoMessage() {}
 
 func (x *GetRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[12]
+	mi := &file_laterna_v1_request_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1380,7 +1707,7 @@ func (x *GetRequestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequestResponse.ProtoReflect.Descriptor instead.
 func (*GetRequestResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{12}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetRequestResponse) GetRequest() *MediaRequest {
@@ -1399,7 +1726,7 @@ type CancelRequestRequest struct {
 
 func (x *CancelRequestRequest) Reset() {
 	*x = CancelRequestRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[13]
+	mi := &file_laterna_v1_request_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1411,7 +1738,7 @@ func (x *CancelRequestRequest) String() string {
 func (*CancelRequestRequest) ProtoMessage() {}
 
 func (x *CancelRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[13]
+	mi := &file_laterna_v1_request_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1424,7 +1751,7 @@ func (x *CancelRequestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelRequestRequest.ProtoReflect.Descriptor instead.
 func (*CancelRequestRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{13}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CancelRequestRequest) GetRequestId() string {
@@ -1442,7 +1769,7 @@ type CancelRequestResponse struct {
 
 func (x *CancelRequestResponse) Reset() {
 	*x = CancelRequestResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[14]
+	mi := &file_laterna_v1_request_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1454,7 +1781,7 @@ func (x *CancelRequestResponse) String() string {
 func (*CancelRequestResponse) ProtoMessage() {}
 
 func (x *CancelRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[14]
+	mi := &file_laterna_v1_request_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1467,7 +1794,7 @@ func (x *CancelRequestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelRequestResponse.ProtoReflect.Descriptor instead.
 func (*CancelRequestResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{14}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{19}
 }
 
 type ListRequestsRequest struct {
@@ -1484,7 +1811,7 @@ type ListRequestsRequest struct {
 
 func (x *ListRequestsRequest) Reset() {
 	*x = ListRequestsRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[15]
+	mi := &file_laterna_v1_request_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1496,7 +1823,7 @@ func (x *ListRequestsRequest) String() string {
 func (*ListRequestsRequest) ProtoMessage() {}
 
 func (x *ListRequestsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[15]
+	mi := &file_laterna_v1_request_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1509,7 +1836,7 @@ func (x *ListRequestsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRequestsRequest.ProtoReflect.Descriptor instead.
 func (*ListRequestsRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{15}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListRequestsRequest) GetPageToken() string {
@@ -1546,7 +1873,7 @@ type ListRequestsResponse struct {
 
 func (x *ListRequestsResponse) Reset() {
 	*x = ListRequestsResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[16]
+	mi := &file_laterna_v1_request_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1558,7 +1885,7 @@ func (x *ListRequestsResponse) String() string {
 func (*ListRequestsResponse) ProtoMessage() {}
 
 func (x *ListRequestsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[16]
+	mi := &file_laterna_v1_request_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1571,7 +1898,7 @@ func (x *ListRequestsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRequestsResponse.ProtoReflect.Descriptor instead.
 func (*ListRequestsResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{16}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListRequestsResponse) GetRequests() []*MediaRequest {
@@ -1609,7 +1936,7 @@ type ApproveRequestRequest struct {
 
 func (x *ApproveRequestRequest) Reset() {
 	*x = ApproveRequestRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[17]
+	mi := &file_laterna_v1_request_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1621,7 +1948,7 @@ func (x *ApproveRequestRequest) String() string {
 func (*ApproveRequestRequest) ProtoMessage() {}
 
 func (x *ApproveRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[17]
+	mi := &file_laterna_v1_request_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1634,7 +1961,7 @@ func (x *ApproveRequestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveRequestRequest.ProtoReflect.Descriptor instead.
 func (*ApproveRequestRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{17}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ApproveRequestRequest) GetRequestId() string {
@@ -1674,7 +2001,7 @@ type ApproveRequestResponse struct {
 
 func (x *ApproveRequestResponse) Reset() {
 	*x = ApproveRequestResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[18]
+	mi := &file_laterna_v1_request_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1686,7 +2013,7 @@ func (x *ApproveRequestResponse) String() string {
 func (*ApproveRequestResponse) ProtoMessage() {}
 
 func (x *ApproveRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[18]
+	mi := &file_laterna_v1_request_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1699,7 +2026,7 @@ func (x *ApproveRequestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveRequestResponse.ProtoReflect.Descriptor instead.
 func (*ApproveRequestResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{18}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ApproveRequestResponse) GetRequest() *MediaRequest {
@@ -1720,7 +2047,7 @@ type DeclineRequestRequest struct {
 
 func (x *DeclineRequestRequest) Reset() {
 	*x = DeclineRequestRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[19]
+	mi := &file_laterna_v1_request_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1732,7 +2059,7 @@ func (x *DeclineRequestRequest) String() string {
 func (*DeclineRequestRequest) ProtoMessage() {}
 
 func (x *DeclineRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[19]
+	mi := &file_laterna_v1_request_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1745,7 +2072,7 @@ func (x *DeclineRequestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineRequestRequest.ProtoReflect.Descriptor instead.
 func (*DeclineRequestRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{19}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DeclineRequestRequest) GetRequestId() string {
@@ -1771,7 +2098,7 @@ type DeclineRequestResponse struct {
 
 func (x *DeclineRequestResponse) Reset() {
 	*x = DeclineRequestResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[20]
+	mi := &file_laterna_v1_request_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1783,7 +2110,7 @@ func (x *DeclineRequestResponse) String() string {
 func (*DeclineRequestResponse) ProtoMessage() {}
 
 func (x *DeclineRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[20]
+	mi := &file_laterna_v1_request_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1796,7 +2123,7 @@ func (x *DeclineRequestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineRequestResponse.ProtoReflect.Descriptor instead.
 func (*DeclineRequestResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{20}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DeclineRequestResponse) GetRequest() *MediaRequest {
@@ -1815,7 +2142,7 @@ type DeleteRequestRequest struct {
 
 func (x *DeleteRequestRequest) Reset() {
 	*x = DeleteRequestRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[21]
+	mi := &file_laterna_v1_request_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1827,7 +2154,7 @@ func (x *DeleteRequestRequest) String() string {
 func (*DeleteRequestRequest) ProtoMessage() {}
 
 func (x *DeleteRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[21]
+	mi := &file_laterna_v1_request_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1840,7 +2167,7 @@ func (x *DeleteRequestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequestRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequestRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{21}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DeleteRequestRequest) GetRequestId() string {
@@ -1858,7 +2185,7 @@ type DeleteRequestResponse struct {
 
 func (x *DeleteRequestResponse) Reset() {
 	*x = DeleteRequestResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[22]
+	mi := &file_laterna_v1_request_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1870,7 +2197,7 @@ func (x *DeleteRequestResponse) String() string {
 func (*DeleteRequestResponse) ProtoMessage() {}
 
 func (x *DeleteRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[22]
+	mi := &file_laterna_v1_request_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1883,7 +2210,7 @@ func (x *DeleteRequestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequestResponse.ProtoReflect.Descriptor instead.
 func (*DeleteRequestResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{22}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{27}
 }
 
 type RequestRootFolder struct {
@@ -1897,7 +2224,7 @@ type RequestRootFolder struct {
 
 func (x *RequestRootFolder) Reset() {
 	*x = RequestRootFolder{}
-	mi := &file_laterna_v1_request_proto_msgTypes[23]
+	mi := &file_laterna_v1_request_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1909,7 +2236,7 @@ func (x *RequestRootFolder) String() string {
 func (*RequestRootFolder) ProtoMessage() {}
 
 func (x *RequestRootFolder) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[23]
+	mi := &file_laterna_v1_request_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1922,7 +2249,7 @@ func (x *RequestRootFolder) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestRootFolder.ProtoReflect.Descriptor instead.
 func (*RequestRootFolder) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{23}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *RequestRootFolder) GetPath() string {
@@ -1940,16 +2267,21 @@ func (x *RequestRootFolder) GetFreeSpace() int64 {
 }
 
 type RequestQualityProfile struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// A metadata profile of Lidarr: the kinds of releases it keeps, as Lidarr names them. An album is
+	// kept when its primary type ("Album", "EP", "Single"...) and each of its secondary types
+	// ("Studio" for none, "Live", "Compilation"...) are in these lists.
+	PrimaryTypes   []string `protobuf:"bytes,3,rep,name=primary_types,json=primaryTypes,proto3" json:"primary_types,omitempty"`
+	SecondaryTypes []string `protobuf:"bytes,4,rep,name=secondary_types,json=secondaryTypes,proto3" json:"secondary_types,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RequestQualityProfile) Reset() {
 	*x = RequestQualityProfile{}
-	mi := &file_laterna_v1_request_proto_msgTypes[24]
+	mi := &file_laterna_v1_request_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1961,7 +2293,7 @@ func (x *RequestQualityProfile) String() string {
 func (*RequestQualityProfile) ProtoMessage() {}
 
 func (x *RequestQualityProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[24]
+	mi := &file_laterna_v1_request_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1974,7 +2306,7 @@ func (x *RequestQualityProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestQualityProfile.ProtoReflect.Descriptor instead.
 func (*RequestQualityProfile) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{24}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *RequestQualityProfile) GetId() int32 {
@@ -1991,6 +2323,20 @@ func (x *RequestQualityProfile) GetName() string {
 	return ""
 }
 
+func (x *RequestQualityProfile) GetPrimaryTypes() []string {
+	if x != nil {
+		return x.PrimaryTypes
+	}
+	return nil
+}
+
+func (x *RequestQualityProfile) GetSecondaryTypes() []string {
+	if x != nil {
+		return x.SecondaryTypes
+	}
+	return nil
+}
+
 type GetRequestOptionsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// SERIES, MOVIE or MUSIC; BOOK has no options.
@@ -2001,7 +2347,7 @@ type GetRequestOptionsRequest struct {
 
 func (x *GetRequestOptionsRequest) Reset() {
 	*x = GetRequestOptionsRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[25]
+	mi := &file_laterna_v1_request_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2013,7 +2359,7 @@ func (x *GetRequestOptionsRequest) String() string {
 func (*GetRequestOptionsRequest) ProtoMessage() {}
 
 func (x *GetRequestOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[25]
+	mi := &file_laterna_v1_request_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2026,7 +2372,7 @@ func (x *GetRequestOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequestOptionsRequest.ProtoReflect.Descriptor instead.
 func (*GetRequestOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{25}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetRequestOptionsRequest) GetKind() RequestKind {
@@ -2048,7 +2394,7 @@ type GetRequestOptionsResponse struct {
 
 func (x *GetRequestOptionsResponse) Reset() {
 	*x = GetRequestOptionsResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[26]
+	mi := &file_laterna_v1_request_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2060,7 +2406,7 @@ func (x *GetRequestOptionsResponse) String() string {
 func (*GetRequestOptionsResponse) ProtoMessage() {}
 
 func (x *GetRequestOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[26]
+	mi := &file_laterna_v1_request_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2073,7 +2419,7 @@ func (x *GetRequestOptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequestOptionsResponse.ProtoReflect.Descriptor instead.
 func (*GetRequestOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{26}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetRequestOptionsResponse) GetRootFolders() []*RequestRootFolder {
@@ -2113,7 +2459,7 @@ type CreateRequestDestinationRequest struct {
 
 func (x *CreateRequestDestinationRequest) Reset() {
 	*x = CreateRequestDestinationRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[27]
+	mi := &file_laterna_v1_request_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2125,7 +2471,7 @@ func (x *CreateRequestDestinationRequest) String() string {
 func (*CreateRequestDestinationRequest) ProtoMessage() {}
 
 func (x *CreateRequestDestinationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[27]
+	mi := &file_laterna_v1_request_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2138,7 +2484,7 @@ func (x *CreateRequestDestinationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRequestDestinationRequest.ProtoReflect.Descriptor instead.
 func (*CreateRequestDestinationRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{27}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *CreateRequestDestinationRequest) GetName() string {
@@ -2199,7 +2545,7 @@ type CreateRequestDestinationResponse struct {
 
 func (x *CreateRequestDestinationResponse) Reset() {
 	*x = CreateRequestDestinationResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[28]
+	mi := &file_laterna_v1_request_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2211,7 +2557,7 @@ func (x *CreateRequestDestinationResponse) String() string {
 func (*CreateRequestDestinationResponse) ProtoMessage() {}
 
 func (x *CreateRequestDestinationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[28]
+	mi := &file_laterna_v1_request_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2224,7 +2570,7 @@ func (x *CreateRequestDestinationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRequestDestinationResponse.ProtoReflect.Descriptor instead.
 func (*CreateRequestDestinationResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{28}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *CreateRequestDestinationResponse) GetDestination() *RequestDestination {
@@ -2250,7 +2596,7 @@ type UpdateRequestDestinationRequest struct {
 
 func (x *UpdateRequestDestinationRequest) Reset() {
 	*x = UpdateRequestDestinationRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[29]
+	mi := &file_laterna_v1_request_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2262,7 +2608,7 @@ func (x *UpdateRequestDestinationRequest) String() string {
 func (*UpdateRequestDestinationRequest) ProtoMessage() {}
 
 func (x *UpdateRequestDestinationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[29]
+	mi := &file_laterna_v1_request_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2275,7 +2621,7 @@ func (x *UpdateRequestDestinationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRequestDestinationRequest.ProtoReflect.Descriptor instead.
 func (*UpdateRequestDestinationRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{29}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *UpdateRequestDestinationRequest) GetDestinationId() string {
@@ -2336,7 +2682,7 @@ type UpdateRequestDestinationResponse struct {
 
 func (x *UpdateRequestDestinationResponse) Reset() {
 	*x = UpdateRequestDestinationResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[30]
+	mi := &file_laterna_v1_request_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2348,7 +2694,7 @@ func (x *UpdateRequestDestinationResponse) String() string {
 func (*UpdateRequestDestinationResponse) ProtoMessage() {}
 
 func (x *UpdateRequestDestinationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[30]
+	mi := &file_laterna_v1_request_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2361,7 +2707,7 @@ func (x *UpdateRequestDestinationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRequestDestinationResponse.ProtoReflect.Descriptor instead.
 func (*UpdateRequestDestinationResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{30}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *UpdateRequestDestinationResponse) GetDestination() *RequestDestination {
@@ -2380,7 +2726,7 @@ type DeleteRequestDestinationRequest struct {
 
 func (x *DeleteRequestDestinationRequest) Reset() {
 	*x = DeleteRequestDestinationRequest{}
-	mi := &file_laterna_v1_request_proto_msgTypes[31]
+	mi := &file_laterna_v1_request_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2392,7 +2738,7 @@ func (x *DeleteRequestDestinationRequest) String() string {
 func (*DeleteRequestDestinationRequest) ProtoMessage() {}
 
 func (x *DeleteRequestDestinationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[31]
+	mi := &file_laterna_v1_request_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2405,7 +2751,7 @@ func (x *DeleteRequestDestinationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequestDestinationRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequestDestinationRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{31}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *DeleteRequestDestinationRequest) GetDestinationId() string {
@@ -2423,7 +2769,7 @@ type DeleteRequestDestinationResponse struct {
 
 func (x *DeleteRequestDestinationResponse) Reset() {
 	*x = DeleteRequestDestinationResponse{}
-	mi := &file_laterna_v1_request_proto_msgTypes[32]
+	mi := &file_laterna_v1_request_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2435,7 +2781,7 @@ func (x *DeleteRequestDestinationResponse) String() string {
 func (*DeleteRequestDestinationResponse) ProtoMessage() {}
 
 func (x *DeleteRequestDestinationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_request_proto_msgTypes[32]
+	mi := &file_laterna_v1_request_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2448,7 +2794,7 @@ func (x *DeleteRequestDestinationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequestDestinationResponse.ProtoReflect.Descriptor instead.
 func (*DeleteRequestDestinationResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_request_proto_rawDescGZIP(), []int{32}
+	return file_laterna_v1_request_proto_rawDescGZIP(), []int{37}
 }
 
 var File_laterna_v1_request_proto protoreflect.FileDescriptor
@@ -2498,7 +2844,7 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x1eListRequestDestinationsRequest\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\"e\n" +
 	"\x1fListRequestDestinationsResponse\x12B\n" +
-	"\fdestinations\x18\x01 \x03(\v2\x1e.laterna.v1.RequestDestinationR\fdestinations\"\x92\b\n" +
+	"\fdestinations\x18\x01 \x03(\v2\x1e.laterna.v1.RequestDestinationR\fdestinations\"\xb5\b\n" +
 	"\fMediaRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x1f\n" +
@@ -2535,7 +2881,33 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x0fepisodes_wanted\x18\x18 \x01(\x05R\x0eepisodesWanted\x12=\n" +
 	"\favailable_at\x18\x19 \x01(\v2\x1a.google.protobuf.TimestampR\vavailableAt\x12!\n" +
 	"\fexternal_key\x18\x1a \x01(\tR\vexternalKey\x12\x1a\n" +
-	"\bsubtitle\x18\x1b \x01(\tR\bsubtitle\"\x8b\x02\n" +
+	"\bsubtitle\x18\x1b \x01(\tR\bsubtitle\x12!\n" +
+	"\falbum_titles\x18\x1c \x03(\tR\valbumTitles\"\x83\x02\n" +
+	"\fRequestAlbum\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
+	"\x04year\x18\x03 \x01(\x05R\x04year\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12'\n" +
+	"\x0fsecondary_types\x18\x05 \x03(\tR\x0esecondaryTypes\x12\x1f\n" +
+	"\vtrack_count\x18\x06 \x01(\x05R\n" +
+	"trackCount\x12\x1c\n" +
+	"\tmonitored\x18\a \x01(\bR\tmonitored\x12\x1c\n" +
+	"\tavailable\x18\b \x01(\bR\tavailable\x12\x1d\n" +
+	"\n" +
+	"poster_url\x18\t \x01(\tR\tposterUrl\"9\n" +
+	"\x18ListRequestAlbumsRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\"M\n" +
+	"\x19ListRequestAlbumsResponse\x120\n" +
+	"\x06albums\x18\x01 \x03(\v2\x18.laterna.v1.RequestAlbumR\x06albums\"\x7f\n" +
+	"\x1aChooseRequestAlbumsRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1d\n" +
+	"\n" +
+	"album_keys\x18\x02 \x03(\tR\talbumKeys\x12#\n" +
+	"\rfuture_albums\x18\x03 \x01(\bR\ffutureAlbums\"Q\n" +
+	"\x1bChooseRequestAlbumsResponse\x122\n" +
+	"\arequest\x18\x01 \x01(\v2\x18.laterna.v1.MediaRequestR\arequest\"\x8b\x02\n" +
 	"\x14CreateRequestRequest\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x1f\n" +
 	"\vexternal_id\x18\x02 \x01(\x03R\n" +
@@ -2593,10 +2965,12 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x11RequestRootFolder\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x1d\n" +
 	"\n" +
-	"free_space\x18\x02 \x01(\x03R\tfreeSpace\";\n" +
+	"free_space\x18\x02 \x01(\x03R\tfreeSpace\"\x89\x01\n" +
 	"\x15RequestQualityProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"G\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
+	"\rprimary_types\x18\x03 \x03(\tR\fprimaryTypes\x12'\n" +
+	"\x0fsecondary_types\x18\x04 \x03(\tR\x0esecondaryTypes\"G\n" +
 	"\x18GetRequestOptionsRequest\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\"\xfb\x01\n" +
 	"\x19GetRequestOptionsResponse\x12@\n" +
@@ -2650,7 +3024,7 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x1dREQUESTABLE_STATE_REQUESTABLE\x10\x01\x12\x1f\n" +
 	"\x1bREQUESTABLE_STATE_AVAILABLE\x10\x02\x12\x1f\n" +
 	"\x1bREQUESTABLE_STATE_REQUESTED\x10\x03\x12\x1d\n" +
-	"\x19REQUESTABLE_STATE_TRACKED\x10\x04*\xde\x01\n" +
+	"\x19REQUESTABLE_STATE_TRACKED\x10\x04*\xfb\x01\n" +
 	"\rRequestStatus\x12\x1e\n" +
 	"\x1aREQUEST_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16REQUEST_STATUS_PENDING\x10\x01\x12\x1b\n" +
@@ -2658,7 +3032,8 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x1aREQUEST_STATUS_DOWNLOADING\x10\x03\x12\x1c\n" +
 	"\x18REQUEST_STATUS_AVAILABLE\x10\x04\x12\x1b\n" +
 	"\x17REQUEST_STATUS_DECLINED\x10\x05\x12\x19\n" +
-	"\x15REQUEST_STATUS_FAILED\x10\x06*\x9d\x01\n" +
+	"\x15REQUEST_STATUS_FAILED\x10\x06\x12\x1b\n" +
+	"\x17REQUEST_STATUS_CHOOSING\x10\a*\x9d\x01\n" +
 	"\x0eRequestSeasons\x12\x1f\n" +
 	"\x1bREQUEST_SEASONS_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13REQUEST_SEASONS_ALL\x10\x01\x12\x19\n" +
@@ -2669,7 +3044,7 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x1fREQUEST_SERIES_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cREQUEST_SERIES_TYPE_STANDARD\x10\x01\x12\x1d\n" +
 	"\x19REQUEST_SERIES_TYPE_ANIME\x10\x02\x12\x1d\n" +
-	"\x19REQUEST_SERIES_TYPE_DAILY\x10\x032\xaa\v\n" +
+	"\x19REQUEST_SERIES_TYPE_DAILY\x10\x032\xf9\f\n" +
 	"\x0eRequestService\x12e\n" +
 	"\x11SearchRequestable\x12$.laterna.v1.SearchRequestableRequest\x1a%.laterna.v1.SearchRequestableResponse\"\x03\x90\x02\x01\x12w\n" +
 	"\x17ListRequestDestinations\x12*.laterna.v1.ListRequestDestinationsRequest\x1a+.laterna.v1.ListRequestDestinationsResponse\"\x03\x90\x02\x01\x12T\n" +
@@ -2677,7 +3052,9 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x0eListMyRequests\x12!.laterna.v1.ListMyRequestsRequest\x1a\".laterna.v1.ListMyRequestsResponse\"\x03\x90\x02\x01\x12P\n" +
 	"\n" +
 	"GetRequest\x12\x1d.laterna.v1.GetRequestRequest\x1a\x1e.laterna.v1.GetRequestResponse\"\x03\x90\x02\x01\x12T\n" +
-	"\rCancelRequest\x12 .laterna.v1.CancelRequestRequest\x1a!.laterna.v1.CancelRequestResponse\x12Z\n" +
+	"\rCancelRequest\x12 .laterna.v1.CancelRequestRequest\x1a!.laterna.v1.CancelRequestResponse\x12e\n" +
+	"\x11ListRequestAlbums\x12$.laterna.v1.ListRequestAlbumsRequest\x1a%.laterna.v1.ListRequestAlbumsResponse\"\x03\x90\x02\x01\x12f\n" +
+	"\x13ChooseRequestAlbums\x12&.laterna.v1.ChooseRequestAlbumsRequest\x1a'.laterna.v1.ChooseRequestAlbumsResponse\x12Z\n" +
 	"\fListRequests\x12\x1f.laterna.v1.ListRequestsRequest\x1a .laterna.v1.ListRequestsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12]\n" +
 	"\x0eApproveRequest\x12!.laterna.v1.ApproveRequestRequest\x1a\".laterna.v1.ApproveRequestResponse\"\x04\x88\xb5\x18\x04\x12]\n" +
 	"\x0eDeclineRequest\x12!.laterna.v1.DeclineRequestRequest\x1a\".laterna.v1.DeclineRequestResponse\"\x04\x88\xb5\x18\x04\x12]\n" +
@@ -2700,7 +3077,7 @@ func file_laterna_v1_request_proto_rawDescGZIP() []byte {
 }
 
 var file_laterna_v1_request_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_laterna_v1_request_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_laterna_v1_request_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_laterna_v1_request_proto_goTypes = []any{
 	(RequestKind)(0),                         // 0: laterna.v1.RequestKind
 	(RequestableState)(0),                    // 1: laterna.v1.RequestableState
@@ -2714,34 +3091,39 @@ var file_laterna_v1_request_proto_goTypes = []any{
 	(*ListRequestDestinationsRequest)(nil),   // 9: laterna.v1.ListRequestDestinationsRequest
 	(*ListRequestDestinationsResponse)(nil),  // 10: laterna.v1.ListRequestDestinationsResponse
 	(*MediaRequest)(nil),                     // 11: laterna.v1.MediaRequest
-	(*CreateRequestRequest)(nil),             // 12: laterna.v1.CreateRequestRequest
-	(*CreateRequestResponse)(nil),            // 13: laterna.v1.CreateRequestResponse
-	(*ListMyRequestsRequest)(nil),            // 14: laterna.v1.ListMyRequestsRequest
-	(*ListMyRequestsResponse)(nil),           // 15: laterna.v1.ListMyRequestsResponse
-	(*GetRequestRequest)(nil),                // 16: laterna.v1.GetRequestRequest
-	(*GetRequestResponse)(nil),               // 17: laterna.v1.GetRequestResponse
-	(*CancelRequestRequest)(nil),             // 18: laterna.v1.CancelRequestRequest
-	(*CancelRequestResponse)(nil),            // 19: laterna.v1.CancelRequestResponse
-	(*ListRequestsRequest)(nil),              // 20: laterna.v1.ListRequestsRequest
-	(*ListRequestsResponse)(nil),             // 21: laterna.v1.ListRequestsResponse
-	(*ApproveRequestRequest)(nil),            // 22: laterna.v1.ApproveRequestRequest
-	(*ApproveRequestResponse)(nil),           // 23: laterna.v1.ApproveRequestResponse
-	(*DeclineRequestRequest)(nil),            // 24: laterna.v1.DeclineRequestRequest
-	(*DeclineRequestResponse)(nil),           // 25: laterna.v1.DeclineRequestResponse
-	(*DeleteRequestRequest)(nil),             // 26: laterna.v1.DeleteRequestRequest
-	(*DeleteRequestResponse)(nil),            // 27: laterna.v1.DeleteRequestResponse
-	(*RequestRootFolder)(nil),                // 28: laterna.v1.RequestRootFolder
-	(*RequestQualityProfile)(nil),            // 29: laterna.v1.RequestQualityProfile
-	(*GetRequestOptionsRequest)(nil),         // 30: laterna.v1.GetRequestOptionsRequest
-	(*GetRequestOptionsResponse)(nil),        // 31: laterna.v1.GetRequestOptionsResponse
-	(*CreateRequestDestinationRequest)(nil),  // 32: laterna.v1.CreateRequestDestinationRequest
-	(*CreateRequestDestinationResponse)(nil), // 33: laterna.v1.CreateRequestDestinationResponse
-	(*UpdateRequestDestinationRequest)(nil),  // 34: laterna.v1.UpdateRequestDestinationRequest
-	(*UpdateRequestDestinationResponse)(nil), // 35: laterna.v1.UpdateRequestDestinationResponse
-	(*DeleteRequestDestinationRequest)(nil),  // 36: laterna.v1.DeleteRequestDestinationRequest
-	(*DeleteRequestDestinationResponse)(nil), // 37: laterna.v1.DeleteRequestDestinationResponse
-	(*timestamppb.Timestamp)(nil),            // 38: google.protobuf.Timestamp
-	(*Text)(nil),                             // 39: laterna.v1.Text
+	(*RequestAlbum)(nil),                     // 12: laterna.v1.RequestAlbum
+	(*ListRequestAlbumsRequest)(nil),         // 13: laterna.v1.ListRequestAlbumsRequest
+	(*ListRequestAlbumsResponse)(nil),        // 14: laterna.v1.ListRequestAlbumsResponse
+	(*ChooseRequestAlbumsRequest)(nil),       // 15: laterna.v1.ChooseRequestAlbumsRequest
+	(*ChooseRequestAlbumsResponse)(nil),      // 16: laterna.v1.ChooseRequestAlbumsResponse
+	(*CreateRequestRequest)(nil),             // 17: laterna.v1.CreateRequestRequest
+	(*CreateRequestResponse)(nil),            // 18: laterna.v1.CreateRequestResponse
+	(*ListMyRequestsRequest)(nil),            // 19: laterna.v1.ListMyRequestsRequest
+	(*ListMyRequestsResponse)(nil),           // 20: laterna.v1.ListMyRequestsResponse
+	(*GetRequestRequest)(nil),                // 21: laterna.v1.GetRequestRequest
+	(*GetRequestResponse)(nil),               // 22: laterna.v1.GetRequestResponse
+	(*CancelRequestRequest)(nil),             // 23: laterna.v1.CancelRequestRequest
+	(*CancelRequestResponse)(nil),            // 24: laterna.v1.CancelRequestResponse
+	(*ListRequestsRequest)(nil),              // 25: laterna.v1.ListRequestsRequest
+	(*ListRequestsResponse)(nil),             // 26: laterna.v1.ListRequestsResponse
+	(*ApproveRequestRequest)(nil),            // 27: laterna.v1.ApproveRequestRequest
+	(*ApproveRequestResponse)(nil),           // 28: laterna.v1.ApproveRequestResponse
+	(*DeclineRequestRequest)(nil),            // 29: laterna.v1.DeclineRequestRequest
+	(*DeclineRequestResponse)(nil),           // 30: laterna.v1.DeclineRequestResponse
+	(*DeleteRequestRequest)(nil),             // 31: laterna.v1.DeleteRequestRequest
+	(*DeleteRequestResponse)(nil),            // 32: laterna.v1.DeleteRequestResponse
+	(*RequestRootFolder)(nil),                // 33: laterna.v1.RequestRootFolder
+	(*RequestQualityProfile)(nil),            // 34: laterna.v1.RequestQualityProfile
+	(*GetRequestOptionsRequest)(nil),         // 35: laterna.v1.GetRequestOptionsRequest
+	(*GetRequestOptionsResponse)(nil),        // 36: laterna.v1.GetRequestOptionsResponse
+	(*CreateRequestDestinationRequest)(nil),  // 37: laterna.v1.CreateRequestDestinationRequest
+	(*CreateRequestDestinationResponse)(nil), // 38: laterna.v1.CreateRequestDestinationResponse
+	(*UpdateRequestDestinationRequest)(nil),  // 39: laterna.v1.UpdateRequestDestinationRequest
+	(*UpdateRequestDestinationResponse)(nil), // 40: laterna.v1.UpdateRequestDestinationResponse
+	(*DeleteRequestDestinationRequest)(nil),  // 41: laterna.v1.DeleteRequestDestinationRequest
+	(*DeleteRequestDestinationResponse)(nil), // 42: laterna.v1.DeleteRequestDestinationResponse
+	(*timestamppb.Timestamp)(nil),            // 43: google.protobuf.Timestamp
+	(*Text)(nil),                             // 44: laterna.v1.Text
 }
 var file_laterna_v1_request_proto_depIdxs = []int32{
 	0,  // 0: laterna.v1.RequestableTitle.kind:type_name -> laterna.v1.RequestKind
@@ -2756,62 +3138,68 @@ var file_laterna_v1_request_proto_depIdxs = []int32{
 	2,  // 9: laterna.v1.MediaRequest.status:type_name -> laterna.v1.RequestStatus
 	3,  // 10: laterna.v1.MediaRequest.seasons:type_name -> laterna.v1.RequestSeasons
 	8,  // 11: laterna.v1.MediaRequest.destination:type_name -> laterna.v1.RequestDestination
-	38, // 12: laterna.v1.MediaRequest.created_at:type_name -> google.protobuf.Timestamp
-	38, // 13: laterna.v1.MediaRequest.decided_at:type_name -> google.protobuf.Timestamp
-	39, // 14: laterna.v1.MediaRequest.error_text:type_name -> laterna.v1.Text
-	38, // 15: laterna.v1.MediaRequest.available_at:type_name -> google.protobuf.Timestamp
-	0,  // 16: laterna.v1.CreateRequestRequest.kind:type_name -> laterna.v1.RequestKind
-	3,  // 17: laterna.v1.CreateRequestRequest.seasons:type_name -> laterna.v1.RequestSeasons
-	11, // 18: laterna.v1.CreateRequestResponse.request:type_name -> laterna.v1.MediaRequest
-	11, // 19: laterna.v1.ListMyRequestsResponse.requests:type_name -> laterna.v1.MediaRequest
-	11, // 20: laterna.v1.GetRequestResponse.request:type_name -> laterna.v1.MediaRequest
-	2,  // 21: laterna.v1.ListRequestsRequest.statuses:type_name -> laterna.v1.RequestStatus
-	11, // 22: laterna.v1.ListRequestsResponse.requests:type_name -> laterna.v1.MediaRequest
-	3,  // 23: laterna.v1.ApproveRequestRequest.seasons:type_name -> laterna.v1.RequestSeasons
-	11, // 24: laterna.v1.ApproveRequestResponse.request:type_name -> laterna.v1.MediaRequest
-	11, // 25: laterna.v1.DeclineRequestResponse.request:type_name -> laterna.v1.MediaRequest
-	0,  // 26: laterna.v1.GetRequestOptionsRequest.kind:type_name -> laterna.v1.RequestKind
-	28, // 27: laterna.v1.GetRequestOptionsResponse.root_folders:type_name -> laterna.v1.RequestRootFolder
-	29, // 28: laterna.v1.GetRequestOptionsResponse.quality_profiles:type_name -> laterna.v1.RequestQualityProfile
-	29, // 29: laterna.v1.GetRequestOptionsResponse.metadata_profiles:type_name -> laterna.v1.RequestQualityProfile
-	0,  // 30: laterna.v1.CreateRequestDestinationRequest.kind:type_name -> laterna.v1.RequestKind
-	4,  // 31: laterna.v1.CreateRequestDestinationRequest.series_type:type_name -> laterna.v1.RequestSeriesType
-	8,  // 32: laterna.v1.CreateRequestDestinationResponse.destination:type_name -> laterna.v1.RequestDestination
-	4,  // 33: laterna.v1.UpdateRequestDestinationRequest.series_type:type_name -> laterna.v1.RequestSeriesType
-	8,  // 34: laterna.v1.UpdateRequestDestinationResponse.destination:type_name -> laterna.v1.RequestDestination
-	6,  // 35: laterna.v1.RequestService.SearchRequestable:input_type -> laterna.v1.SearchRequestableRequest
-	9,  // 36: laterna.v1.RequestService.ListRequestDestinations:input_type -> laterna.v1.ListRequestDestinationsRequest
-	12, // 37: laterna.v1.RequestService.CreateRequest:input_type -> laterna.v1.CreateRequestRequest
-	14, // 38: laterna.v1.RequestService.ListMyRequests:input_type -> laterna.v1.ListMyRequestsRequest
-	16, // 39: laterna.v1.RequestService.GetRequest:input_type -> laterna.v1.GetRequestRequest
-	18, // 40: laterna.v1.RequestService.CancelRequest:input_type -> laterna.v1.CancelRequestRequest
-	20, // 41: laterna.v1.RequestService.ListRequests:input_type -> laterna.v1.ListRequestsRequest
-	22, // 42: laterna.v1.RequestService.ApproveRequest:input_type -> laterna.v1.ApproveRequestRequest
-	24, // 43: laterna.v1.RequestService.DeclineRequest:input_type -> laterna.v1.DeclineRequestRequest
-	26, // 44: laterna.v1.RequestService.DeleteRequest:input_type -> laterna.v1.DeleteRequestRequest
-	30, // 45: laterna.v1.RequestService.GetRequestOptions:input_type -> laterna.v1.GetRequestOptionsRequest
-	32, // 46: laterna.v1.RequestService.CreateRequestDestination:input_type -> laterna.v1.CreateRequestDestinationRequest
-	34, // 47: laterna.v1.RequestService.UpdateRequestDestination:input_type -> laterna.v1.UpdateRequestDestinationRequest
-	36, // 48: laterna.v1.RequestService.DeleteRequestDestination:input_type -> laterna.v1.DeleteRequestDestinationRequest
-	7,  // 49: laterna.v1.RequestService.SearchRequestable:output_type -> laterna.v1.SearchRequestableResponse
-	10, // 50: laterna.v1.RequestService.ListRequestDestinations:output_type -> laterna.v1.ListRequestDestinationsResponse
-	13, // 51: laterna.v1.RequestService.CreateRequest:output_type -> laterna.v1.CreateRequestResponse
-	15, // 52: laterna.v1.RequestService.ListMyRequests:output_type -> laterna.v1.ListMyRequestsResponse
-	17, // 53: laterna.v1.RequestService.GetRequest:output_type -> laterna.v1.GetRequestResponse
-	19, // 54: laterna.v1.RequestService.CancelRequest:output_type -> laterna.v1.CancelRequestResponse
-	21, // 55: laterna.v1.RequestService.ListRequests:output_type -> laterna.v1.ListRequestsResponse
-	23, // 56: laterna.v1.RequestService.ApproveRequest:output_type -> laterna.v1.ApproveRequestResponse
-	25, // 57: laterna.v1.RequestService.DeclineRequest:output_type -> laterna.v1.DeclineRequestResponse
-	27, // 58: laterna.v1.RequestService.DeleteRequest:output_type -> laterna.v1.DeleteRequestResponse
-	31, // 59: laterna.v1.RequestService.GetRequestOptions:output_type -> laterna.v1.GetRequestOptionsResponse
-	33, // 60: laterna.v1.RequestService.CreateRequestDestination:output_type -> laterna.v1.CreateRequestDestinationResponse
-	35, // 61: laterna.v1.RequestService.UpdateRequestDestination:output_type -> laterna.v1.UpdateRequestDestinationResponse
-	37, // 62: laterna.v1.RequestService.DeleteRequestDestination:output_type -> laterna.v1.DeleteRequestDestinationResponse
-	49, // [49:63] is the sub-list for method output_type
-	35, // [35:49] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	43, // 12: laterna.v1.MediaRequest.created_at:type_name -> google.protobuf.Timestamp
+	43, // 13: laterna.v1.MediaRequest.decided_at:type_name -> google.protobuf.Timestamp
+	44, // 14: laterna.v1.MediaRequest.error_text:type_name -> laterna.v1.Text
+	43, // 15: laterna.v1.MediaRequest.available_at:type_name -> google.protobuf.Timestamp
+	12, // 16: laterna.v1.ListRequestAlbumsResponse.albums:type_name -> laterna.v1.RequestAlbum
+	11, // 17: laterna.v1.ChooseRequestAlbumsResponse.request:type_name -> laterna.v1.MediaRequest
+	0,  // 18: laterna.v1.CreateRequestRequest.kind:type_name -> laterna.v1.RequestKind
+	3,  // 19: laterna.v1.CreateRequestRequest.seasons:type_name -> laterna.v1.RequestSeasons
+	11, // 20: laterna.v1.CreateRequestResponse.request:type_name -> laterna.v1.MediaRequest
+	11, // 21: laterna.v1.ListMyRequestsResponse.requests:type_name -> laterna.v1.MediaRequest
+	11, // 22: laterna.v1.GetRequestResponse.request:type_name -> laterna.v1.MediaRequest
+	2,  // 23: laterna.v1.ListRequestsRequest.statuses:type_name -> laterna.v1.RequestStatus
+	11, // 24: laterna.v1.ListRequestsResponse.requests:type_name -> laterna.v1.MediaRequest
+	3,  // 25: laterna.v1.ApproveRequestRequest.seasons:type_name -> laterna.v1.RequestSeasons
+	11, // 26: laterna.v1.ApproveRequestResponse.request:type_name -> laterna.v1.MediaRequest
+	11, // 27: laterna.v1.DeclineRequestResponse.request:type_name -> laterna.v1.MediaRequest
+	0,  // 28: laterna.v1.GetRequestOptionsRequest.kind:type_name -> laterna.v1.RequestKind
+	33, // 29: laterna.v1.GetRequestOptionsResponse.root_folders:type_name -> laterna.v1.RequestRootFolder
+	34, // 30: laterna.v1.GetRequestOptionsResponse.quality_profiles:type_name -> laterna.v1.RequestQualityProfile
+	34, // 31: laterna.v1.GetRequestOptionsResponse.metadata_profiles:type_name -> laterna.v1.RequestQualityProfile
+	0,  // 32: laterna.v1.CreateRequestDestinationRequest.kind:type_name -> laterna.v1.RequestKind
+	4,  // 33: laterna.v1.CreateRequestDestinationRequest.series_type:type_name -> laterna.v1.RequestSeriesType
+	8,  // 34: laterna.v1.CreateRequestDestinationResponse.destination:type_name -> laterna.v1.RequestDestination
+	4,  // 35: laterna.v1.UpdateRequestDestinationRequest.series_type:type_name -> laterna.v1.RequestSeriesType
+	8,  // 36: laterna.v1.UpdateRequestDestinationResponse.destination:type_name -> laterna.v1.RequestDestination
+	6,  // 37: laterna.v1.RequestService.SearchRequestable:input_type -> laterna.v1.SearchRequestableRequest
+	9,  // 38: laterna.v1.RequestService.ListRequestDestinations:input_type -> laterna.v1.ListRequestDestinationsRequest
+	17, // 39: laterna.v1.RequestService.CreateRequest:input_type -> laterna.v1.CreateRequestRequest
+	19, // 40: laterna.v1.RequestService.ListMyRequests:input_type -> laterna.v1.ListMyRequestsRequest
+	21, // 41: laterna.v1.RequestService.GetRequest:input_type -> laterna.v1.GetRequestRequest
+	23, // 42: laterna.v1.RequestService.CancelRequest:input_type -> laterna.v1.CancelRequestRequest
+	13, // 43: laterna.v1.RequestService.ListRequestAlbums:input_type -> laterna.v1.ListRequestAlbumsRequest
+	15, // 44: laterna.v1.RequestService.ChooseRequestAlbums:input_type -> laterna.v1.ChooseRequestAlbumsRequest
+	25, // 45: laterna.v1.RequestService.ListRequests:input_type -> laterna.v1.ListRequestsRequest
+	27, // 46: laterna.v1.RequestService.ApproveRequest:input_type -> laterna.v1.ApproveRequestRequest
+	29, // 47: laterna.v1.RequestService.DeclineRequest:input_type -> laterna.v1.DeclineRequestRequest
+	31, // 48: laterna.v1.RequestService.DeleteRequest:input_type -> laterna.v1.DeleteRequestRequest
+	35, // 49: laterna.v1.RequestService.GetRequestOptions:input_type -> laterna.v1.GetRequestOptionsRequest
+	37, // 50: laterna.v1.RequestService.CreateRequestDestination:input_type -> laterna.v1.CreateRequestDestinationRequest
+	39, // 51: laterna.v1.RequestService.UpdateRequestDestination:input_type -> laterna.v1.UpdateRequestDestinationRequest
+	41, // 52: laterna.v1.RequestService.DeleteRequestDestination:input_type -> laterna.v1.DeleteRequestDestinationRequest
+	7,  // 53: laterna.v1.RequestService.SearchRequestable:output_type -> laterna.v1.SearchRequestableResponse
+	10, // 54: laterna.v1.RequestService.ListRequestDestinations:output_type -> laterna.v1.ListRequestDestinationsResponse
+	18, // 55: laterna.v1.RequestService.CreateRequest:output_type -> laterna.v1.CreateRequestResponse
+	20, // 56: laterna.v1.RequestService.ListMyRequests:output_type -> laterna.v1.ListMyRequestsResponse
+	22, // 57: laterna.v1.RequestService.GetRequest:output_type -> laterna.v1.GetRequestResponse
+	24, // 58: laterna.v1.RequestService.CancelRequest:output_type -> laterna.v1.CancelRequestResponse
+	14, // 59: laterna.v1.RequestService.ListRequestAlbums:output_type -> laterna.v1.ListRequestAlbumsResponse
+	16, // 60: laterna.v1.RequestService.ChooseRequestAlbums:output_type -> laterna.v1.ChooseRequestAlbumsResponse
+	26, // 61: laterna.v1.RequestService.ListRequests:output_type -> laterna.v1.ListRequestsResponse
+	28, // 62: laterna.v1.RequestService.ApproveRequest:output_type -> laterna.v1.ApproveRequestResponse
+	30, // 63: laterna.v1.RequestService.DeclineRequest:output_type -> laterna.v1.DeclineRequestResponse
+	32, // 64: laterna.v1.RequestService.DeleteRequest:output_type -> laterna.v1.DeleteRequestResponse
+	36, // 65: laterna.v1.RequestService.GetRequestOptions:output_type -> laterna.v1.GetRequestOptionsResponse
+	38, // 66: laterna.v1.RequestService.CreateRequestDestination:output_type -> laterna.v1.CreateRequestDestinationResponse
+	40, // 67: laterna.v1.RequestService.UpdateRequestDestination:output_type -> laterna.v1.UpdateRequestDestinationResponse
+	42, // 68: laterna.v1.RequestService.DeleteRequestDestination:output_type -> laterna.v1.DeleteRequestDestinationResponse
+	53, // [53:69] is the sub-list for method output_type
+	37, // [37:53] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_request_proto_init() }
@@ -2821,15 +3209,15 @@ func file_laterna_v1_request_proto_init() {
 	}
 	file_laterna_v1_options_proto_init()
 	file_laterna_v1_text_proto_init()
-	file_laterna_v1_request_proto_msgTypes[17].OneofWrappers = []any{}
-	file_laterna_v1_request_proto_msgTypes[29].OneofWrappers = []any{}
+	file_laterna_v1_request_proto_msgTypes[22].OneofWrappers = []any{}
+	file_laterna_v1_request_proto_msgTypes[34].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_request_proto_rawDesc), len(file_laterna_v1_request_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   33,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

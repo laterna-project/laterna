@@ -47,8 +47,9 @@ type musicImage struct {
 }
 
 type musicStats struct {
-	TrackFileCount int `json:"trackFileCount"`
-	TrackCount     int `json:"trackCount"`
+	TrackFileCount  int `json:"trackFileCount"`
+	TrackCount      int `json:"trackCount"`
+	TotalTrackCount int `json:"totalTrackCount"`
 }
 
 type artistJSON struct {
@@ -69,6 +70,7 @@ type albumJSON struct {
 	Title          string       `json:"title"`
 	Overview       string       `json:"overview"`
 	AlbumType      string       `json:"albumType"`
+	SecondaryTypes []string     `json:"secondaryTypes"`
 	ReleaseDate    string       `json:"releaseDate"`
 	Monitored      bool         `json:"monitored"`
 	Images         []musicImage `json:"images"`
@@ -209,12 +211,120 @@ func (c *Client) GetMusic(ctx context.Context, album bool, arrID int) (MusicTitl
 	return a.title(), err
 }
 
-// MetadataProfiles lists Lidarr's metadata profiles (which kinds of releases an artist's albums
-// include).
-func (c *Client) MetadataProfiles(ctx context.Context) ([]QualityProfile, error) {
-	var list []QualityProfile
-	err := c.do(ctx, http.MethodGet, "/metadataprofile", nil, &list)
-	return list, err
+// MetadataProfile is a metadata profile of Lidarr: the kinds of releases an artist's albums
+// include. An album is kept when its primary type and each of its secondary types are allowed
+// ("Studio" stands for no secondary type).
+type MetadataProfile struct {
+	ID             int
+	Name           string
+	PrimaryTypes   []string
+	SecondaryTypes []string
+}
+
+// MetadataProfiles lists Lidarr's metadata profiles.
+func (c *Client) MetadataProfiles(ctx context.Context) ([]MetadataProfile, error) {
+	type allowed struct {
+		AlbumType struct {
+			Name string `json:"name"`
+		} `json:"albumType"`
+		Allowed bool `json:"allowed"`
+	}
+	var list []struct {
+		ID        int       `json:"id"`
+		Name      string    `json:"name"`
+		Primary   []allowed `json:"primaryAlbumTypes"`
+		Secondary []allowed `json:"secondaryAlbumTypes"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/metadataprofile", nil, &list); err != nil {
+		return nil, err
+	}
+	names := func(types []allowed) []string {
+		var out []string
+		for _, t := range types {
+			if t.Allowed && t.AlbumType.Name != "" {
+				out = append(out, t.AlbumType.Name)
+			}
+		}
+		return out
+	}
+	out := make([]MetadataProfile, 0, len(list))
+	for _, p := range list {
+		out = append(out, MetadataProfile{
+			ID: p.ID, Name: p.Name, PrimaryTypes: names(p.Primary), SecondaryTypes: names(p.Secondary),
+		})
+	}
+	return out, nil
+}
+
+// Album is an album of an artist Lidarr has.
+type Album struct {
+	// ArrID is its ID on Lidarr; MBID the MusicBrainz ID of its release group.
+	ArrID int
+	MBID  string
+	Title string
+	// Year it came out; 0 if unknown.
+	Year int
+	// Type is its primary type ("Album", "EP", "Single"...); SecondaryTypes are empty for a studio
+	// release.
+	Type           string
+	SecondaryTypes []string
+	Monitored      bool
+	// Tracks it has, and those with a file.
+	Tracks, Files int
+	// Poster is the address of its cover; empty if Lidarr has none.
+	Poster string
+}
+
+// ArtistAlbums lists the albums Lidarr has for an artist (those its metadata profile keeps), oldest
+// first. The list is empty until Lidarr has read the discography of an artist it just added.
+func (c *Client) ArtistAlbums(ctx context.Context, artistID int) ([]Album, error) {
+	var albums []albumJSON
+	if err := c.do(ctx, http.MethodGet, "/album?artistId="+strconv.Itoa(artistID), nil, &albums); err != nil {
+		return nil, err
+	}
+	slices.SortStableFunc(albums, func(x, y albumJSON) int { return cmp.Compare(x.ReleaseDate, y.ReleaseDate) })
+	out := make([]Album, 0, len(albums))
+	for _, a := range albums {
+		tracks := max(a.Statistics.TotalTrackCount, a.Statistics.TrackCount)
+		year := 0
+		if len(a.ReleaseDate) >= 4 {
+			year, _ = strconv.Atoi(a.ReleaseDate[:4])
+		}
+		poster := a.RemoteCover
+		if poster == "" {
+			poster = image(a.Images, "cover")
+		}
+		out = append(out, Album{
+			ArrID: a.ID, MBID: a.ForeignAlbumID, Title: a.Title, Year: year, Type: a.AlbumType,
+			SecondaryTypes: a.SecondaryTypes, Monitored: a.Monitored, Tracks: tracks,
+			Files: a.Statistics.TrackFileCount, Poster: poster,
+		})
+	}
+	return out, nil
+}
+
+// ChooseAlbums monitors the given albums of an artist Lidarr has, and searches for them. future
+// says whether the albums that come out later are monitored too.
+func (c *Client) ChooseAlbums(ctx context.Context, artistID int, albumIDs []int, future bool) error {
+	var r resource
+	if err := c.do(ctx, http.MethodGet, "/artist/"+strconv.Itoa(artistID), nil, &r); err != nil {
+		return err
+	}
+	if r == nil {
+		return &Error{Status: http.StatusNotFound, Message: "unknown artist " + strconv.Itoa(artistID)}
+	}
+	r["monitored"] = true
+	r["monitorNewItems"] = "none"
+	if future {
+		r["monitorNewItems"] = "all"
+	}
+	if err := c.do(ctx, http.MethodPut, "/artist/"+strconv.Itoa(artistID), r, nil); err != nil {
+		return err
+	}
+	if len(albumIDs) == 0 {
+		return nil
+	}
+	return c.searchAlbums(ctx, albumIDs)
 }
 
 // MusicOptions says where and how an artist or an album is added.
@@ -222,15 +332,21 @@ type MusicOptions struct {
 	RootFolder        string
 	QualityProfileID  int
 	MetadataProfileID int
-	// Albums of an artist: "all" (and the next ones as they come out), "first" or "latest".
+	// Albums of an artist: "all" (and the next ones as they come out), "first", "latest", or
+	// "chosen": none for now, they are chosen once Lidarr lists them (ArtistAlbums, ChooseAlbums).
 	Albums string
 }
+
+// albumsChosen is MusicOptions.Albums for an artist whose albums are chosen later.
+const albumsChosen = "chosen"
 
 // artistMonitor is Lidarr's addOptions.monitor for the albums asked for.
 func artistMonitor(albums string) string {
 	switch albums {
 	case "first", "latest":
 		return albums
+	case albumsChosen:
+		return "none"
 	}
 	return "all"
 }
@@ -242,6 +358,10 @@ func (c *Client) AddArtist(ctx context.Context, mbid string, o MusicOptions) (in
 	if t, ok, err := c.TrackedMusic(ctx, false, mbid); err != nil {
 		return 0, err
 	} else if ok {
+		if o.Albums == albumsChosen {
+			// Nothing changes until the albums are chosen.
+			return t.ArrID, nil
+		}
 		return t.ArrID, c.monitorArtist(ctx, t.ArrID, o)
 	}
 	r, err := c.lookupMusic(ctx, false, mbid)
@@ -259,7 +379,9 @@ func (c *Client) AddArtist(ctx context.Context, mbid string, o MusicOptions) (in
 	if o.Albums == "all" || o.Albums == "" {
 		r["monitorNewItems"] = "all"
 	}
-	r["addOptions"] = map[string]any{"monitor": artistMonitor(o.Albums), "searchForMissingAlbums": true}
+	r["addOptions"] = map[string]any{
+		"monitor": artistMonitor(o.Albums), "searchForMissingAlbums": o.Albums != albumsChosen,
+	}
 	var added struct {
 		ID int `json:"id"`
 	}

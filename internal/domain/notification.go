@@ -17,6 +17,9 @@ const (
 	NotificationRequestFailed NotificationKind = "request_failed"
 	// Episodes arrived for a series the profile follows.
 	NotificationNewEpisodes NotificationKind = "new_episodes"
+	// NotificationRequestChoose tells a profile that the albums of an artist it asked for can be
+	// chosen.
+	NotificationRequestChoose NotificationKind = "request_choose"
 )
 
 // Notification tells a profile about something that happened while it was not looking.

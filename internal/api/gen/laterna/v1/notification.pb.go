@@ -39,6 +39,8 @@ const (
 	// Episodes arrived for a series the profile follows: one of its favorites, or one it played or
 	// started an episode of. Episodes that arrive together make one notification.
 	NotificationKind_NOTIFICATION_KIND_NEW_EPISODES NotificationKind = 6
+	// The albums of an artist the profile asked for can be chosen (REQUEST_STATUS_CHOOSING).
+	NotificationKind_NOTIFICATION_KIND_REQUEST_CHOOSE NotificationKind = 7
 )
 
 // Enum value maps for NotificationKind.
@@ -51,6 +53,7 @@ var (
 		4: "NOTIFICATION_KIND_REQUEST_AVAILABLE",
 		5: "NOTIFICATION_KIND_REQUEST_FAILED",
 		6: "NOTIFICATION_KIND_NEW_EPISODES",
+		7: "NOTIFICATION_KIND_REQUEST_CHOOSE",
 	}
 	NotificationKind_value = map[string]int32{
 		"NOTIFICATION_KIND_UNSPECIFIED":       0,
@@ -60,6 +63,7 @@ var (
 		"NOTIFICATION_KIND_REQUEST_AVAILABLE": 4,
 		"NOTIFICATION_KIND_REQUEST_FAILED":    5,
 		"NOTIFICATION_KIND_NEW_EPISODES":      6,
+		"NOTIFICATION_KIND_REQUEST_CHOOSE":    7,
 	}
 )
 
@@ -811,7 +815,7 @@ const file_laterna_v1_notification_proto_rawDesc = "" +
 	"\x04auth\x18\x03 \x01(\tR\x04auth\"\x17\n" +
 	"\x15SubscribePushResponse\"\x18\n" +
 	"\x16UnsubscribePushRequest\"\x19\n" +
-	"\x17UnsubscribePushResponse*\x9f\x02\n" +
+	"\x17UnsubscribePushResponse*\xc5\x02\n" +
 	"\x10NotificationKind\x12!\n" +
 	"\x1dNOTIFICATION_KIND_UNSPECIFIED\x10\x00\x12%\n" +
 	"!NOTIFICATION_KIND_REQUEST_PENDING\x10\x01\x12&\n" +
@@ -819,7 +823,8 @@ const file_laterna_v1_notification_proto_rawDesc = "" +
 	"\"NOTIFICATION_KIND_REQUEST_DECLINED\x10\x03\x12'\n" +
 	"#NOTIFICATION_KIND_REQUEST_AVAILABLE\x10\x04\x12$\n" +
 	" NOTIFICATION_KIND_REQUEST_FAILED\x10\x05\x12\"\n" +
-	"\x1eNOTIFICATION_KIND_NEW_EPISODES\x10\x062\xf3\x04\n" +
+	"\x1eNOTIFICATION_KIND_NEW_EPISODES\x10\x06\x12$\n" +
+	" NOTIFICATION_KIND_REQUEST_CHOOSE\x10\a2\xf3\x04\n" +
 	"\x13NotificationService\x12e\n" +
 	"\x11ListNotifications\x12$.laterna.v1.ListNotificationsRequest\x1a%.laterna.v1.ListNotificationsResponse\"\x03\x90\x02\x01\x12q\n" +
 	"\x15MarkNotificationsRead\x12(.laterna.v1.MarkNotificationsReadRequest\x1a).laterna.v1.MarkNotificationsReadResponse\"\x03\x90\x02\x02\x12k\n" +

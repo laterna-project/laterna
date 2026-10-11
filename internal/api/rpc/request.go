@@ -36,6 +36,7 @@ var requestableStates = map[domain.RequestableState]laternav1.RequestableState{
 var requestStatuses = map[domain.RequestStatus]laternav1.RequestStatus{
 	domain.RequestPending:     laternav1.RequestStatus_REQUEST_STATUS_PENDING,
 	domain.RequestApproved:    laternav1.RequestStatus_REQUEST_STATUS_APPROVED,
+	domain.RequestChoosing:    laternav1.RequestStatus_REQUEST_STATUS_CHOOSING,
 	domain.RequestDownloading: laternav1.RequestStatus_REQUEST_STATUS_DOWNLOADING,
 	domain.RequestAvailable:   laternav1.RequestStatus_REQUEST_STATUS_AVAILABLE,
 	domain.RequestDeclined:    laternav1.RequestStatus_REQUEST_STATUS_DECLINED,
@@ -144,6 +145,7 @@ func requestMsg(ctx context.Context, r domain.MediaRequest) *laternav1.MediaRequ
 		DeclineReason: r.DeclineReason, Progress: r.Progress, ItemId: idString(r.ItemID),
 		EpisodesAvailable: clampInt32(r.EpisodesAvailable), EpisodesWanted: clampInt32(r.EpisodesWanted),
 		AvailableAt: optTimestamp(r.AvailableAt), ExternalKey: r.ExternalKey, Subtitle: r.Subtitle,
+		AlbumTitles: r.AlbumTitles,
 	}
 	for _, n := range r.SeasonNumbers {
 		msg.SeasonNumbers = append(msg.SeasonNumbers, clampInt32(n))
@@ -248,6 +250,40 @@ func (s *RequestService) CancelRequest(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&laternav1.CancelRequestResponse{}), nil
 }
 
+// ListRequestAlbums lists the albums of the artist of a request, as Lidarr has them.
+func (s *RequestService) ListRequestAlbums(ctx context.Context, req *connect.Request[laternav1.ListRequestAlbumsRequest]) (*connect.Response[laternav1.ListRequestAlbumsResponse], error) {
+	id, err := parseID(req.Msg.GetRequestId(), "request_id")
+	if err != nil {
+		return nil, err
+	}
+	albums, err := s.app.RequestAlbums(ctx, principal(ctx), id)
+	if err != nil {
+		return nil, err
+	}
+	resp := &laternav1.ListRequestAlbumsResponse{Albums: make([]*laternav1.RequestAlbum, 0, len(albums))}
+	for _, al := range albums {
+		resp.Albums = append(resp.Albums, &laternav1.RequestAlbum{
+			Key: al.Key, Title: al.Title, Year: clampInt32(al.Year), Type: al.Type, SecondaryTypes: al.SecondaryTypes,
+			TrackCount: clampInt32(al.Tracks), Monitored: al.Monitored, Available: al.Available,
+			PosterUrl: app.RequestPosterPath(al.Poster),
+		})
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ChooseRequestAlbums says which albums a request asks for.
+func (s *RequestService) ChooseRequestAlbums(ctx context.Context, req *connect.Request[laternav1.ChooseRequestAlbumsRequest]) (*connect.Response[laternav1.ChooseRequestAlbumsResponse], error) {
+	id, err := parseID(req.Msg.GetRequestId(), "request_id")
+	if err != nil {
+		return nil, err
+	}
+	r, err := s.app.ChooseRequestAlbums(ctx, principal(ctx), id, req.Msg.GetAlbumKeys(), req.Msg.GetFutureAlbums())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.ChooseRequestAlbumsResponse{Request: requestMsg(ctx, r)}), nil
+}
+
 // ListRequests lists the requests of every account.
 func (s *RequestService) ListRequests(ctx context.Context, req *connect.Request[laternav1.ListRequestsRequest]) (*connect.Response[laternav1.ListRequestsResponse], error) {
 	var statuses []domain.RequestStatus
@@ -327,7 +363,9 @@ func (s *RequestService) GetRequestOptions(ctx context.Context, req *connect.Req
 		resp.QualityProfiles = append(resp.QualityProfiles, &laternav1.RequestQualityProfile{Id: clampInt32(q.ID), Name: q.Name})
 	}
 	for _, q := range opts.MetadataProfiles {
-		resp.MetadataProfiles = append(resp.MetadataProfiles, &laternav1.RequestQualityProfile{Id: clampInt32(q.ID), Name: q.Name})
+		resp.MetadataProfiles = append(resp.MetadataProfiles, &laternav1.RequestQualityProfile{
+			Id: clampInt32(q.ID), Name: q.Name, PrimaryTypes: q.PrimaryTypes, SecondaryTypes: q.SecondaryTypes,
+		})
 	}
 	return connect.NewResponse(resp), nil
 }
