@@ -28,8 +28,8 @@ server without a client.
   Radarr, Lidarr, Kodi or tinyMediaManager. No online lookup, no wrong match. Optional Sonarr,
   Radarr and Lidarr integration with webhooks.
 - **Requests.** Profiles ask for movies, series, music and books; an administrator approves, and
-  Sonarr, Radarr, Lidarr or LazyLibrarian fetch them. Each request is followed until it can be
-  watched, listened to or read.
+  Sonarr, Radarr, Lidarr or LazyLibrarian fetch them. The seasons of a series and the albums of an
+  artist can be chosen. Each request is followed until it can be watched, listened to or read.
 - **Notifications.** A profile is told what became of its requests and when episodes of the
   series it follows arrive, in the app or by web push when it is closed. The home page shows what
   Sonarr, Radarr and Lidarr expect next.
