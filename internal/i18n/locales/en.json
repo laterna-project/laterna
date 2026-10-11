@@ -418,6 +418,7 @@
   "reason.subtitle_burned": "The device cannot display these subtitles ({codec}): they are burned into the picture",
   "reason.video_unsupported": "The device cannot play this video ({codec}, {bit_depth}-bit, {dynamic_range})",
   "subtitle_search.file_gone": "The file is gone",
+  "subtitle_search.no_profile": "This title has no languages profile in {name}, which looks for no subtitle without one",
   "subtitle_search.not_followed": "{name} does not follow this title",
   "subtitle_search.not_read": "The subtitle was found but could not be read: {reason}",
   "subtitle_search.not_visible": "{name} found a subtitle, but saved it where Laterna does not see it",

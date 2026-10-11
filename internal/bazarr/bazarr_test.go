@@ -15,13 +15,19 @@ func TestClient(t *testing.T) {
 	srv := bazarrtest.New(t)
 	srv.Set(func(s *bazarrtest.Server) {
 		s.Disabled = []bazarr.Language{{Code: "de", Name: "German"}}
-		s.Series = []bazarr.Series{{ID: 7, TvdbID: 101, Title: "Frieren", Path: "/data/media/shows/Frieren"}}
+		s.Series = []bazarr.Series{
+			{ID: 7, TvdbID: 101, Title: "Frieren", Path: "/data/media/shows/Frieren", ProfileID: 2},
+			{ID: 8, TvdbID: 102, Title: "Other", Path: "/data/media/shows/Other"},
+		}
 		s.Episodes = []*bazarr.Video{
 			{ID: 71, SeriesID: 7, Season: 1, Episode: 1, Title: "The Journey's End", Path: "/data/media/shows/Frieren/Season 01/Frieren S01E01.mkv"},
 			{ID: 72, SeriesID: 7, Season: 1, Episode: 2, Path: "/data/media/shows/Frieren/Season 01/Frieren S01E02.mkv", Subtitles: []bazarr.Subtitle{{Language: "ja"}}},
-			{ID: 81, SeriesID: 8, Season: 1, Episode: 1},
+			{ID: 81, SeriesID: 8, Season: 1, Episode: 1, Path: "/data/media/shows/Other/Other S01E01.mkv"},
 		}
-		s.Movies = []*bazarr.Video{{ID: 3, ImdbID: "tt16428256", Title: "Suzume", Path: "/data/media/movies/Suzume (2022)/Suzume (2022).mkv"}}
+		s.Movies = []*bazarr.Video{
+			{ID: 3, ImdbID: "tt16428256", Title: "Suzume", Path: "/data/media/movies/Suzume (2022)/Suzume (2022).mkv", ProfileID: 1},
+			{ID: 4, Title: "Other", Path: "/data/media/movies/Other (2020)/Other (2020).mkv"},
+		}
 		s.Find = func(v bazarr.Video, w bazarr.Wanted) string {
 			if w.Language != "fr" {
 				return ""
@@ -42,7 +48,8 @@ func TestClient(t *testing.T) {
 		t.Errorf("languages: %+v %v", langs, err)
 	}
 	series, err := c.Series(ctx)
-	if err != nil || len(series) != 1 || series[0] != (bazarr.Series{ID: 7, TvdbID: 101, Title: "Frieren", Path: "/data/media/shows/Frieren"}) {
+	if err != nil || len(series) != 2 || series[0] != (bazarr.Series{ID: 7, TvdbID: 101, Title: "Frieren", Path: "/data/media/shows/Frieren", ProfileID: 2}) ||
+		series[1].ProfileID != 0 {
 		t.Errorf("series: %+v %v", series, err)
 	}
 	episodes, err := c.Episodes(ctx, 7)
@@ -51,7 +58,7 @@ func TestClient(t *testing.T) {
 		t.Fatalf("episodes: %+v %v", episodes, err)
 	}
 	movies, err := c.Movies(ctx)
-	if err != nil || len(movies) != 1 || movies[0].ImdbID != "tt16428256" {
+	if err != nil || len(movies) != 2 || movies[0].ImdbID != "tt16428256" || movies[0].ProfileID != 1 || movies[1].ProfileID != 0 {
 		t.Fatalf("movies: %+v %v", movies, err)
 	}
 
@@ -79,9 +86,19 @@ func TestClient(t *testing.T) {
 	if _, ok, err := c.Movie(ctx, 99); err != nil || ok {
 		t.Errorf("unknown movie: %v %v", ok, err)
 	}
+	// Without a languages profile, on the movie or on the series of the episode, the search is
+	// taken all the same and nothing ever arrives.
+	mustNil(c.SearchMovie(ctx, 4, bazarr.Wanted{Language: "fr"}))
+	if m, ok, err := c.Movie(ctx, 4); err != nil || !ok || m.ProfileID != 0 || len(m.Subtitles) != 0 {
+		t.Errorf("movie without a profile: %+v %v %v", m, ok, err)
+	}
+	mustNil(c.SearchEpisode(ctx, 8, 81, bazarr.Wanted{Language: "fr"}))
+	if e, ok, err := c.Episode(ctx, 81); err != nil || !ok || len(e.Subtitles) != 0 {
+		t.Errorf("episode of a series without a profile: %+v %v %v", e, ok, err)
+	}
 	var got []bazarrtest.Search
 	srv.Set(func(s *bazarrtest.Server) { got = slices.Clone(s.Searches) })
-	if len(got) != 3 || got[1] != (bazarrtest.Search{SeriesID: 7, VideoID: 71, Wanted: bazarr.Wanted{Language: "fr", HearingImpaired: true}}) ||
+	if len(got) != 5 || got[1] != (bazarrtest.Search{SeriesID: 7, VideoID: 71, Wanted: bazarr.Wanted{Language: "fr", HearingImpaired: true}}) ||
 		got[2].SeriesID != 0 || got[2].VideoID != 3 {
 		t.Errorf("searches: %+v", got)
 	}

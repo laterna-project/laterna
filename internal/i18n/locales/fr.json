@@ -418,6 +418,7 @@
   "reason.subtitle_burned": "L'appareil n'affiche pas ces sous-titres ({codec}) : ils sont incrustés dans l'image",
   "reason.video_unsupported": "L'appareil ne lit pas cette vidéo ({codec}, {bit_depth} bits, {dynamic_range})",
   "subtitle_search.file_gone": "Le fichier a disparu",
+  "subtitle_search.no_profile": "Ce titre n'a pas de profil de langues dans {name}, qui ne cherche aucun sous-titre sans profil",
   "subtitle_search.not_followed": "{name} ne suit pas ce titre",
   "subtitle_search.not_read": "Le sous-titre a été trouvé mais n'a pas pu être lu : {reason}",
   "subtitle_search.not_visible": "{name} a trouvé un sous-titre, mais l'a rangé là où Laterna ne le voit pas",

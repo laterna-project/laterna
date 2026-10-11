@@ -49,7 +49,7 @@ func TestSubtitleSearchOverHTTP(t *testing.T) {
 	var followed []*bazarr.Video
 	err = filepath.WalkDir(filepath.Join(testfixtures.Root(), "Movies"), func(p string, d fs.DirEntry, err error) error {
 		if ext := strings.ToLower(filepath.Ext(p)); err == nil && !d.IsDir() && (ext == ".mkv" || ext == ".mp4") {
-			followed = append(followed, &bazarr.Video{ID: len(followed) + 1, Path: "/elsewhere/" + filepath.Base(p)})
+			followed = append(followed, &bazarr.Video{ID: len(followed) + 1, Path: "/elsewhere/" + filepath.Base(p), ProfileID: 1})
 		}
 		return err
 	})
