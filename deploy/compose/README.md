@@ -398,7 +398,14 @@ webhook at `http://laterna:8096`. LazyLibrarian (`http://lazylibrarian:5299`, it
 Config, Interface) only fetches the books profiles ask for: it writes no metadata and takes no
 webhook. Bazarr (`http://bazarr:6767`, its API key under Settings, General) is linked the same
 way, for the subtitles profiles ask for: it saves them next to the videos, where Laterna reads
-them. The CI of each repository starts Sonarr, Radarr and Laterna together. Instances that run
+them.
+
+Bazarr has to be set up for those searches: the languages you want, at least one provider that
+covers your library, and a languages profile on every series and movie, with a default one for
+those to come (Settings, Languages and Providers). Bazarr looks nothing up for a title without a
+profile, and Laterna then says so instead of searching.
+
+The CI of each repository starts Sonarr, Radarr and Laterna together. Instances that run
 elsewhere work the same way: `external-network` on their network, or their address and the
 server's.
 

@@ -318,6 +318,11 @@ func (a *App) searchSubtitle(ctx context.Context, target string) error {
 	if !found {
 		return fail(domain.T("subtitle_search.not_followed", "name", bazarrName))
 	}
+	if video.ProfileID == 0 {
+		// Bazarr would take the search and drop it without a word: the wait would end as "not
+		// found", when an administrator can fix it by giving the title a languages profile.
+		return fail(domain.T("subtitle_search.no_profile", "name", bazarrName))
+	}
 
 	want := bazarr.Wanted{Language: wanted.Language, Forced: wanted.Forced, HearingImpaired: wanted.HearingImpaired}
 	had := matching(video.Subtitles, want)
@@ -426,7 +431,8 @@ func (a *App) awaitSubtitle(ctx context.Context, c *bazarr.Client, video bazarr.
 
 // bazarrVideo finds the episode or the movie of a file among what Bazarr follows: by the ID its
 // NFO gives (TVDB for the series, IMDb for a movie), else by the names of its folder and file.
-// Bazarr may see the files under other folders than Laterna does.
+// Bazarr may see the files under other folders than Laterna does. An episode comes back with the
+// languages profile of its series, the one Bazarr searches it with.
 func (a *App) bazarrVideo(ctx context.Context, c *bazarr.Client, f domain.MediaFile, itemID domain.ID) (bazarr.Video, bool, error) {
 	read := a.store.Read()
 	item, err := read.View(ctx, domain.Viewer{}, itemID)
@@ -486,19 +492,22 @@ func (a *App) bazarrVideo(ctx context.Context, c *bazarr.Client, f domain.MediaF
 	if err != nil {
 		return bazarr.Video{}, false, err
 	}
-	byNumber := -1
+	match := -1
 	for i, e := range episodes {
 		if strings.EqualFold(baseName(e.Path), file) {
-			return e, true, nil
+			match = i
+			break
 		}
 		if e.Season == item.Episode.SeasonNumber && e.Episode == item.Episode.Number {
-			byNumber = i
+			match = i
 		}
 	}
-	if byNumber >= 0 {
-		return episodes[byNumber], true, nil
+	if match < 0 {
+		return bazarr.Video{}, false, nil
 	}
-	return bazarr.Video{}, false, nil
+	episode := episodes[match]
+	episode.ProfileID = all[series].ProfileID
+	return episode, true, nil
 }
 
 // slashed writes a path with forward slashes, whichever system wrote it.
