@@ -56,3 +56,23 @@ func FuzzSidecarFor(f *testing.F) {
 		}
 	})
 }
+
+func TestLanguageTag(t *testing.T) {
+	for in, want := range map[string]string{
+		"fre": "fr", "fra": "fr", "fr-CA": "fr", "French": "fr", "jpn": "ja", "pt-BR": "pt", "ukr": "uk",
+		"hindi": "hi", "": "", "klingon": "",
+	} {
+		if got := LanguageTag(in); got != want {
+			t.Errorf("LanguageTag(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := LanguageName("fra"); got != "Français" {
+		t.Errorf("LanguageName(fra) = %q", got)
+	}
+	// Every language of the table has its tag and its name.
+	for name, code := range languages {
+		if n := names[code]; len(n.tag) != 2 || n.name == "" {
+			t.Errorf("no tag or name for %q (%q): %+v", code, name, n)
+		}
+	}
+}

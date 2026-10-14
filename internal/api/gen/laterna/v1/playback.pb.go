@@ -369,7 +369,12 @@ type StartPlaybackResponse struct {
 	// the CPU.
 	Decoder string `protobuf:"bytes,21,opt,name=decoder,proto3" json:"decoder,omitempty"`
 	// Segments to offer to skip (intro, credits, recap, preview) in the file played.
-	Segments      []*MediaSegment `protobuf:"bytes,18,rep,name=segments,proto3" json:"segments,omitempty"`
+	Segments []*MediaSegment `protobuf:"bytes,18,rep,name=segments,proto3" json:"segments,omitempty"`
+	// Master playlist of an HLS playback (path, to append to the server's address): the stream of
+	// url, with the subtitles served in WebVTT as renditions (SubtitleTrack.rendition). For a player
+	// that shows subtitles only from the stream, like Safari's own HLS player on iPhone, in its
+	// fullscreen too. Empty for a direct playback.
+	MasterUrl     string `protobuf:"bytes,22,opt,name=master_url,json=masterUrl,proto3" json:"master_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -551,6 +556,13 @@ func (x *StartPlaybackResponse) GetSegments() []*MediaSegment {
 	return nil
 }
 
+func (x *StartPlaybackResponse) GetMasterUrl() string {
+	if x != nil {
+		return x.MasterUrl
+	}
+	return ""
+}
+
 // SubtitleTrack is a subtitle of the file played: one of its streams or a file next to it.
 type SubtitleTrack struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -569,7 +581,11 @@ type SubtitleTrack struct {
 	// Image subtitle (PGS, VobSub): rendered by a client that reads "sup", burned in otherwise.
 	Image bool `protobuf:"varint,9,opt,name=image,proto3" json:"image,omitempty"`
 	// Versions served.
-	Files         []*SubtitleFile `protobuf:"bytes,10,rep,name=files,proto3" json:"files,omitempty"`
+	Files []*SubtitleFile `protobuf:"bytes,10,rep,name=files,proto3" json:"files,omitempty"`
+	// Name of its WebVTT rendition in the master playlist (StartPlaybackResponse.master_url), which
+	// the player gives as the label of its text track: its title, or else the name of its language
+	// in that language ("Français"). Empty if it has no rendition (image subtitle, direct playback).
+	Rendition     string `protobuf:"bytes,11,opt,name=rendition,proto3" json:"rendition,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -672,6 +688,13 @@ func (x *SubtitleTrack) GetFiles() []*SubtitleFile {
 		return x.Files
 	}
 	return nil
+}
+
+func (x *SubtitleTrack) GetRendition() string {
+	if x != nil {
+		return x.Rendition
+	}
+	return ""
 }
 
 type SubtitleFile struct {
@@ -1109,7 +1132,7 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\x0esubtitle_index\x18\x05 \x01(\x05H\x01R\rsubtitleIndex\x88\x01\x01\x12)\n" +
 	"\x10profile_subtitle\x18\x06 \x01(\bR\x0fprofileSubtitleB\x15\n" +
 	"\x13_audio_stream_indexB\x11\n" +
-	"\x0f_subtitle_index\"\xc5\a\n" +
+	"\x0f_subtitle_index\"\xe4\a\n" +
 	"\x15StartPlaybackResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x122\n" +
@@ -1133,10 +1156,12 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\ftone_mapping\x18\x10 \x01(\tR\vtoneMapping\x12\x10\n" +
 	"\x03gpu\x18\x11 \x01(\bR\x03gpu\x12\x18\n" +
 	"\adecoder\x18\x15 \x01(\tR\adecoder\x124\n" +
-	"\bsegments\x18\x12 \x03(\v2\x18.laterna.v1.MediaSegmentR\bsegmentsB\x15\n" +
+	"\bsegments\x18\x12 \x03(\v2\x18.laterna.v1.MediaSegmentR\bsegments\x12\x1d\n" +
+	"\n" +
+	"master_url\x18\x16 \x01(\tR\tmasterUrlB\x15\n" +
 	"\x13_audio_stream_indexB\x18\n" +
 	"\x16_burned_subtitle_indexB\x11\n" +
-	"\x0f_subtitle_index\"\xac\x02\n" +
+	"\x0f_subtitle_index\"\xca\x02\n" +
 	"\rSubtitleTrack\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x1a\n" +
 	"\blanguage\x18\x02 \x01(\tR\blanguage\x12\x14\n" +
@@ -1148,7 +1173,8 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\bexternal\x18\b \x01(\bR\bexternal\x12\x14\n" +
 	"\x05image\x18\t \x01(\bR\x05image\x12.\n" +
 	"\x05files\x18\n" +
-	" \x03(\v2\x18.laterna.v1.SubtitleFileR\x05files\"8\n" +
+	" \x03(\v2\x18.laterna.v1.SubtitleFileR\x05files\x12\x1c\n" +
+	"\trendition\x18\v \x01(\tR\trendition\"8\n" +
 	"\fSubtitleFile\x12\x16\n" +
 	"\x06format\x18\x01 \x01(\tR\x06format\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\"B\n" +

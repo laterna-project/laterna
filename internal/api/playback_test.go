@@ -168,8 +168,11 @@ func TestPlaybackOverHTTP(t *testing.T) {
 
 	// Direct play: the file, in ranges.
 	direct, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: ids["Big Test Movie"], Device: device}, token))
-	if err != nil || direct.Msg.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_DIRECT {
+	if err != nil || direct.Msg.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_DIRECT || direct.Msg.GetMasterUrl() != "" {
 		t.Fatalf("direct play: %v %v", direct, err)
+	}
+	if r := get(strings.TrimSuffix(direct.Msg.GetUrl(), "direct") + "master.m3u8"); r.StatusCode != http.StatusNotFound {
+		t.Errorf("master playlist of a direct playback: %d", r.StatusCode)
 	}
 	if r := get(direct.Msg.GetUrl(), "Range", "bytes=0-99"); r.StatusCode != http.StatusPartialContent || r.Header.Get("Content-Type") != "video/mp4" {
 		t.Errorf("Range: %d %v", r.StatusCode, r.Header)
@@ -213,6 +216,52 @@ func TestPlaybackOverHTTP(t *testing.T) {
 	}
 	if r := get(strings.Replace(ass.GetFiles()[1].GetUrl(), "0.vtt", "0.sup", 1)); r.StatusCode != http.StatusNotFound {
 		t.Errorf("missing format: %d", r.StatusCode)
+	}
+	// The master playlist offers the subtitles served in WebVTT as renditions, for Safari's own
+	// HLS player (iPhone): each named once, image subtitles left out.
+	master := subs.Msg.GetMasterUrl()
+	if subs.Msg.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_HLS_REMUX || !strings.HasSuffix(master, "/master.m3u8") {
+		t.Fatalf("master playlist: %v", subs.Msg)
+	}
+	names := map[string]bool{}
+	for _, st := range subs.Msg.GetSubtitles() {
+		switch name := st.GetRendition(); {
+		case st.GetImage() && name != "":
+			t.Errorf("image subtitle %d named %q", st.GetIndex(), name)
+		case !st.GetImage() && (name == "" || names[name]):
+			t.Errorf("subtitle %d named %q", st.GetIndex(), name)
+		}
+		names[st.GetRendition()] = true
+	}
+	if ass.GetRendition() != "French" {
+		t.Errorf("rendition of the ASS track: %q", ass.GetRendition())
+	}
+	resp = get(master)
+	body, _ = io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/vnd.apple.mpegurl" ||
+		!strings.Contains(string(body), `NAME="French",DEFAULT=NO,AUTOSELECT=YES,LANGUAGE="fr",URI="subtitles/0.m3u8"`) ||
+		strings.Contains(string(body), "subtitles/2.m3u8") || !strings.HasSuffix(string(body), ",SUBTITLES=\"subs\"\nmain.m3u8\n") {
+		t.Fatalf("master playlist: %d\n%s", resp.StatusCode, body)
+	}
+	dir = strings.TrimSuffix(master, "master.m3u8")
+	if r := get(dir + "main.m3u8"); r.StatusCode != http.StatusOK {
+		t.Errorf("media playlist of the master: %d", r.StatusCode)
+	}
+	resp = get(dir + "subtitles/0.m3u8")
+	body, _ = io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "\n0.hls.vtt\n#EXT-X-ENDLIST") {
+		t.Errorf("subtitle playlist: %d\n%s", resp.StatusCode, body)
+	}
+	resp = get(dir + "subtitles/0.hls.vtt")
+	body, _ = io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "text/vtt; charset=utf-8" ||
+		!strings.HasPrefix(string(body), "WEBVTT\nX-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000\n") || !strings.Contains(string(body), "-->") {
+		t.Errorf("subtitle segment: %d %v\n%s", resp.StatusCode, resp.Header, body)
+	}
+	for _, bad := range []string{"subtitles/2.m3u8", "subtitles/2.hls.vtt", "subtitles/9.m3u8", "subtitles/x.m3u8"} {
+		if r := get(dir + bad); r.StatusCode != http.StatusNotFound {
+			t.Errorf("%s: %d", bad, r.StatusCode)
+		}
 	}
 	// Image subtitle on a device that cannot render it: burned in.
 	two := int32(2)
