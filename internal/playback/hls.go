@@ -3,6 +3,7 @@
 package playback
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"strings"
@@ -98,4 +99,91 @@ func Playlist(segs []Segment, initURI string, segmentURI func(i int) string) str
 	}
 	b.WriteString("#EXT-X-ENDLIST\n")
 	return b.String()
+}
+
+// Rendition is a subtitle offered by the master playlist as a WebVTT rendition: what a player that
+// shows subtitles only from the stream (Safari's own HLS player on iPhone) offers in its menu.
+type Rendition struct {
+	// Name labels the subtitle in the player's menu; a client finds the subtitle by it.
+	Name string
+	// Language is a BCP 47 tag ("fr"), empty if unknown.
+	Language string
+	// HearingImpaired marks captions for the deaf and hard of hearing (sounds described too).
+	HearingImpaired bool
+	// URI of the subtitle's playlist.
+	URI string
+}
+
+// MasterPlaylist writes the HLS master playlist of a playback: the subtitles as renditions, then
+// the only variant, mediaURI, of bandwidth bit/s at most. No subtitle is shown by default: the
+// client picks one.
+func MasterPlaylist(mediaURI string, bandwidth int64, subs []Rendition) string {
+	var b strings.Builder
+	b.WriteString("#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-INDEPENDENT-SEGMENTS\n")
+	for _, s := range subs {
+		fmt.Fprintf(&b, `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="%s",DEFAULT=NO,AUTOSELECT=YES`, Quotable(s.Name))
+		if s.Language != "" {
+			fmt.Fprintf(&b, `,LANGUAGE="%s"`, Quotable(s.Language))
+		}
+		if s.HearingImpaired {
+			b.WriteString(`,CHARACTERISTICS="public.accessibility.transcribes-spoken-dialog,public.accessibility.describes-music-and-sound"`)
+		}
+		fmt.Fprintf(&b, ",URI=\"%s\"\n", Quotable(s.URI))
+	}
+	fmt.Fprintf(&b, "#EXT-X-STREAM-INF:BANDWIDTH=%d", max(bandwidth, 1))
+	if len(subs) > 0 {
+		b.WriteString(`,SUBTITLES="subs"`)
+	}
+	fmt.Fprintf(&b, "\n%s\n", mediaURI)
+	return b.String()
+}
+
+// Quotable makes s fit a quoted attribute of a playlist, as a player will read it: HLS has no
+// escape, so a double quote becomes a single one and line breaks and other control characters go.
+func Quotable(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '"':
+			return '\''
+		case r < ' ' || r == 0x7f:
+			return -1
+		}
+		return r
+	}, s)
+}
+
+// SubtitlePlaylist writes the playlist of a WebVTT rendition: one segment, the whole subtitle, for
+// the whole duration.
+func SubtitlePlaylist(duration time.Duration, segmentURI string) string {
+	var b strings.Builder
+	b.WriteString("#EXTM3U\n#EXT-X-VERSION:3\n")
+	fmt.Fprintf(&b, "#EXT-X-TARGETDURATION:%d\n", max(int(math.Ceil(duration.Seconds())), 1))
+	b.WriteString("#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n")
+	fmt.Fprintf(&b, "#EXTINF:%.6f,\n%s\n#EXT-X-ENDLIST\n", duration.Seconds(), segmentURI)
+	return b.String()
+}
+
+// timestampMap ties the times of a WebVTT segment to those of the media. Subtitles and segments
+// both keep the times of the source (-copyts): zero is zero.
+const timestampMap = "X-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000"
+
+// HLSWebVTT makes a WebVTT segment of an HLS rendition from a WebVTT file: the timestamp map goes
+// into its header, right after the "WEBVTT" line.
+func HLSWebVTT(vtt []byte) []byte {
+	if bytes.Contains(vtt, []byte("X-TIMESTAMP-MAP=")) {
+		return vtt
+	}
+	first, rest, _ := bytes.Cut(vtt, []byte("\n"))
+	if !bytes.HasPrefix(bytes.TrimPrefix(first, []byte("\ufeff")), []byte("WEBVTT")) {
+		return append([]byte("WEBVTT\n"+timestampMap+"\n\n"), vtt...)
+	}
+	out := make([]byte, 0, len(vtt)+len(timestampMap)+2)
+	out = append(out, first...)
+	out = append(out, '\n')
+	out = append(out, timestampMap...)
+	if bytes.HasSuffix(first, []byte("\r")) {
+		out = append(out, '\r')
+	}
+	out = append(out, '\n')
+	return append(out, rest...)
 }

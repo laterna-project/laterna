@@ -100,6 +100,14 @@ func describeSidecar(tokens []string) Sidecar {
 // or a language name in English or French to its ISO 639-2/B code; "" if it does not know it.
 func Language(tag string) string { return language(strings.ToLower(strings.TrimSpace(tag))) }
 
+// LanguageTag gives the BCP 47 tag of a language ("fr" for "fre", "fra", "fr-CA" or "French"),
+// for what names a language to a browser or a player (HLS renditions); "" if it does not know it.
+func LanguageTag(tag string) string { return names[Language(tag)].tag }
+
+// LanguageName gives the name of a language in that language ("Français" for "fre" or "fr"), as a
+// player lists it when nothing else names a subtitle; "" if it does not know it.
+func LanguageName(tag string) string { return names[Language(tag)].name }
+
 // language recognizes a code (ISO 639-1 or 639-2, region included: "pt-BR") or a language name in
 // English or French, and returns the ISO 639-2/B code.
 func language(tok string) string {
@@ -164,3 +172,16 @@ var languages = func() map[string]string {
 	}
 	return m
 }()
+
+// names gives the ISO 639-1 code of each language of the table, and its name in that language.
+var names = map[string]struct{ tag, name string }{
+	"fre": {"fr", "Français"}, "eng": {"en", "English"}, "jpn": {"ja", "日本語"}, "spa": {"es", "Español"},
+	"ger": {"de", "Deutsch"}, "ita": {"it", "Italiano"}, "por": {"pt", "Português"}, "rus": {"ru", "Русский"},
+	"chi": {"zh", "中文"}, "kor": {"ko", "한국어"}, "ara": {"ar", "العربية"}, "dut": {"nl", "Nederlands"},
+	"pol": {"pl", "Polski"}, "swe": {"sv", "Svenska"}, "nor": {"no", "Norsk"}, "dan": {"da", "Dansk"},
+	"fin": {"fi", "Suomi"}, "tur": {"tr", "Türkçe"}, "heb": {"he", "עברית"}, "hin": {"hi", "हिन्दी"},
+	"tha": {"th", "ไทย"}, "vie": {"vi", "Tiếng Việt"}, "ind": {"id", "Bahasa Indonesia"},
+	"may": {"ms", "Bahasa Melayu"}, "cze": {"cs", "Čeština"}, "hun": {"hu", "Magyar"}, "rum": {"ro", "Română"},
+	"gre": {"el", "Ελληνικά"}, "ukr": {"uk", "Українська"}, "bul": {"bg", "Български"}, "hrv": {"hr", "Hrvatski"},
+	"srp": {"sr", "Српски"}, "slv": {"sl", "Slovenščina"}, "slo": {"sk", "Slovenčina"}, "cat": {"ca", "Català"},
+}

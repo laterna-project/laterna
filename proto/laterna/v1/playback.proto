@@ -143,6 +143,11 @@ message StartPlaybackResponse {
   string decoder = 21;
   // Segments to offer to skip (intro, credits, recap, preview) in the file played.
   repeated MediaSegment segments = 18;
+  // Master playlist of an HLS playback (path, to append to the server's address): the stream of
+  // url, with the subtitles served in WebVTT as renditions (SubtitleTrack.rendition). For a player
+  // that shows subtitles only from the stream, like Safari's own HLS player on iPhone, in its
+  // fullscreen too. Empty for a direct playback.
+  string master_url = 22;
 }
 
 // SubtitleTrack is a subtitle of the file played: one of its streams or a file next to it.
@@ -163,6 +168,10 @@ message SubtitleTrack {
   bool image = 9;
   // Versions served.
   repeated SubtitleFile files = 10;
+  // Name of its WebVTT rendition in the master playlist (StartPlaybackResponse.master_url), which
+  // the player gives as the label of its text track: its title, or else the name of its language
+  // in that language ("Français"). Empty if it has no rendition (image subtitle, direct playback).
+  string rendition = 11;
 }
 
 message SubtitleFile {
