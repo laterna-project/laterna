@@ -22,8 +22,9 @@ server without a client.
   and a full on-GPU chain are detected by real attempts at startup, with fallbacks down to
   `libx264`.
 - **Instant subtitles.** Tracks, external files and fonts are extracted at import and served
-  separately, so switching subtitles restarts nothing. Burn-in is a last resort. A missing
-  subtitle can be asked for: Bazarr finds it.
+  separately, so switching subtitles restarts nothing; players that only show those of the
+  stream, like Safari on iPhone, find them in it. Burn-in is a last resort. A missing subtitle can
+  be asked for: Bazarr finds it.
 - **Metadata from your files.** NFO files and artwork next to the media, as written by Sonarr,
   Radarr, Lidarr, Kodi or tinyMediaManager. No online lookup, no wrong match. Optional Sonarr,
   Radarr and Lidarr integration with webhooks.
