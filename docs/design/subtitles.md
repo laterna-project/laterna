@@ -74,6 +74,30 @@ if there is one. The `DeviceProfile` declares which formats the client displays 
 Switching subtitle only concerns the client: nothing is restarted on the server. In a browser,
 switching takes a millisecond or two, in ASS as in WebVTT.
 
+### In the stream, for native players
+
+Some players show only the subtitles of the stream. Safari on iPhone has no Media Source
+Extensions, so a web client hands it the HLS stream as is: a `<track>` added next to it, or ASS
+drawn over the video, is not shown in its fullscreen. AVPlayer is the same. For them, an HLS
+playback also has a **master playlist** (`master_url` in `StartPlaybackResponse`):
+
+- `GET /playback/{session}/{secret}/master.m3u8`: one `SUBTITLES` rendition per subtitle served in
+  WebVTT, ASS included in its WebVTT version; image subtitles have none and are burned in, as
+  elsewhere. Then the only variant, `main.m3u8`, with its average bit rate.
+- `…/subtitles/{position}.m3u8`: the playlist of a rendition, one segment for the whole duration.
+- `…/subtitles/{position}.hls.vtt`: the WebVTT file with an `X-TIMESTAMP-MAP` that ties zero to
+  zero, since subtitles and segments both keep the times of the source.
+- No rendition is shown by default (`DEFAULT=NO`): the client picks one. `AUTOSELECT=YES` keeps
+  them in the player's own menu, and captions for the deaf and hard of hearing carry the
+  characteristics that say so. Forced subtitles are not marked `FORCED`: AVPlayer would show them
+  by itself and leave them out of its menu.
+- A rendition is named by the subtitle's title, or else by its language in that language
+  ("Français"), or else by its number; a name given twice gets a number after it. The player
+  labels the text track with that name, which `SubtitleTrack.rendition` gives: the client picks the
+  track by it.
+- Before the extraction (file just added), the planned subtitles are offered, and their segments
+  wait for it.
+
 ## Burn-in, as a last resort
 
 A chosen subtitle that the device cannot display is burned in, and the video is then transcoded
@@ -165,7 +189,6 @@ viewer, not a record.
 
 ## Not done
 
-- WebVTT renditions inside the HLS playlist for native players (AVPlayer).
 - OCR of image subtitles (not planned).
 - A preferred audio language per profile: the audio is the file's default stream.
 - Choosing among the subtitles a provider offers: Bazarr picks the best one.

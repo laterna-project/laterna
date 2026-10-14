@@ -98,6 +98,9 @@ type PlayInfo struct {
 	SubtitlesReady bool
 	Subtitle       *int
 	Burned         *int
+	// Renditions names the subtitles the master playlist of an HLS playback offers as WebVTT
+	// renditions (position → name, playSession.renditions); nil for a direct playback.
+	Renditions map[int]string
 }
 
 // playSession is a playback in progress.
@@ -386,6 +389,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		Reasons: plan.Reasons, CopyVideo: plan.CopyVideo, CopyAudio: plan.CopyAudio, Encoder: encoder.Name, ToneMap: toneMapName(toneMap, gpu),
 		GPU: gpu, Decoder: decoderName(decoder),
 		Subtitles: subs, Fonts: fonts, SubtitlesReady: subsReady, Subtitle: subtitlePosition(chosen), Burned: burned,
+		Renditions: s.renditions(subs),
 	}, nil
 }
 

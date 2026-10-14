@@ -82,3 +82,49 @@ func TestPlaylist(t *testing.T) {
 		}
 	}
 }
+
+func TestMasterPlaylist(t *testing.T) {
+	pl := MasterPlaylist("main.m3u8", 4_000_000, []Rendition{
+		{Name: `Signs "& songs"`, Language: "fr", URI: "subtitles/0.m3u8"},
+		{Name: "English\nSDH", Language: "en", HearingImpaired: true, URI: "subtitles/3.m3u8"},
+		{Name: "#5", URI: "subtitles/5.m3u8"},
+	})
+	want := "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-INDEPENDENT-SEGMENTS\n" +
+		`#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Signs '& songs'",DEFAULT=NO,AUTOSELECT=YES,LANGUAGE="fr",URI="subtitles/0.m3u8"` + "\n" +
+		`#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="EnglishSDH",DEFAULT=NO,AUTOSELECT=YES,LANGUAGE="en",` +
+		`CHARACTERISTICS="public.accessibility.transcribes-spoken-dialog,public.accessibility.describes-music-and-sound",URI="subtitles/3.m3u8"` + "\n" +
+		`#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="#5",DEFAULT=NO,AUTOSELECT=YES,URI="subtitles/5.m3u8"` + "\n" +
+		`#EXT-X-STREAM-INF:BANDWIDTH=4000000,SUBTITLES="subs"` + "\nmain.m3u8\n"
+	if pl != want {
+		t.Errorf("master playlist:\n%s\nwant:\n%s", pl, want)
+	}
+	// Without subtitles, the variant names no group.
+	if pl := MasterPlaylist("main.m3u8", 0, nil); !strings.HasSuffix(pl, "#EXT-X-STREAM-INF:BANDWIDTH=1\nmain.m3u8\n") {
+		t.Errorf("master playlist without subtitles:\n%s", pl)
+	}
+}
+
+func TestSubtitlePlaylist(t *testing.T) {
+	pl := SubtitlePlaylist(1420500*time.Millisecond, "0.hls.vtt")
+	want := "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:1421\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n" +
+		"#EXTINF:1420.500000,\n0.hls.vtt\n#EXT-X-ENDLIST\n"
+	if pl != want {
+		t.Errorf("subtitle playlist:\n%s\nwant:\n%s", pl, want)
+	}
+}
+
+func TestHLSWebVTT(t *testing.T) {
+	const cue = "\n00:00:01.000 --> 00:00:02.000\nHello\n"
+	for in, want := range map[string]string{
+		"WEBVTT\n" + cue:                        "WEBVTT\n" + timestampMap + "\n" + cue,
+		"WEBVTT\r\n\r\n1\r\n":                   "WEBVTT\r\n" + timestampMap + "\r\n\r\n1\r\n",
+		"\ufeffWEBVTT - Kind: captions\n" + cue: "\ufeffWEBVTT - Kind: captions\n" + timestampMap + "\n" + cue,
+		"WEBVTT":                                "WEBVTT\n" + timestampMap + "\n",
+		"":                                      "WEBVTT\n" + timestampMap + "\n\n",
+		"WEBVTT\n" + timestampMap + "\n" + cue:  "WEBVTT\n" + timestampMap + "\n" + cue,
+	} {
+		if got := string(HLSWebVTT([]byte(in))); got != want {
+			t.Errorf("HLSWebVTT(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

@@ -47,6 +47,15 @@ func StreamPath(info app.PlayInfo) string {
 	return sessionPath(info) + "main.m3u8"
 }
 
+// MasterPath is the path of the master playlist of an HLS playback (api.playback), empty for a
+// direct playback.
+func MasterPath(info app.PlayInfo) string {
+	if info.Method == playback.Direct || info.Method == playback.Convert {
+		return ""
+	}
+	return sessionPath(info) + "master.m3u8"
+}
+
 func sessionPath(info app.PlayInfo) string {
 	return "/playback/" + info.SessionID.String() + "/" + info.Token + "/"
 }
@@ -88,7 +97,7 @@ func (s *PlaybackService) StartPlayback(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 	resp := &laternav1.StartPlaybackResponse{
-		SessionId: info.SessionID.String(), Method: playbackMethods[info.Method], Url: StreamPath(info),
+		SessionId: info.SessionID.String(), Method: playbackMethods[info.Method], Url: StreamPath(info), MasterUrl: MasterPath(info),
 		FileId: info.File.ID.String(), Duration: durationMsg(info.Duration),
 		Reasons: renderAll(ctx, info.Reasons), ReasonTexts: textsMsg(ctx, info.Reasons), VideoTranscoded: !info.CopyVideo, AudioTranscoded: !info.CopyAudio, VideoEncoder: info.Encoder,
 		SubtitlesReady: info.SubtitlesReady, Subtitles: subtitleTracks(info), Fonts: fonts(info.Fonts),
@@ -138,6 +147,7 @@ func subtitleTracks(info app.PlayInfo) []*laternav1.SubtitleTrack {
 		for _, format := range st.Formats {
 			track.Files = append(track.Files, &laternav1.SubtitleFile{Format: format, Url: SubtitlePath(info, st.Position, format)})
 		}
+		track.Rendition = info.Renditions[st.Position]
 		out = append(out, track)
 	}
 	return out

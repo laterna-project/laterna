@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"log/slog"
 	"mime"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/laterna-project/laterna/internal/api/httpx"
 	"github.com/laterna-project/laterna/internal/app"
@@ -17,10 +19,11 @@ import (
 
 // playback serves the bytes of a playback opened with PlaybackService.StartPlayback:
 //
-//	GET /playback/{session}/{secret}/direct     the file, or its audio conversion (Range)
-//	GET /playback/{session}/{secret}/main.m3u8  the HLS playlist
-//	GET /playback/{session}/{secret}/init.mp4   the fMP4 init segment
-//	GET /playback/{session}/{secret}/{n}.m4s    a segment
+//	GET /playback/{session}/{secret}/direct       the file, or its audio conversion (Range)
+//	GET /playback/{session}/{secret}/main.m3u8    the HLS playlist
+//	GET /playback/{session}/{secret}/master.m3u8  the master playlist: main.m3u8 and the subtitles
+//	GET /playback/{session}/{secret}/init.mp4     the fMP4 init segment
+//	GET /playback/{session}/{secret}/{n}.m4s      a segment
 //
 // There is no Authorization header (<video> element): the session secret stands in for it.
 func playback(a *app.App, log *slog.Logger) http.Handler {
@@ -40,9 +43,13 @@ func playback(a *app.App, log *slog.Logger) http.Handler {
 		case name == "main.m3u8":
 			var pl string
 			if pl, err = a.Playlist(id, token); err == nil {
-				w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
-				w.Header().Set("Cache-Control", "no-cache")
-				_, _ = w.Write([]byte(pl)) //nolint:gosec // HLS playlist (mpegurl) produced by the server, not HTML
+				writePlaylist(w, pl)
+				return
+			}
+		case name == "master.m3u8":
+			var pl string
+			if pl, err = a.MasterPlaylist(ctx, id, token); err == nil {
+				writePlaylist(w, pl)
 				return
 			}
 		case name == "init.mp4":
@@ -66,6 +73,13 @@ func playback(a *app.App, log *slog.Logger) http.Handler {
 	})
 }
 
+// writePlaylist answers an HLS playlist, which a player reads again each time.
+func writePlaylist(w http.ResponseWriter, pl string) {
+	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write([]byte(pl)) //nolint:gosec // HLS playlist (mpegurl) produced by the server, not HTML
+}
+
 // subtitleTypes are the content types of the subtitles we serve, by format.
 var subtitleTypes = map[string]string{
 	"vtt": "text/vtt; charset=utf-8",
@@ -77,6 +91,8 @@ var subtitleTypes = map[string]string{
 // subtitle serves a subtitle of a playback, waiting for its extraction if it is under way:
 //
 //	GET /playback/{session}/{secret}/subtitles/{position}.{format}
+//	GET /playback/{session}/{secret}/subtitles/{position}.m3u8     its WebVTT rendition (master.m3u8)
+//	GET /playback/{session}/{secret}/subtitles/{position}.hls.vtt  the segment of the rendition
 func subtitle(a *app.App, log *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := domain.ParseID(r.PathValue("session"))
@@ -86,12 +102,33 @@ func subtitle(a *app.App, log *slog.Logger) http.Handler {
 		}
 		pos, format, ok := strings.Cut(r.PathValue("file"), ".")
 		n, convErr := strconv.Atoi(pos)
-		contentType, known := subtitleTypes[format]
-		if !ok || convErr != nil || !known {
+		if !ok || convErr != nil {
 			http.NotFound(w, r)
 			return
 		}
-		path, err := a.SubtitleFile(r.Context(), id, r.PathValue("token"), n, format)
+		ctx, token := r.Context(), r.PathValue("token")
+		switch format {
+		case "m3u8":
+			pl, err := a.SubtitlePlaylist(ctx, id, token, n)
+			if !failed(w, r, log, err) {
+				writePlaylist(w, pl)
+			}
+			return
+		case "hls.vtt":
+			vtt, err := a.SubtitleSegment(ctx, id, token, n)
+			if !failed(w, r, log, err) {
+				w.Header().Set("Content-Type", subtitleTypes["vtt"])
+				w.Header().Set("Cache-Control", "private, max-age=3600")
+				http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(vtt))
+			}
+			return
+		}
+		contentType, known := subtitleTypes[format]
+		if !known {
+			http.NotFound(w, r)
+			return
+		}
+		path, err := a.SubtitleFile(ctx, id, token, n, format)
 		serveFile(w, r, log, path, contentType, "private, max-age=3600", err)
 	})
 }
@@ -116,22 +153,12 @@ func font(a *app.App, log *slog.Logger) http.Handler {
 }
 
 // serveFile serves a file prepared by app (stream, subtitle, font, sheet), or the error that
-// prevents it: not found (404) or unavailable (503, logged). Nothing is written if the client is
-// gone.
+// prevents it (failed).
 func serveFile(w http.ResponseWriter, r *http.Request, log *slog.Logger, path, contentType, cacheControl string, err error) {
-	ctx := r.Context()
-	var de *domain.Error
-	switch {
-	case errors.As(err, &de) && errors.Is(de.Kind, domain.ErrNotFound):
-		http.NotFound(w, r)
-		return
-	case err != nil:
-		if ctx.Err() == nil {
-			log.ErrorContext(ctx, "cannot serve file", "path", r.URL.Path, "err", err, "request_id", httpx.RequestIDFrom(ctx))
-			writeError(w, r, http.StatusServiceUnavailable, domain.T("error.server.unavailable"))
-		}
+	if failed(w, r, log, err) {
 		return
 	}
+	ctx := r.Context()
 	f, err := os.Open(path) //nolint:gosec // path taken from the database or the cache, never from the request
 	if err != nil {
 		log.WarnContext(ctx, "unreadable file", "path", path, "err", err)
@@ -149,4 +176,22 @@ func serveFile(w http.ResponseWriter, r *http.Request, log *slog.Logger, path, c
 	}
 	w.Header().Set("Cache-Control", cacheControl)
 	http.ServeContent(w, r, "", st.ModTime(), f)
+}
+
+// failed answers the error that prevents serving a resource of a playback, and reports whether
+// there was one: not found (404) or unavailable (503, logged). Nothing is written if the client is
+// gone.
+func failed(w http.ResponseWriter, r *http.Request, log *slog.Logger, err error) bool {
+	ctx := r.Context()
+	var de *domain.Error
+	switch {
+	case err == nil:
+		return false
+	case errors.As(err, &de) && errors.Is(de.Kind, domain.ErrNotFound):
+		http.NotFound(w, r)
+	case ctx.Err() == nil:
+		log.ErrorContext(ctx, "cannot serve file", "path", r.URL.Path, "err", err, "request_id", httpx.RequestIDFrom(ctx))
+		writeError(w, r, http.StatusServiceUnavailable, domain.T("error.server.unavailable"))
+	}
+	return true
 }

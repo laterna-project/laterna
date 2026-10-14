@@ -22,6 +22,8 @@ import (
 	"github.com/laterna-project/laterna/internal/library"
 	"github.com/laterna-project/laterna/internal/media/matroska"
 	"github.com/laterna-project/laterna/internal/media/subtitles"
+	"github.com/laterna-project/laterna/internal/naming"
+	"github.com/laterna-project/laterna/internal/playback"
 	"github.com/laterna-project/laterna/internal/proc"
 	"github.com/laterna-project/laterna/internal/store"
 )
@@ -498,10 +500,121 @@ func (a *App) PlaybackSubtitles(ctx context.Context, p domain.Principal, id doma
 			return PlayInfo{}, err
 		}
 		info.Subtitles, info.Fonts, info.SubtitlesReady = set.Subtitles, set.Fonts, true
+		info.Renditions = s.renditions(info.Subtitles)
 		return info, nil
 	}
 	info.Subtitles, info.Fonts, info.SubtitlesReady, err = a.subtitlesOf(ctx, s.file)
+	info.Renditions = s.renditions(info.Subtitles)
 	return info, err
+}
+
+// renditions names the subtitles the master playlist of an HLS playback offers as WebVTT
+// renditions (position → name): those served in WebVTT. A subtitle is named by its title, or else
+// by its language in that language, or else by its number; a name already given gets a number
+// after it, since a client finds a subtitle by the name the player gives its text track. nil for
+// a direct playback.
+func (s *playSession) renditions(subs []domain.Subtitle) map[int]string {
+	if !s.hls() {
+		return nil
+	}
+	out := map[int]string{}
+	given := map[string]bool{}
+	for _, st := range subs {
+		if !slices.Contains(st.Formats, "vtt") {
+			continue
+		}
+		name := strings.TrimSpace(playback.Quotable(st.Title))
+		if name == "" {
+			name = naming.LanguageName(st.Language)
+		}
+		if name == "" {
+			name = strings.TrimSpace(playback.Quotable(st.Language))
+		}
+		if name == "" {
+			name = "#" + strconv.Itoa(st.Position+1)
+		}
+		base := name
+		for n := 2; given[name]; n++ {
+			name = base + " (" + strconv.Itoa(n) + ")"
+		}
+		given[name] = true
+		out[st.Position] = name
+	}
+	return out
+}
+
+// MasterPlaylist returns the master playlist of an HLS playback: its stream (main.m3u8), and its
+// subtitles served in WebVTT as renditions, for a player that shows subtitles only from the stream
+// (Safari's own HLS player on iPhone, whose fullscreen ignores what the page draws). Before the
+// extraction, the planned subtitles are offered: their playlists wait for it.
+func (a *App) MasterPlaylist(ctx context.Context, id domain.ID, token string) (string, error) {
+	s, err := a.session(id, token)
+	if err != nil {
+		return "", err
+	}
+	if !s.hls() {
+		return "", domain.NotFound("playback.not_hls")
+	}
+	subs, _, _, err := a.subtitlesOf(ctx, s.file)
+	if err != nil {
+		return "", err
+	}
+	names := s.renditions(subs)
+	list := make([]playback.Rendition, 0, len(names))
+	for _, st := range subs {
+		if name, ok := names[st.Position]; ok {
+			list = append(list, playback.Rendition{
+				Name: name, Language: naming.LanguageTag(st.Language), HearingImpaired: st.HearingImpaired,
+				URI: "subtitles/" + strconv.Itoa(st.Position) + ".m3u8",
+			})
+		}
+	}
+	return playback.MasterPlaylist("main.m3u8", bandwidth(s.file), list), nil
+}
+
+// bandwidth is the bit rate the master playlist announces for a file: its average, at least
+// 1 Mbit/s. Its only variant is played whatever it says.
+func bandwidth(f domain.MediaFile) int64 {
+	const least = 1_000_000
+	if sec := f.Info.Duration.Seconds(); sec > 0 {
+		return max(int64(float64(f.Size)*8/sec), least)
+	}
+	return least
+}
+
+// SubtitlePlaylist returns the playlist of a WebVTT rendition of an HLS playback (subtitle
+// position): one segment, the whole subtitle.
+func (a *App) SubtitlePlaylist(ctx context.Context, id domain.ID, token string, position int) (string, error) {
+	s, err := a.session(id, token)
+	if err != nil {
+		return "", err
+	}
+	subs, _, _, err := a.subtitlesOf(ctx, s.file)
+	if err != nil {
+		return "", err
+	}
+	if _, ok := s.renditions(subs)[position]; !ok {
+		return "", domain.NotFound("subtitle.not_found")
+	}
+	return playback.SubtitlePlaylist(s.file.Info.Duration, strconv.Itoa(position)+".hls.vtt"), nil
+}
+
+// SubtitleSegment returns the segment of a WebVTT rendition of an HLS playback: the subtitle in
+// WebVTT with the map of its times to those of the stream, waiting for its extraction if it is
+// under way.
+func (a *App) SubtitleSegment(ctx context.Context, id domain.ID, token string, position int) ([]byte, error) {
+	path, err := a.SubtitleFile(ctx, id, token, position, "vtt")
+	if err != nil {
+		return nil, err
+	}
+	vtt, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, domain.NotFound("subtitle.not_found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return playback.HLSWebVTT(vtt), nil
 }
 
 // SubtitleFile returns the path of a subtitle of a playback (position, format), waiting for its
