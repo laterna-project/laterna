@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -31,19 +32,27 @@ func TestSettings(t *testing.T) {
 	name, off, never, week := "  Attic  ", false, time.Duration(0), 7*24*time.Hour
 	public, rpID := "https://media.example.org/laterna/", "Example.org"
 	origins := []string{"https://app.example.org/", "android:apk-key-hash:abc"}
+	remoteRate, networks := 8000, []string{" 192.168.1.7/24 ", "10.0.0.1", "192.168.1.0/24", "fd00::/8"}
 	s, err := a.UpdateSettings(ctx, admin, SettingsChanges{
 		ServerName: &name, DownloadImages: &off, ScanInterval: &never, MissingGrace: &week, Trickplay: &off, DetectSegments: &off,
-		PublicURL: &public, PasskeyRPID: &rpID, PasskeyOrigins: &origins,
+		PublicURL: &public, PasskeyRPID: &rpID, PasskeyOrigins: &origins, RemoteMaxBitrate: &remoteRate, LocalNetworks: &networks,
 	})
 	mustNil(t, err)
 	if s.ServerName != "Attic" || s.DownloadImages || s.ScanInterval != 0 || s.MissingGrace != week || s.Trickplay || s.DetectSegments || a.Server().Name != "Attic" ||
 		s.PublicURL != "https://media.example.org/laterna" || s.PasskeyRPID != "example.org" ||
-		!slices.Equal(s.PasskeyOrigins, []string{"https://app.example.org", "android:apk-key-hash:abc"}) {
+		!slices.Equal(s.PasskeyOrigins, []string{"https://app.example.org", "android:apk-key-hash:abc"}) || s.RemoteMaxBitrate != 8000 ||
+		fmt.Sprint(s.LocalNetworks) != "[192.168.1.0/24 10.0.0.1/32 fd00::/8]" {
 		t.Errorf("after the update: %+v, server %q", s, a.Server().Name)
 	}
 	empty, tooShort, tooLong := " ", time.Minute, 100*24*time.Hour
 	badURL, badRP, badOrigins := "ftp://media", "https://example.org", []string{"http://media.example.org"}
+	tooLow, negative := 100, -1
+	badNetworks, mapped := []string{"192.168.1.0/24", "home"}, []string{"::ffff:10.0.0.0/104"}
 	for _, ch := range []SettingsChanges{
+		{RemoteMaxBitrate: &tooLow},
+		{RemoteMaxBitrate: &negative},
+		{LocalNetworks: &badNetworks},
+		{LocalNetworks: &mapped},
 		{ServerName: &empty},
 		{ScanInterval: &tooShort},
 		{MissingGrace: &tooShort},

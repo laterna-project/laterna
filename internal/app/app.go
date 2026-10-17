@@ -235,7 +235,10 @@ func New(ctx context.Context, st *store.Store, opts Options) (*App, error) {
 			tms = append(tms, tm.Name)
 		}
 		a.log.Info("usable H.264 encoders", "encoders", caps.Names(), "hdr_to_sdr", tms, "gpu", caps.GPU,
-			"decoder", decoderName(caps.Decoder))
+			"decoder", decoderName(caps.Decoder), "bitrate_cap", best.Rated)
+		if !best.Rated {
+			a.log.Warn("the encoder cannot cap its bitrate: playbacks under a bitrate limit are only scaled down", "encoder", best.Name)
+		}
 		return caps, nil
 	})
 	if a.cacheDir == "" {

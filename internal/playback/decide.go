@@ -68,6 +68,12 @@ type Plan struct {
 	// Burn means the selected subtitle is burned into the picture, which is then re-encoded. Last
 	// resort, when the device cannot render it.
 	Burn bool
+	// Under a bitrate limit, VideoRate caps the re-encoded video and MaxHeight its height (0: no
+	// cap, the playback default), and AudioRate is the bitrate of re-encoded audio, downmixed to
+	// stereo (0: 64 kbit/s per channel, 6 at most). All in kbit/s; a converted track (Convert)
+	// gets AudioRate too.
+	VideoRate, AudioRate int
+	MaxHeight            int
 	// Reasons say why direct play (or remux) is not possible ("reason...." texts).
 	Reasons []domain.Text
 }
@@ -83,7 +89,11 @@ var (
 // index of the wanted audio stream (negative for the default one) and sub the subtitle shown from
 // the start (nil for none). A subtitle the device renders itself changes nothing: it is served on
 // the side and switching it restarts nothing.
-func Decide(info domain.MediaInfo, dev DeviceProfile, audio int, sub *domain.Subtitle) Plan {
+//
+// limit is the highest bitrate of the stream in kbit/s, 0 for none. A file above it has its video
+// re-encoded under the limit (a music track is converted), and so does any re-encoded video. A
+// file below it plays as it would without one.
+func Decide(info domain.MediaInfo, dev DeviceProfile, audio int, sub *domain.Subtitle, limit int) Plan {
 	p := Plan{Video: -1, Audio: -1}
 	video, sound := pickStreams(info, audio)
 	if video != nil {
@@ -105,8 +115,12 @@ func Decide(info domain.MediaInfo, dev DeviceProfile, audio int, sub *domain.Sub
 	if !containerOK {
 		p.Reasons = append(p.Reasons, domain.T("reason.container_unsupported", "container", info.Container))
 	}
+	over := limit > 0 && info.Bitrate/1000 > int64(limit)
+	if over {
+		p.Reasons = append(p.Reasons, domain.T("reason.bitrate_above_limit", "bitrate_kbps", info.Bitrate/1000, "limit_kbps", limit))
+	}
 	if video == nil {
-		return decideAudio(p, dev, sound, audioOK && containerOK)
+		return decideAudio(p, dev, sound, audioOK && containerOK, over, limit)
 	}
 
 	// Each stream is copied if the device plays it and it fits in fMP4, otherwise it is re-encoded
@@ -117,11 +131,18 @@ func Decide(info domain.MediaInfo, dev DeviceProfile, audio int, sub *domain.Sub
 		p.Burn, p.CopyVideo = true, false
 		p.Reasons = append(p.Reasons, domain.T("reason.subtitle_burned", "codec", sub.Codec))
 	}
+	if over {
+		p.CopyVideo = false
+	}
+	if limit > 0 && !p.CopyVideo {
+		p.share(limit, dev, sound)
+	}
 	p.ToneMap = video != nil && !p.CopyVideo && isHDR(*video)
 
 	switch {
-	case videoOK && audioOK && containerOK && !p.Burn:
+	case videoOK && audioOK && containerOK && !p.Burn && !over:
 		p.Method, p.Reasons, p.CopyVideo, p.CopyAudio, p.ToneMap = Direct, nil, true, true, false
+		p.VideoRate, p.AudioRate, p.MaxHeight = 0, 0, 0
 	case !dev.HLS:
 		p.Method = Unplayable
 		p.Reasons = append(p.Reasons, domain.T("reason.no_hls"))
@@ -169,21 +190,88 @@ func pickStreams(info domain.MediaInfo, audio int) (video, sound *domain.Stream)
 }
 
 // decideAudio handles a file without video: as is if the device plays it, otherwise converted to
-// AAC in an MP4. A whole file lets the device preload the next track and seek freely. Never HLS.
-func decideAudio(p Plan, dev DeviceProfile, sound *domain.Stream, direct bool) Plan {
+// AAC in an MP4. A whole file lets the device preload the next track and seek freely. Never HLS. A
+// track above the bitrate limit is converted under it, unless the device only plays it as it is.
+func decideAudio(p Plan, dev DeviceProfile, sound *domain.Stream, direct, over bool, limit int) Plan {
+	convertible := slices.Contains(dev.AudioCodecs, TargetAudio) && (slices.Contains(dev.Containers, "mp4") || slices.Contains(dev.Containers, "m4a"))
 	switch {
 	case sound == nil:
 		p.Method = Unplayable
 		p.Reasons = append(p.Reasons, domain.T("reason.no_streams"))
-	case direct:
+	case direct && (!over || !convertible):
 		p.Method, p.Reasons, p.CopyVideo, p.CopyAudio = Direct, nil, true, true
-	case !slices.Contains(dev.AudioCodecs, TargetAudio) || (!slices.Contains(dev.Containers, "mp4") && !slices.Contains(dev.Containers, "m4a")):
+	case !convertible:
 		p.Method = Unplayable
 		p.Reasons = append(p.Reasons, domain.T("reason.no_aac_mp4"))
 	default:
 		p.Method, p.CopyVideo, p.CopyAudio = Convert, true, false
+		if over {
+			p.AudioRate = min(max(limit*9/10, minAudioRate), musicRate)
+		}
 	}
 	return p
+}
+
+// Rates under a bitrate limit, in kbit/s.
+const (
+	// minVideoRate is the least a re-encoded video gets, however low the limit.
+	minVideoRate = 200
+	// minAudioRate and maxAudioRate bound re-encoded stereo audio.
+	minAudioRate = 64
+	maxAudioRate = 192
+	// musicRate is the bitrate of a converted music track (as without a limit).
+	musicRate = 256
+)
+
+// share splits a bitrate limit (kbit/s) between a re-encoded video and its audio. Audio that would
+// be copied keeps its rate if it takes a small share of the limit; otherwise it is re-encoded, to
+// stereo when the limit is tight. The video gets the rest, minus a tenth: encoders overshoot their
+// target by a few percent, and the container and forced keyframes cost some more. Its height is
+// the one that rate carries well in H.264.
+func (p *Plan) share(limit int, dev DeviceProfile, sound *domain.Stream) {
+	audio := 0
+	if sound != nil {
+		channels := min(max(sound.Channels, 2), 6)
+		if p.CopyAudio && streamRate(*sound) > limit/4 && slices.Contains(dev.AudioCodecs, TargetAudio) {
+			p.CopyAudio = false
+		}
+		switch {
+		case p.CopyAudio:
+			audio = streamRate(*sound)
+		case 64*channels <= limit/8:
+			audio = 64 * channels
+		default:
+			p.AudioRate = min(max(limit/16, minAudioRate), maxAudioRate)
+			audio = p.AudioRate
+		}
+	}
+	p.VideoRate = max(limit*9/10-audio, minVideoRate)
+	switch {
+	case p.VideoRate >= 5000:
+		p.MaxHeight = 1080
+	case p.VideoRate >= 2500:
+		p.MaxHeight = 720
+	case p.VideoRate >= 1000:
+		p.MaxHeight = 480
+	default:
+		p.MaxHeight = 360
+	}
+}
+
+// streamRate is the bitrate of an audio stream in kbit/s, guessed from its codec when the file does
+// not say (Matroska often does not).
+func streamRate(s domain.Stream) int {
+	if s.Bitrate > 0 {
+		return int(s.Bitrate / 1000)
+	}
+	channels := max(s.Channels, 2)
+	switch s.Codec {
+	case "aac", "mp3", "opus", "vorbis":
+		return 64 * channels
+	case "ac3", "eac3":
+		return 640
+	}
+	return 500 * channels // lossless or unknown
 }
 
 // ShowsSubtitle reports whether the device renders a subtitle itself, in one of the formats we

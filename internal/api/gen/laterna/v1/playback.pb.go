@@ -83,6 +83,60 @@ func (PlaybackMethod) EnumDescriptor() ([]byte, []int) {
 	return file_laterna_v1_playback_proto_rawDescGZIP(), []int{0}
 }
 
+// BitrateLimitSource says where the bitrate limit of a playback comes from.
+type BitrateLimitSource int32
+
+const (
+	// No limit.
+	BitrateLimitSource_BITRATE_LIMIT_SOURCE_UNSPECIFIED BitrateLimitSource = 0
+	// The client's (StartPlaybackRequest.max_bitrate).
+	BitrateLimitSource_BITRATE_LIMIT_SOURCE_CLIENT BitrateLimitSource = 1
+	// The server's for a connection from outside the local network: Settings.remote_max_bitrate or
+	// Account.remote_max_bitrate, the lower one.
+	BitrateLimitSource_BITRATE_LIMIT_SOURCE_REMOTE BitrateLimitSource = 2
+)
+
+// Enum value maps for BitrateLimitSource.
+var (
+	BitrateLimitSource_name = map[int32]string{
+		0: "BITRATE_LIMIT_SOURCE_UNSPECIFIED",
+		1: "BITRATE_LIMIT_SOURCE_CLIENT",
+		2: "BITRATE_LIMIT_SOURCE_REMOTE",
+	}
+	BitrateLimitSource_value = map[string]int32{
+		"BITRATE_LIMIT_SOURCE_UNSPECIFIED": 0,
+		"BITRATE_LIMIT_SOURCE_CLIENT":      1,
+		"BITRATE_LIMIT_SOURCE_REMOTE":      2,
+	}
+)
+
+func (x BitrateLimitSource) Enum() *BitrateLimitSource {
+	p := new(BitrateLimitSource)
+	*p = x
+	return p
+}
+
+func (x BitrateLimitSource) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BitrateLimitSource) Descriptor() protoreflect.EnumDescriptor {
+	return file_laterna_v1_playback_proto_enumTypes[1].Descriptor()
+}
+
+func (BitrateLimitSource) Type() protoreflect.EnumType {
+	return &file_laterna_v1_playback_proto_enumTypes[1]
+}
+
+func (x BitrateLimitSource) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use BitrateLimitSource.Descriptor instead.
+func (BitrateLimitSource) EnumDescriptor() ([]byte, []int) {
+	return file_laterna_v1_playback_proto_rawDescGZIP(), []int{1}
+}
+
 // DeviceProfile is what the device can play. Each client builds it from its own capabilities (a
 // browser probes them with MediaSource.isTypeSupported). The server assumes nothing.
 type DeviceProfile struct {
@@ -248,8 +302,13 @@ type StartPlaybackRequest struct {
 	// which. Like a requested one, it is burned in if the device cannot render it. A client sets it
 	// when a playback starts, and leaves it out when it reopens one after a choice of the viewer.
 	ProfileSubtitle bool `protobuf:"varint,6,opt,name=profile_subtitle,json=profileSubtitle,proto3" json:"profile_subtitle,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Highest bitrate of the stream, in kbit/s: the quality the viewer picked, or what the
+	// connection carries; 0 means no limit. Outside the local network the server may lower it
+	// (Settings.remote_max_bitrate, Account.remote_max_bitrate). A file above the limit has its video
+	// re-encoded at a lower bitrate, and its picture scaled down to fit it.
+	MaxBitrate    int32 `protobuf:"varint,7,opt,name=max_bitrate,json=maxBitrate,proto3" json:"max_bitrate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StartPlaybackRequest) Reset() {
@@ -324,6 +383,13 @@ func (x *StartPlaybackRequest) GetProfileSubtitle() bool {
 	return false
 }
 
+func (x *StartPlaybackRequest) GetMaxBitrate() int32 {
+	if x != nil {
+		return x.MaxBitrate
+	}
+	return 0
+}
+
 type StartPlaybackResponse struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -374,7 +440,14 @@ type StartPlaybackResponse struct {
 	// url, with the subtitles served in WebVTT as renditions (SubtitleTrack.rendition). For a player
 	// that shows subtitles only from the stream, like Safari's own HLS player on iPhone, in its
 	// fullscreen too. Empty for a direct playback.
-	MasterUrl     string `protobuf:"bytes,22,opt,name=master_url,json=masterUrl,proto3" json:"master_url,omitempty"`
+	MasterUrl string `protobuf:"bytes,22,opt,name=master_url,json=masterUrl,proto3" json:"master_url,omitempty"`
+	// Bitrate limit applied, in kbit/s: the lowest of the client's and, outside the local network,
+	// the server's; 0 means none. The file plays as it is when it stays below it.
+	BitrateLimit       int32              `protobuf:"varint,23,opt,name=bitrate_limit,json=bitrateLimit,proto3" json:"bitrate_limit,omitempty"`
+	BitrateLimitSource BitrateLimitSource `protobuf:"varint,24,opt,name=bitrate_limit_source,json=bitrateLimitSource,proto3,enum=laterna.v1.BitrateLimitSource" json:"bitrate_limit_source,omitempty"`
+	// Bitrate the re-encoded video aims at under that limit, in kbit/s; 0 if the video is copied or
+	// re-encoded without a limit.
+	VideoBitrate  int32 `protobuf:"varint,25,opt,name=video_bitrate,json=videoBitrate,proto3" json:"video_bitrate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -561,6 +634,27 @@ func (x *StartPlaybackResponse) GetMasterUrl() string {
 		return x.MasterUrl
 	}
 	return ""
+}
+
+func (x *StartPlaybackResponse) GetBitrateLimit() int32 {
+	if x != nil {
+		return x.BitrateLimit
+	}
+	return 0
+}
+
+func (x *StartPlaybackResponse) GetBitrateLimitSource() BitrateLimitSource {
+	if x != nil {
+		return x.BitrateLimitSource
+	}
+	return BitrateLimitSource_BITRATE_LIMIT_SOURCE_UNSPECIFIED
+}
+
+func (x *StartPlaybackResponse) GetVideoBitrate() int32 {
+	if x != nil {
+		return x.VideoBitrate
+	}
+	return 0
 }
 
 // SubtitleTrack is a subtitle of the file played: one of its streams or a file next to it.
@@ -1123,16 +1217,18 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\fVideoSupport\x12\x14\n" +
 	"\x05codec\x18\x01 \x01(\tR\x05codec\x12\"\n" +
 	"\rmax_bit_depth\x18\x02 \x01(\x05R\vmaxBitDepth\x12\x10\n" +
-	"\x03hdr\x18\x03 \x01(\bR\x03hdr\"\xaf\x02\n" +
+	"\x03hdr\x18\x03 \x01(\bR\x03hdr\"\xd0\x02\n" +
 	"\x14StartPlaybackRequest\x12\x17\n" +
 	"\aitem_id\x18\x01 \x01(\tR\x06itemId\x12\x17\n" +
 	"\afile_id\x18\x02 \x01(\tR\x06fileId\x121\n" +
 	"\x12audio_stream_index\x18\x03 \x01(\x05H\x00R\x10audioStreamIndex\x88\x01\x01\x121\n" +
 	"\x06device\x18\x04 \x01(\v2\x19.laterna.v1.DeviceProfileR\x06device\x12*\n" +
 	"\x0esubtitle_index\x18\x05 \x01(\x05H\x01R\rsubtitleIndex\x88\x01\x01\x12)\n" +
-	"\x10profile_subtitle\x18\x06 \x01(\bR\x0fprofileSubtitleB\x15\n" +
+	"\x10profile_subtitle\x18\x06 \x01(\bR\x0fprofileSubtitle\x12\x1f\n" +
+	"\vmax_bitrate\x18\a \x01(\x05R\n" +
+	"maxBitrateB\x15\n" +
 	"\x13_audio_stream_indexB\x11\n" +
-	"\x0f_subtitle_index\"\xe4\a\n" +
+	"\x0f_subtitle_index\"\x80\t\n" +
 	"\x15StartPlaybackResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x122\n" +
@@ -1158,7 +1254,10 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\adecoder\x18\x15 \x01(\tR\adecoder\x124\n" +
 	"\bsegments\x18\x12 \x03(\v2\x18.laterna.v1.MediaSegmentR\bsegments\x12\x1d\n" +
 	"\n" +
-	"master_url\x18\x16 \x01(\tR\tmasterUrlB\x15\n" +
+	"master_url\x18\x16 \x01(\tR\tmasterUrl\x12#\n" +
+	"\rbitrate_limit\x18\x17 \x01(\x05R\fbitrateLimit\x12P\n" +
+	"\x14bitrate_limit_source\x18\x18 \x01(\x0e2\x1e.laterna.v1.BitrateLimitSourceR\x12bitrateLimitSource\x12#\n" +
+	"\rvideo_bitrate\x18\x19 \x01(\x05R\fvideoBitrateB\x15\n" +
 	"\x13_audio_stream_indexB\x18\n" +
 	"\x16_burned_subtitle_indexB\x11\n" +
 	"\x0f_subtitle_index\"\xca\x02\n" +
@@ -1205,7 +1304,11 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\x16PLAYBACK_METHOD_DIRECT\x10\x01\x12\x1d\n" +
 	"\x19PLAYBACK_METHOD_HLS_REMUX\x10\x02\x12!\n" +
 	"\x1dPLAYBACK_METHOD_HLS_TRANSCODE\x10\x03\x12\x1d\n" +
-	"\x19PLAYBACK_METHOD_CONVERTED\x10\x042\xf5\x02\n" +
+	"\x19PLAYBACK_METHOD_CONVERTED\x10\x04*|\n" +
+	"\x12BitrateLimitSource\x12$\n" +
+	" BITRATE_LIMIT_SOURCE_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bBITRATE_LIMIT_SOURCE_CLIENT\x10\x01\x12\x1f\n" +
+	"\x1bBITRATE_LIMIT_SOURCE_REMOTE\x10\x022\xf5\x02\n" +
 	"\x0fPlaybackService\x12T\n" +
 	"\rStartPlayback\x12 .laterna.v1.StartPlaybackRequest\x1a!.laterna.v1.StartPlaybackResponse\x12\\\n" +
 	"\x0eReportProgress\x12!.laterna.v1.ReportProgressRequest\x1a\".laterna.v1.ReportProgressResponse\"\x03\x90\x02\x02\x12V\n" +
@@ -1224,55 +1327,57 @@ func file_laterna_v1_playback_proto_rawDescGZIP() []byte {
 	return file_laterna_v1_playback_proto_rawDescData
 }
 
-var file_laterna_v1_playback_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_laterna_v1_playback_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_laterna_v1_playback_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_laterna_v1_playback_proto_goTypes = []any{
 	(PlaybackMethod)(0),            // 0: laterna.v1.PlaybackMethod
-	(*DeviceProfile)(nil),          // 1: laterna.v1.DeviceProfile
-	(*VideoSupport)(nil),           // 2: laterna.v1.VideoSupport
-	(*StartPlaybackRequest)(nil),   // 3: laterna.v1.StartPlaybackRequest
-	(*StartPlaybackResponse)(nil),  // 4: laterna.v1.StartPlaybackResponse
-	(*SubtitleTrack)(nil),          // 5: laterna.v1.SubtitleTrack
-	(*SubtitleFile)(nil),           // 6: laterna.v1.SubtitleFile
-	(*Font)(nil),                   // 7: laterna.v1.Font
-	(*ReportProgressRequest)(nil),  // 8: laterna.v1.ReportProgressRequest
-	(*ReportProgressResponse)(nil), // 9: laterna.v1.ReportProgressResponse
-	(*StopPlaybackRequest)(nil),    // 10: laterna.v1.StopPlaybackRequest
-	(*StopPlaybackResponse)(nil),   // 11: laterna.v1.StopPlaybackResponse
-	(*GetSubtitlesRequest)(nil),    // 12: laterna.v1.GetSubtitlesRequest
-	(*GetSubtitlesResponse)(nil),   // 13: laterna.v1.GetSubtitlesResponse
-	(*durationpb.Duration)(nil),    // 14: google.protobuf.Duration
-	(*Text)(nil),                   // 15: laterna.v1.Text
-	(*MediaSegment)(nil),           // 16: laterna.v1.MediaSegment
+	(BitrateLimitSource)(0),        // 1: laterna.v1.BitrateLimitSource
+	(*DeviceProfile)(nil),          // 2: laterna.v1.DeviceProfile
+	(*VideoSupport)(nil),           // 3: laterna.v1.VideoSupport
+	(*StartPlaybackRequest)(nil),   // 4: laterna.v1.StartPlaybackRequest
+	(*StartPlaybackResponse)(nil),  // 5: laterna.v1.StartPlaybackResponse
+	(*SubtitleTrack)(nil),          // 6: laterna.v1.SubtitleTrack
+	(*SubtitleFile)(nil),           // 7: laterna.v1.SubtitleFile
+	(*Font)(nil),                   // 8: laterna.v1.Font
+	(*ReportProgressRequest)(nil),  // 9: laterna.v1.ReportProgressRequest
+	(*ReportProgressResponse)(nil), // 10: laterna.v1.ReportProgressResponse
+	(*StopPlaybackRequest)(nil),    // 11: laterna.v1.StopPlaybackRequest
+	(*StopPlaybackResponse)(nil),   // 12: laterna.v1.StopPlaybackResponse
+	(*GetSubtitlesRequest)(nil),    // 13: laterna.v1.GetSubtitlesRequest
+	(*GetSubtitlesResponse)(nil),   // 14: laterna.v1.GetSubtitlesResponse
+	(*durationpb.Duration)(nil),    // 15: google.protobuf.Duration
+	(*Text)(nil),                   // 16: laterna.v1.Text
+	(*MediaSegment)(nil),           // 17: laterna.v1.MediaSegment
 }
 var file_laterna_v1_playback_proto_depIdxs = []int32{
-	2,  // 0: laterna.v1.DeviceProfile.video:type_name -> laterna.v1.VideoSupport
-	1,  // 1: laterna.v1.StartPlaybackRequest.device:type_name -> laterna.v1.DeviceProfile
+	3,  // 0: laterna.v1.DeviceProfile.video:type_name -> laterna.v1.VideoSupport
+	2,  // 1: laterna.v1.StartPlaybackRequest.device:type_name -> laterna.v1.DeviceProfile
 	0,  // 2: laterna.v1.StartPlaybackResponse.method:type_name -> laterna.v1.PlaybackMethod
-	14, // 3: laterna.v1.StartPlaybackResponse.duration:type_name -> google.protobuf.Duration
-	14, // 4: laterna.v1.StartPlaybackResponse.resume_position:type_name -> google.protobuf.Duration
-	5,  // 5: laterna.v1.StartPlaybackResponse.subtitles:type_name -> laterna.v1.SubtitleTrack
-	7,  // 6: laterna.v1.StartPlaybackResponse.fonts:type_name -> laterna.v1.Font
-	15, // 7: laterna.v1.StartPlaybackResponse.reason_texts:type_name -> laterna.v1.Text
-	16, // 8: laterna.v1.StartPlaybackResponse.segments:type_name -> laterna.v1.MediaSegment
-	6,  // 9: laterna.v1.SubtitleTrack.files:type_name -> laterna.v1.SubtitleFile
-	14, // 10: laterna.v1.ReportProgressRequest.position:type_name -> google.protobuf.Duration
-	14, // 11: laterna.v1.StopPlaybackRequest.position:type_name -> google.protobuf.Duration
-	5,  // 12: laterna.v1.GetSubtitlesResponse.subtitles:type_name -> laterna.v1.SubtitleTrack
-	7,  // 13: laterna.v1.GetSubtitlesResponse.fonts:type_name -> laterna.v1.Font
-	3,  // 14: laterna.v1.PlaybackService.StartPlayback:input_type -> laterna.v1.StartPlaybackRequest
-	8,  // 15: laterna.v1.PlaybackService.ReportProgress:input_type -> laterna.v1.ReportProgressRequest
-	10, // 16: laterna.v1.PlaybackService.StopPlayback:input_type -> laterna.v1.StopPlaybackRequest
-	12, // 17: laterna.v1.PlaybackService.GetSubtitles:input_type -> laterna.v1.GetSubtitlesRequest
-	4,  // 18: laterna.v1.PlaybackService.StartPlayback:output_type -> laterna.v1.StartPlaybackResponse
-	9,  // 19: laterna.v1.PlaybackService.ReportProgress:output_type -> laterna.v1.ReportProgressResponse
-	11, // 20: laterna.v1.PlaybackService.StopPlayback:output_type -> laterna.v1.StopPlaybackResponse
-	13, // 21: laterna.v1.PlaybackService.GetSubtitles:output_type -> laterna.v1.GetSubtitlesResponse
-	18, // [18:22] is the sub-list for method output_type
-	14, // [14:18] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	15, // 3: laterna.v1.StartPlaybackResponse.duration:type_name -> google.protobuf.Duration
+	15, // 4: laterna.v1.StartPlaybackResponse.resume_position:type_name -> google.protobuf.Duration
+	6,  // 5: laterna.v1.StartPlaybackResponse.subtitles:type_name -> laterna.v1.SubtitleTrack
+	8,  // 6: laterna.v1.StartPlaybackResponse.fonts:type_name -> laterna.v1.Font
+	16, // 7: laterna.v1.StartPlaybackResponse.reason_texts:type_name -> laterna.v1.Text
+	17, // 8: laterna.v1.StartPlaybackResponse.segments:type_name -> laterna.v1.MediaSegment
+	1,  // 9: laterna.v1.StartPlaybackResponse.bitrate_limit_source:type_name -> laterna.v1.BitrateLimitSource
+	7,  // 10: laterna.v1.SubtitleTrack.files:type_name -> laterna.v1.SubtitleFile
+	15, // 11: laterna.v1.ReportProgressRequest.position:type_name -> google.protobuf.Duration
+	15, // 12: laterna.v1.StopPlaybackRequest.position:type_name -> google.protobuf.Duration
+	6,  // 13: laterna.v1.GetSubtitlesResponse.subtitles:type_name -> laterna.v1.SubtitleTrack
+	8,  // 14: laterna.v1.GetSubtitlesResponse.fonts:type_name -> laterna.v1.Font
+	4,  // 15: laterna.v1.PlaybackService.StartPlayback:input_type -> laterna.v1.StartPlaybackRequest
+	9,  // 16: laterna.v1.PlaybackService.ReportProgress:input_type -> laterna.v1.ReportProgressRequest
+	11, // 17: laterna.v1.PlaybackService.StopPlayback:input_type -> laterna.v1.StopPlaybackRequest
+	13, // 18: laterna.v1.PlaybackService.GetSubtitles:input_type -> laterna.v1.GetSubtitlesRequest
+	5,  // 19: laterna.v1.PlaybackService.StartPlayback:output_type -> laterna.v1.StartPlaybackResponse
+	10, // 20: laterna.v1.PlaybackService.ReportProgress:output_type -> laterna.v1.ReportProgressResponse
+	12, // 21: laterna.v1.PlaybackService.StopPlayback:output_type -> laterna.v1.StopPlaybackResponse
+	14, // 22: laterna.v1.PlaybackService.GetSubtitles:output_type -> laterna.v1.GetSubtitlesResponse
+	19, // [19:23] is the sub-list for method output_type
+	15, // [15:19] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_playback_proto_init() }
@@ -1289,7 +1394,7 @@ func file_laterna_v1_playback_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_playback_proto_rawDesc), len(file_laterna_v1_playback_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,

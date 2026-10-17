@@ -15,6 +15,7 @@ func TestFileArgs(t *testing.T) {
 	root := testfixtures.Library(t)
 	ffmpeg, ffprobe, _ := testfixtures.FFmpeg()
 	x264, _ := ByName("libx264")
+	x264.Rated = true
 	source := filepath.Join(root, "Movies", "Dual Audio (2019)", "Dual Audio (2019).mkv")
 	streams := func(path string) string {
 		t.Helper()
@@ -52,6 +53,6 @@ func TestFileArgs(t *testing.T) {
 	}
 	vaapi, _ := ByName("h264_vaapi")
 	if args := strings.Join(FileArgs(FileOptions{Path: source, Output: small, Audio: -1, Encoder: vaapi, VideoRate: 4000}), " "); strings.Contains(args, "-maxrate") {
-		t.Errorf("bitrate cap for an encoder that does not support it: %s", args)
+		t.Errorf("bitrate settings that did not pass their test: %s", args)
 	}
 }

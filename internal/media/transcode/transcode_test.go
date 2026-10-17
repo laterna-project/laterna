@@ -47,6 +47,48 @@ func TestDetect(t *testing.T) {
 	if !slices.Equal(caps.Names(), names) {
 		t.Errorf("Prefer changed the encoders: %v", caps.Names())
 	}
+	// The bitrate settings of libx264 work wherever it does.
+	for _, e := range caps.Encoders {
+		t.Logf("%s: bitrate settings work: %v", e.Name, e.Rated)
+		if e.Name == "libx264" && !e.Rated {
+			t.Error("libx264 cannot cap its bitrate")
+		}
+	}
+}
+
+// Under a bitrate limit the best encoder of the machine stays under it, where its quality settings
+// would not: a noisy picture is expensive.
+func TestBitrateCap(t *testing.T) {
+	ffmpeg, caps := detect(t)
+	best, _ := caps.Best()
+	if !best.Rated {
+		t.Skipf("%s cannot cap its bitrate here", best.Name)
+	}
+	source := filepath.Join(t.TempDir(), "noise.mkv")
+	if out, err := exec.Command(ffmpeg, "-v", "error", "-f", "lavfi", "-i", "testsrc2=s=640x360:r=24:d=12,noise=alls=40:allf=t",
+		"-c:v", "libx264", "-preset", "ultrafast", "-qp", "10", "file:"+source).CombinedOutput(); err != nil {
+		t.Fatalf("source: %v %s", err, out)
+	}
+	rate := func(kbps int) int {
+		t.Helper()
+		var size int
+		err := fmp4.Run(context.Background(), fmp4.Command{Bin: ffmpeg, Args: Args(Options{
+			Path: source, Audio: -1, Encoder: best, MaxHeight: 360, VideoRate: kbps, Segment: 6 * time.Second,
+		})}, func([]byte) error { return nil }, func(f fmp4.Fragment) error { size += len(f.Data); return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		return size * 8 / 12 / 1000
+	}
+	// Encoders land a few percent above their target: playback aims a tenth below the limit.
+	free, capped := rate(0), rate(1500)
+	t.Logf("%s: %d kbit/s in quality settings, %d kbit/s under 1500", best.Name, free, capped)
+	if free < 3000 {
+		t.Fatalf("source too cheap to tell: %d kbit/s", free)
+	}
+	if capped > 1500*115/100 {
+		t.Errorf("%s under a 1500 kbit/s cap: %d kbit/s", best.Name, capped)
+	}
 }
 
 // fragments collects the fragment starts of a transcoded run.
@@ -189,6 +231,29 @@ func TestArgs(t *testing.T) {
 	}
 	if _, ok := ByName("unknown"); ok {
 		t.Error("unknown encoder accepted")
+	}
+}
+
+// Under a bitrate limit: the bitrate settings when they passed their test, stereo audio at the
+// given rate, and the picture scaled down either way.
+func TestArgsBitrate(t *testing.T) {
+	x264, _ := ByName("libx264")
+	o := Options{Path: "a.mkv", Audio: 1, Encoder: x264, MaxHeight: 720, VideoRate: 3000, Segment: 6 * time.Second, Channels: 6, AudioRate: 128}
+	untested := strings.Join(Args(o), " ")
+	if strings.Contains(untested, "-maxrate") || !strings.Contains(untested, "-crf 21") || !strings.Contains(untested, "min(ih,720)") {
+		t.Errorf("bitrate settings without their test: %s", untested)
+	}
+	o.Encoder.Rated = true
+	rated := strings.Join(Args(o), " ")
+	for _, want := range []string{"-crf 21 -maxrate 3000k -bufsize 6000k", "-bf 0", "min(ih,720)", "-c:a aac -ac 2 -b:a 128k"} {
+		if !strings.Contains(rated, want) {
+			t.Errorf("under a limit without %q: %s", want, rated)
+		}
+	}
+	qsv, _ := ByName("h264_qsv")
+	qsv.Rated = true
+	if a := strings.Join(Args(Options{Path: "a.mkv", Audio: -1, Encoder: qsv, VideoRate: 2000, Segment: 6 * time.Second}), " "); !strings.Contains(a, "-b:v 2000k -maxrate 2000k -bufsize 4000k -forced_idr 1") || strings.Contains(a, "global_quality") {
+		t.Errorf("QSV under a limit: %s", a)
 	}
 }
 

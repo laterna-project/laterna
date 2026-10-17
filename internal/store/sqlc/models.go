@@ -26,6 +26,7 @@ type Account struct {
 	DenyRequests        int64
 	AutoApproveRequests int64
 	RequestQuota        int64
+	RemoteMaxBitrate    int64
 }
 
 type AccountLibrary struct {

@@ -537,7 +537,15 @@ type Settings struct {
 	// empty means public_url (web client served at the same address as the server). The server puts
 	// the page where a device login code is approved there
 	// (StartDeviceLoginResponse.verification_url).
-	WebUrl        string `protobuf:"bytes,14,opt,name=web_url,json=webUrl,proto3" json:"web_url,omitempty"`
+	WebUrl string `protobuf:"bytes,14,opt,name=web_url,json=webUrl,proto3" json:"web_url,omitempty"`
+	// Highest bitrate of a playback from outside the local network, in kbit/s (500 to 1,000,000); 0
+	// means no limit. An account may have a lower one (Account.remote_max_bitrate).
+	RemoteMaxBitrate int32 `protobuf:"varint,15,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3" json:"remote_max_bitrate,omitempty"`
+	// Networks counted as local ("192.168.1.0/24", "fd00::/8"; 32 at most), whose playbacks are never
+	// limited by the server. Empty means the private, loopback and link-local ranges. The client
+	// address is the one seen by the server, or given by a trusted proxy (server.trusted_proxies):
+	// behind a proxy that is not declared, every client looks local.
+	LocalNetworks []string `protobuf:"bytes,16,rep,name=local_networks,json=localNetworks,proto3" json:"local_networks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -668,6 +676,20 @@ func (x *Settings) GetWebUrl() string {
 		return x.WebUrl
 	}
 	return ""
+}
+
+func (x *Settings) GetRemoteMaxBitrate() int32 {
+	if x != nil {
+		return x.RemoteMaxBitrate
+	}
+	return 0
+}
+
+func (x *Settings) GetLocalNetworks() []string {
+	if x != nil {
+		return x.LocalNetworks
+	}
+	return nil
 }
 
 // StringList is a list of strings whose absence can be told from an empty list.
@@ -813,6 +835,10 @@ type UpdateSettingsRequest struct {
 	BackupKeep    *int32  `protobuf:"varint,12,opt,name=backup_keep,json=backupKeep,proto3,oneof" json:"backup_keep,omitempty"`
 	Language      *string `protobuf:"bytes,13,opt,name=language,proto3,oneof" json:"language,omitempty"`
 	WebUrl        *string `protobuf:"bytes,14,opt,name=web_url,json=webUrl,proto3,oneof" json:"web_url,omitempty"`
+	// 0 means no limit.
+	RemoteMaxBitrate *int32 `protobuf:"varint,15,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3,oneof" json:"remote_max_bitrate,omitempty"`
+	// An empty list means the private ranges.
+	LocalNetworks *StringList `protobuf:"bytes,16,opt,name=local_networks,json=localNetworks,proto3" json:"local_networks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -943,6 +969,20 @@ func (x *UpdateSettingsRequest) GetWebUrl() string {
 		return *x.WebUrl
 	}
 	return ""
+}
+
+func (x *UpdateSettingsRequest) GetRemoteMaxBitrate() int32 {
+	if x != nil && x.RemoteMaxBitrate != nil {
+		return *x.RemoteMaxBitrate
+	}
+	return 0
+}
+
+func (x *UpdateSettingsRequest) GetLocalNetworks() *StringList {
+	if x != nil {
+		return x.LocalNetworks
+	}
+	return nil
 }
 
 type UpdateSettingsResponse struct {
@@ -2911,7 +2951,7 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\x0ftranscode_limit\x18\x15 \x01(\x05R\x0etranscodeLimit\"\x18\n" +
 	"\x16GetSystemStatusRequest\"K\n" +
 	"\x17GetSystemStatusResponse\x120\n" +
-	"\x06status\x18\x01 \x01(\v2\x18.laterna.v1.SystemStatusR\x06status\"\xad\x04\n" +
+	"\x06status\x18\x01 \x01(\v2\x18.laterna.v1.SystemStatusR\x06status\"\x82\x05\n" +
 	"\bSettings\x12\x1f\n" +
 	"\vserver_name\x18\x01 \x01(\tR\n" +
 	"serverName\x12'\n" +
@@ -2930,13 +2970,15 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\vbackup_keep\x18\f \x01(\x05R\n" +
 	"backupKeep\x12\x1a\n" +
 	"\blanguage\x18\r \x01(\tR\blanguage\x12\x17\n" +
-	"\aweb_url\x18\x0e \x01(\tR\x06webUrl\"$\n" +
+	"\aweb_url\x18\x0e \x01(\tR\x06webUrl\x12,\n" +
+	"\x12remote_max_bitrate\x18\x0f \x01(\x05R\x10remoteMaxBitrate\x12%\n" +
+	"\x0elocal_networks\x18\x10 \x03(\tR\rlocalNetworks\"$\n" +
 	"\n" +
 	"StringList\x12\x16\n" +
 	"\x06values\x18\x01 \x03(\tR\x06values\"\x14\n" +
 	"\x12GetSettingsRequest\"G\n" +
 	"\x13GetSettingsResponse\x120\n" +
-	"\bsettings\x18\x01 \x01(\v2\x14.laterna.v1.SettingsR\bsettings\"\xc0\x06\n" +
+	"\bsettings\x18\x01 \x01(\v2\x14.laterna.v1.SettingsR\bsettings\"\xc9\a\n" +
 	"\x15UpdateSettingsRequest\x12$\n" +
 	"\vserver_name\x18\x01 \x01(\tH\x00R\n" +
 	"serverName\x88\x01\x01\x12,\n" +
@@ -2956,7 +2998,9 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"backupKeep\x88\x01\x01\x12\x1f\n" +
 	"\blanguage\x18\r \x01(\tH\tR\blanguage\x88\x01\x01\x12\x1c\n" +
 	"\aweb_url\x18\x0e \x01(\tH\n" +
-	"R\x06webUrl\x88\x01\x01B\x0e\n" +
+	"R\x06webUrl\x88\x01\x01\x121\n" +
+	"\x12remote_max_bitrate\x18\x0f \x01(\x05H\vR\x10remoteMaxBitrate\x88\x01\x01\x12=\n" +
+	"\x0elocal_networks\x18\x10 \x01(\v2\x16.laterna.v1.StringListR\rlocalNetworksB\x0e\n" +
 	"\f_server_nameB\x12\n" +
 	"\x10_download_imagesB\f\n" +
 	"\n" +
@@ -2969,7 +3013,8 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\f_backup_keepB\v\n" +
 	"\t_languageB\n" +
 	"\n" +
-	"\b_web_url\"J\n" +
+	"\b_web_urlB\x15\n" +
+	"\x13_remote_max_bitrate\"J\n" +
 	"\x16UpdateSettingsResponse\x120\n" +
 	"\bsettings\x18\x01 \x01(\v2\x14.laterna.v1.SettingsR\bsettings\"J\n" +
 	"\bJobCount\x12\x12\n" +
@@ -3194,67 +3239,68 @@ var file_laterna_v1_system_proto_depIdxs = []int32{
 	52, // 5: laterna.v1.UpdateSettingsRequest.scan_interval:type_name -> google.protobuf.Duration
 	52, // 6: laterna.v1.UpdateSettingsRequest.missing_grace:type_name -> google.protobuf.Duration
 	7,  // 7: laterna.v1.UpdateSettingsRequest.passkey_origins:type_name -> laterna.v1.StringList
-	6,  // 8: laterna.v1.UpdateSettingsResponse.settings:type_name -> laterna.v1.Settings
-	51, // 9: laterna.v1.FailedJob.failed_at:type_name -> google.protobuf.Timestamp
-	12, // 10: laterna.v1.ListJobsResponse.counts:type_name -> laterna.v1.JobCount
-	13, // 11: laterna.v1.ListJobsResponse.failed:type_name -> laterna.v1.FailedJob
-	0,  // 12: laterna.v1.RunTaskRequest.task:type_name -> laterna.v1.SystemTask
-	51, // 13: laterna.v1.LogEntry.time:type_name -> google.protobuf.Timestamp
-	1,  // 14: laterna.v1.LogEntry.level:type_name -> laterna.v1.LogLevel
-	22, // 15: laterna.v1.LogEntry.attrs:type_name -> laterna.v1.LogAttr
-	1,  // 16: laterna.v1.ListLogsRequest.min_level:type_name -> laterna.v1.LogLevel
-	23, // 17: laterna.v1.ListLogsResponse.entries:type_name -> laterna.v1.LogEntry
-	51, // 18: laterna.v1.LogFile.modified_at:type_name -> google.protobuf.Timestamp
-	26, // 19: laterna.v1.ListLogFilesResponse.files:type_name -> laterna.v1.LogFile
-	29, // 20: laterna.v1.GetOidcProviderResponse.provider:type_name -> laterna.v1.OidcProvider
-	29, // 21: laterna.v1.SetOidcProviderResponse.provider:type_name -> laterna.v1.OidcProvider
-	2,  // 22: laterna.v1.Backup.kind:type_name -> laterna.v1.BackupKind
-	51, // 23: laterna.v1.Backup.created_at:type_name -> google.protobuf.Timestamp
-	40, // 24: laterna.v1.ListBackupsResponse.backups:type_name -> laterna.v1.Backup
-	40, // 25: laterna.v1.CreateBackupResponse.backup:type_name -> laterna.v1.Backup
-	4,  // 26: laterna.v1.SystemService.GetSystemStatus:input_type -> laterna.v1.GetSystemStatusRequest
-	8,  // 27: laterna.v1.SystemService.GetSettings:input_type -> laterna.v1.GetSettingsRequest
-	10, // 28: laterna.v1.SystemService.UpdateSettings:input_type -> laterna.v1.UpdateSettingsRequest
-	30, // 29: laterna.v1.SystemService.GetOidcProvider:input_type -> laterna.v1.GetOidcProviderRequest
-	32, // 30: laterna.v1.SystemService.SetOidcProvider:input_type -> laterna.v1.SetOidcProviderRequest
-	34, // 31: laterna.v1.SystemService.GetMetrics:input_type -> laterna.v1.GetMetricsRequest
-	36, // 32: laterna.v1.SystemService.EnableMetrics:input_type -> laterna.v1.EnableMetricsRequest
-	38, // 33: laterna.v1.SystemService.DisableMetrics:input_type -> laterna.v1.DisableMetricsRequest
-	41, // 34: laterna.v1.SystemService.ListBackups:input_type -> laterna.v1.ListBackupsRequest
-	43, // 35: laterna.v1.SystemService.CreateBackup:input_type -> laterna.v1.CreateBackupRequest
-	45, // 36: laterna.v1.SystemService.DeleteBackup:input_type -> laterna.v1.DeleteBackupRequest
-	47, // 37: laterna.v1.SystemService.RestoreBackup:input_type -> laterna.v1.RestoreBackupRequest
-	49, // 38: laterna.v1.SystemService.CancelRestore:input_type -> laterna.v1.CancelRestoreRequest
-	14, // 39: laterna.v1.SystemService.ListJobs:input_type -> laterna.v1.ListJobsRequest
-	16, // 40: laterna.v1.SystemService.RetryJobs:input_type -> laterna.v1.RetryJobsRequest
-	18, // 41: laterna.v1.SystemService.DeleteJobs:input_type -> laterna.v1.DeleteJobsRequest
-	20, // 42: laterna.v1.SystemService.RunTask:input_type -> laterna.v1.RunTaskRequest
-	24, // 43: laterna.v1.SystemService.ListLogs:input_type -> laterna.v1.ListLogsRequest
-	27, // 44: laterna.v1.SystemService.ListLogFiles:input_type -> laterna.v1.ListLogFilesRequest
-	5,  // 45: laterna.v1.SystemService.GetSystemStatus:output_type -> laterna.v1.GetSystemStatusResponse
-	9,  // 46: laterna.v1.SystemService.GetSettings:output_type -> laterna.v1.GetSettingsResponse
-	11, // 47: laterna.v1.SystemService.UpdateSettings:output_type -> laterna.v1.UpdateSettingsResponse
-	31, // 48: laterna.v1.SystemService.GetOidcProvider:output_type -> laterna.v1.GetOidcProviderResponse
-	33, // 49: laterna.v1.SystemService.SetOidcProvider:output_type -> laterna.v1.SetOidcProviderResponse
-	35, // 50: laterna.v1.SystemService.GetMetrics:output_type -> laterna.v1.GetMetricsResponse
-	37, // 51: laterna.v1.SystemService.EnableMetrics:output_type -> laterna.v1.EnableMetricsResponse
-	39, // 52: laterna.v1.SystemService.DisableMetrics:output_type -> laterna.v1.DisableMetricsResponse
-	42, // 53: laterna.v1.SystemService.ListBackups:output_type -> laterna.v1.ListBackupsResponse
-	44, // 54: laterna.v1.SystemService.CreateBackup:output_type -> laterna.v1.CreateBackupResponse
-	46, // 55: laterna.v1.SystemService.DeleteBackup:output_type -> laterna.v1.DeleteBackupResponse
-	48, // 56: laterna.v1.SystemService.RestoreBackup:output_type -> laterna.v1.RestoreBackupResponse
-	50, // 57: laterna.v1.SystemService.CancelRestore:output_type -> laterna.v1.CancelRestoreResponse
-	15, // 58: laterna.v1.SystemService.ListJobs:output_type -> laterna.v1.ListJobsResponse
-	17, // 59: laterna.v1.SystemService.RetryJobs:output_type -> laterna.v1.RetryJobsResponse
-	19, // 60: laterna.v1.SystemService.DeleteJobs:output_type -> laterna.v1.DeleteJobsResponse
-	21, // 61: laterna.v1.SystemService.RunTask:output_type -> laterna.v1.RunTaskResponse
-	25, // 62: laterna.v1.SystemService.ListLogs:output_type -> laterna.v1.ListLogsResponse
-	28, // 63: laterna.v1.SystemService.ListLogFiles:output_type -> laterna.v1.ListLogFilesResponse
-	45, // [45:64] is the sub-list for method output_type
-	26, // [26:45] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	7,  // 8: laterna.v1.UpdateSettingsRequest.local_networks:type_name -> laterna.v1.StringList
+	6,  // 9: laterna.v1.UpdateSettingsResponse.settings:type_name -> laterna.v1.Settings
+	51, // 10: laterna.v1.FailedJob.failed_at:type_name -> google.protobuf.Timestamp
+	12, // 11: laterna.v1.ListJobsResponse.counts:type_name -> laterna.v1.JobCount
+	13, // 12: laterna.v1.ListJobsResponse.failed:type_name -> laterna.v1.FailedJob
+	0,  // 13: laterna.v1.RunTaskRequest.task:type_name -> laterna.v1.SystemTask
+	51, // 14: laterna.v1.LogEntry.time:type_name -> google.protobuf.Timestamp
+	1,  // 15: laterna.v1.LogEntry.level:type_name -> laterna.v1.LogLevel
+	22, // 16: laterna.v1.LogEntry.attrs:type_name -> laterna.v1.LogAttr
+	1,  // 17: laterna.v1.ListLogsRequest.min_level:type_name -> laterna.v1.LogLevel
+	23, // 18: laterna.v1.ListLogsResponse.entries:type_name -> laterna.v1.LogEntry
+	51, // 19: laterna.v1.LogFile.modified_at:type_name -> google.protobuf.Timestamp
+	26, // 20: laterna.v1.ListLogFilesResponse.files:type_name -> laterna.v1.LogFile
+	29, // 21: laterna.v1.GetOidcProviderResponse.provider:type_name -> laterna.v1.OidcProvider
+	29, // 22: laterna.v1.SetOidcProviderResponse.provider:type_name -> laterna.v1.OidcProvider
+	2,  // 23: laterna.v1.Backup.kind:type_name -> laterna.v1.BackupKind
+	51, // 24: laterna.v1.Backup.created_at:type_name -> google.protobuf.Timestamp
+	40, // 25: laterna.v1.ListBackupsResponse.backups:type_name -> laterna.v1.Backup
+	40, // 26: laterna.v1.CreateBackupResponse.backup:type_name -> laterna.v1.Backup
+	4,  // 27: laterna.v1.SystemService.GetSystemStatus:input_type -> laterna.v1.GetSystemStatusRequest
+	8,  // 28: laterna.v1.SystemService.GetSettings:input_type -> laterna.v1.GetSettingsRequest
+	10, // 29: laterna.v1.SystemService.UpdateSettings:input_type -> laterna.v1.UpdateSettingsRequest
+	30, // 30: laterna.v1.SystemService.GetOidcProvider:input_type -> laterna.v1.GetOidcProviderRequest
+	32, // 31: laterna.v1.SystemService.SetOidcProvider:input_type -> laterna.v1.SetOidcProviderRequest
+	34, // 32: laterna.v1.SystemService.GetMetrics:input_type -> laterna.v1.GetMetricsRequest
+	36, // 33: laterna.v1.SystemService.EnableMetrics:input_type -> laterna.v1.EnableMetricsRequest
+	38, // 34: laterna.v1.SystemService.DisableMetrics:input_type -> laterna.v1.DisableMetricsRequest
+	41, // 35: laterna.v1.SystemService.ListBackups:input_type -> laterna.v1.ListBackupsRequest
+	43, // 36: laterna.v1.SystemService.CreateBackup:input_type -> laterna.v1.CreateBackupRequest
+	45, // 37: laterna.v1.SystemService.DeleteBackup:input_type -> laterna.v1.DeleteBackupRequest
+	47, // 38: laterna.v1.SystemService.RestoreBackup:input_type -> laterna.v1.RestoreBackupRequest
+	49, // 39: laterna.v1.SystemService.CancelRestore:input_type -> laterna.v1.CancelRestoreRequest
+	14, // 40: laterna.v1.SystemService.ListJobs:input_type -> laterna.v1.ListJobsRequest
+	16, // 41: laterna.v1.SystemService.RetryJobs:input_type -> laterna.v1.RetryJobsRequest
+	18, // 42: laterna.v1.SystemService.DeleteJobs:input_type -> laterna.v1.DeleteJobsRequest
+	20, // 43: laterna.v1.SystemService.RunTask:input_type -> laterna.v1.RunTaskRequest
+	24, // 44: laterna.v1.SystemService.ListLogs:input_type -> laterna.v1.ListLogsRequest
+	27, // 45: laterna.v1.SystemService.ListLogFiles:input_type -> laterna.v1.ListLogFilesRequest
+	5,  // 46: laterna.v1.SystemService.GetSystemStatus:output_type -> laterna.v1.GetSystemStatusResponse
+	9,  // 47: laterna.v1.SystemService.GetSettings:output_type -> laterna.v1.GetSettingsResponse
+	11, // 48: laterna.v1.SystemService.UpdateSettings:output_type -> laterna.v1.UpdateSettingsResponse
+	31, // 49: laterna.v1.SystemService.GetOidcProvider:output_type -> laterna.v1.GetOidcProviderResponse
+	33, // 50: laterna.v1.SystemService.SetOidcProvider:output_type -> laterna.v1.SetOidcProviderResponse
+	35, // 51: laterna.v1.SystemService.GetMetrics:output_type -> laterna.v1.GetMetricsResponse
+	37, // 52: laterna.v1.SystemService.EnableMetrics:output_type -> laterna.v1.EnableMetricsResponse
+	39, // 53: laterna.v1.SystemService.DisableMetrics:output_type -> laterna.v1.DisableMetricsResponse
+	42, // 54: laterna.v1.SystemService.ListBackups:output_type -> laterna.v1.ListBackupsResponse
+	44, // 55: laterna.v1.SystemService.CreateBackup:output_type -> laterna.v1.CreateBackupResponse
+	46, // 56: laterna.v1.SystemService.DeleteBackup:output_type -> laterna.v1.DeleteBackupResponse
+	48, // 57: laterna.v1.SystemService.RestoreBackup:output_type -> laterna.v1.RestoreBackupResponse
+	50, // 58: laterna.v1.SystemService.CancelRestore:output_type -> laterna.v1.CancelRestoreResponse
+	15, // 59: laterna.v1.SystemService.ListJobs:output_type -> laterna.v1.ListJobsResponse
+	17, // 60: laterna.v1.SystemService.RetryJobs:output_type -> laterna.v1.RetryJobsResponse
+	19, // 61: laterna.v1.SystemService.DeleteJobs:output_type -> laterna.v1.DeleteJobsResponse
+	21, // 62: laterna.v1.SystemService.RunTask:output_type -> laterna.v1.RunTaskResponse
+	25, // 63: laterna.v1.SystemService.ListLogs:output_type -> laterna.v1.ListLogsResponse
+	28, // 64: laterna.v1.SystemService.ListLogFiles:output_type -> laterna.v1.ListLogFilesResponse
+	46, // [46:65] is the sub-list for method output_type
+	27, // [27:46] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_system_proto_init() }

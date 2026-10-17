@@ -21,8 +21,11 @@ type Account struct {
 	DenyRequests        bool
 	AutoApproveRequests bool
 	RequestQuota        int
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	// RemoteMaxBitrate caps the bitrate of its playbacks from outside the local network (kbit/s),
+	// on top of the server's limit; 0 means only the server's.
+	RemoteMaxBitrate int
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // Profile is one "Who's watching?" entry of an account. History, favorites and resume points belong

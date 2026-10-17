@@ -16,8 +16,8 @@ type FileOptions struct {
 	Encoder  Encoder
 	// MaxHeight caps the height of the re-encoded video.
 	MaxHeight int
-	// VideoRate caps the bitrate of the re-encoded video (kbit/s), for encoders that can do it
-	// without leaving their quality mode; 0 means no cap.
+	// VideoRate caps the bitrate of the re-encoded video (kbit/s), with an encoder whose bitrate
+	// settings work (Encoder.Rated); 0 means no cap.
 	VideoRate int
 	// ToneMap is the HDR to SDR conversion (nil for an SDR source). GPU runs the chain on the
 	// graphics card; otherwise Decoder, if set, decodes on the card.
@@ -67,11 +67,7 @@ func FileArgs(o FileOptions) []string {
 		} else {
 			args = append(args, "-vf", videoFilter(o.Encoder, o.MaxHeight, o.ToneMap))
 		}
-		args = append(append(args, "-c:v", o.Encoder.Name), o.Encoder.quality...)
-		if o.VideoRate > 0 && o.Encoder.capped {
-			rate := strconv.Itoa(o.VideoRate)
-			args = append(args, "-maxrate", rate+"k", "-bufsize", strconv.Itoa(2*o.VideoRate)+"k")
-		}
+		args = append(append(args, "-c:v", o.Encoder.Name), o.Encoder.settings(o.VideoRate)...)
 		if o.ToneMap != nil {
 			args = append(args, "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709")
 		}
@@ -80,13 +76,7 @@ func FileArgs(o FileOptions) []string {
 		if o.CopyAudio {
 			args = append(args, "-c:a", "copy")
 		} else {
-			ch := min(max(o.Channels, 2), 6)
-			rate := o.AudioRate
-			if rate == 0 {
-				rate = 64 * ch
-			} else {
-				ch = 2
-			}
+			ch, rate := audioRate(o.Channels, o.AudioRate)
 			args = append(args, "-c:a", "aac", "-ac", strconv.Itoa(ch), "-b:a", strconv.Itoa(rate)+"k")
 		}
 	}

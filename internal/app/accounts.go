@@ -31,6 +31,9 @@ type NewAccount struct {
 	DenyRequests        bool
 	AutoApproveRequests bool
 	RequestQuota        *int
+	// RemoteMaxBitrate caps its playbacks from outside the local network (kbit/s; 0: only the
+	// server's limit).
+	RemoteMaxBitrate int
 }
 
 // AccountChanges describes a change to an account; a nil field is left alone. A new password or
@@ -48,6 +51,9 @@ type AccountChanges struct {
 	DenyRequests        *bool
 	AutoApproveRequests *bool
 	RequestQuota        *int
+	// RemoteMaxBitrate changes its bitrate limit outside the local network (kbit/s; 0: only the
+	// server's).
+	RemoteMaxBitrate *int
 }
 
 // Accounts lists the accounts with their profile count and last activity.
@@ -71,6 +77,9 @@ func (a *App) CreateAccount(ctx context.Context, p domain.Principal, n NewAccoun
 	if n.IsAdmin && n.DenyRequests {
 		return domain.Account{}, domain.Invalid("account.admin_always_requests")
 	}
+	if !validBitrateLimit(n.RemoteMaxBitrate) {
+		return domain.Account{}, domain.Invalid("account.invalid_remote_max_bitrate", "min_kbps", minBitrateLimit, "max_kbps", maxBitrateLimit)
+	}
 	quota := domain.DefaultRequestQuota
 	if n.RequestQuota != nil {
 		if err := validateQuota(*n.RequestQuota); err != nil {
@@ -81,7 +90,7 @@ func (a *App) CreateAccount(ctx context.Context, p domain.Principal, n NewAccoun
 	account := domain.Account{
 		ID: domain.NewID(), Username: username, IsAdmin: n.IsAdmin, Libraries: domain.AllLibraries(),
 		DenyDownloads: n.DenyDownloads, DenyRequests: n.DenyRequests, AutoApproveRequests: n.AutoApproveRequests,
-		RequestQuota: quota, CreatedAt: now, UpdatedAt: now,
+		RequestQuota: quota, RemoteMaxBitrate: n.RemoteMaxBitrate, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := a.applyRestrictions(ctx, &account, n.Libraries, n.Parental); err != nil {
 		return domain.Account{}, err
@@ -174,6 +183,12 @@ func (a *App) UpdateAccount(ctx context.Context, p domain.Principal, id domain.I
 				return err
 			}
 			account.RequestQuota = *ch.RequestQuota
+		}
+		if ch.RemoteMaxBitrate != nil {
+			if !validBitrateLimit(*ch.RemoteMaxBitrate) {
+				return domain.Invalid("account.invalid_remote_max_bitrate", "min_kbps", minBitrateLimit, "max_kbps", maxBitrateLimit)
+			}
+			account.RemoteMaxBitrate = *ch.RemoteMaxBitrate
 		}
 		if err := a.applyRestrictions(ctx, &account, ch.Libraries, ch.Parental); err != nil {
 			return err
@@ -342,6 +357,13 @@ func accountChangesText(actor, username string, ch AccountChanges) domain.Text {
 	}
 	if ch.AutoApproveRequests != nil || ch.RequestQuota != nil {
 		parts = append(parts, domain.T("activity.change.requests"))
+	}
+	if ch.RemoteMaxBitrate != nil {
+		if *ch.RemoteMaxBitrate == 0 {
+			parts = append(parts, domain.T("activity.change.remote_max_bitrate_off"))
+		} else {
+			parts = append(parts, domain.T("activity.change.remote_max_bitrate", "value_kbps", *ch.RemoteMaxBitrate))
+		}
 	}
 	if len(parts) == 0 {
 		return domain.T("activity.account_updated", "actor", actor, "username", username)

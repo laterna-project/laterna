@@ -123,7 +123,7 @@ func TestSourcesMatchCatalogs(t *testing.T) {
 			t.Errorf("%q is in the catalog but never used", key)
 		}
 	}
-	for _, unit := range []string{"second", "minute", "hour", "day", "byte", "kib", "mib", "gib"} {
+	for _, unit := range []string{"second", "minute", "hour", "day", "byte", "kib", "mib", "gib", "kbps", "mbps"} {
 		if !Has("unit." + unit) {
 			t.Errorf("unit %q missing from the catalog", unit)
 		}
