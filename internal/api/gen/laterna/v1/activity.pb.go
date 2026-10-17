@@ -53,6 +53,8 @@ const (
 	// An API token created or revoked (AuthService.CreateApiToken).
 	ActivityKind_ACTIVITY_KIND_API_TOKEN_CREATED ActivityKind = 20
 	ActivityKind_ACTIVITY_KIND_API_TOKEN_REVOKED ActivityKind = 21
+	// Episodes of a series that arrived, told once the series has been quiet for a while.
+	ActivityKind_ACTIVITY_KIND_EPISODES_ARRIVED ActivityKind = 22
 )
 
 // Enum value maps for ActivityKind.
@@ -80,6 +82,7 @@ var (
 		19: "ACTIVITY_KIND_REQUEST",
 		20: "ACTIVITY_KIND_API_TOKEN_CREATED",
 		21: "ACTIVITY_KIND_API_TOKEN_REVOKED",
+		22: "ACTIVITY_KIND_EPISODES_ARRIVED",
 	}
 	ActivityKind_value = map[string]int32{
 		"ACTIVITY_KIND_UNSPECIFIED":       0,
@@ -104,6 +107,7 @@ var (
 		"ACTIVITY_KIND_REQUEST":           19,
 		"ACTIVITY_KIND_API_TOKEN_CREATED": 20,
 		"ACTIVITY_KIND_API_TOKEN_REVOKED": 21,
+		"ACTIVITY_KIND_EPISODES_ARRIVED":  22,
 	}
 )
 
@@ -1131,7 +1135,7 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x12EndPlaybackRequest\x12\x1f\n" +
 	"\vplayback_id\x18\x01 \x01(\tR\n" +
 	"playbackId\"\x15\n" +
-	"\x13EndPlaybackResponse*\xe2\x05\n" +
+	"\x13EndPlaybackResponse*\x86\x06\n" +
 	"\fActivityKind\x12\x1d\n" +
 	"\x19ACTIVITY_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ACTIVITY_KIND_LOGIN\x10\x01\x12\x1e\n" +
@@ -1155,7 +1159,8 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x14ACTIVITY_KIND_IMPORT\x10\x12\x12\x19\n" +
 	"\x15ACTIVITY_KIND_REQUEST\x10\x13\x12#\n" +
 	"\x1fACTIVITY_KIND_API_TOKEN_CREATED\x10\x14\x12#\n" +
-	"\x1fACTIVITY_KIND_API_TOKEN_REVOKED\x10\x152\xd4\x03\n" +
+	"\x1fACTIVITY_KIND_API_TOKEN_REVOKED\x10\x15\x12\"\n" +
+	"\x1eACTIVITY_KIND_EPISODES_ARRIVED\x10\x162\xd4\x03\n" +
 	"\x0fActivityService\x12Z\n" +
 	"\fListActivity\x12\x1f.laterna.v1.ListActivityRequest\x1a .laterna.v1.ListActivityResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +
 	"\vListDevices\x12\x1e.laterna.v1.ListDevicesRequest\x1a\x1f.laterna.v1.ListDevicesResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +

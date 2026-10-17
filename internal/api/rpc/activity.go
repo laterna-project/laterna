@@ -39,6 +39,7 @@ var activityKinds = map[domain.ActivityKind]laternav1.ActivityKind{
 	domain.ActivityRequest:         laternav1.ActivityKind_ACTIVITY_KIND_REQUEST,
 	domain.ActivityAPITokenCreated: laternav1.ActivityKind_ACTIVITY_KIND_API_TOKEN_CREATED,
 	domain.ActivityAPITokenRevoked: laternav1.ActivityKind_ACTIVITY_KIND_API_TOKEN_REVOKED,
+	domain.ActivityEpisodesArrived: laternav1.ActivityKind_ACTIVITY_KIND_EPISODES_ARRIVED,
 }
 
 func optID(id *domain.ID) string {

@@ -112,6 +112,7 @@ func (a *App) registerJobs() {
 	a.jobs.Register(jobRefreshRequests, classRequests, a.refreshRequests, jobs.Timeout(5*time.Minute))
 	a.jobs.Register(jobSearchSubtitle, classSubtitleSearch, a.searchSubtitle, jobs.Timeout(30*time.Minute), jobs.MaxAttempts(1))
 	a.jobs.Register(jobPushNotification, classPush, a.pushNotification, jobs.Timeout(5*time.Minute), jobs.MaxAttempts(1))
+	a.jobs.Register(jobSendAlert, classPush, a.sendAlert, jobs.Timeout(time.Minute))
 	a.jobs.Register(jobRefreshUpcoming, classRequests, a.refreshUpcoming, jobs.Timeout(5*time.Minute))
 	a.jobs.Register(jobTrickplay, classTrickplay, a.generateTrickplay, jobs.Timeout(2*time.Hour))
 	a.jobs.Register(jobDetectSegments, classSegments, a.detectSegments, jobs.Timeout(30*time.Minute))
@@ -136,7 +137,12 @@ func (a *App) jobFailed(ctx context.Context, kind, target string, err error) {
 	if label := a.jobLabel(ctx, kind, target); label != "" {
 		text = domain.T("activity.job_failed_on", "job", kind, "target", label, "reason", msg)
 	}
-	a.record(ctx, domain.Activity{Kind: domain.ActivityJobFailed, Warning: true, Text: text})
+	entry := domain.Activity{Kind: domain.ActivityJobFailed, Warning: true, Text: text}
+	if kind == jobSendAlert {
+		a.recordQuiet(ctx, entry)
+		return
+	}
+	a.record(ctx, entry)
 }
 
 // Start launches background work: the job queue, periodic library scans, the purge of expired

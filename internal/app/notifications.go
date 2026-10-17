@@ -338,6 +338,9 @@ func (a *App) announceEpisodes(ctx context.Context) {
 // on itself; several are counted and open on the series.
 func (a *App) announceSeries(ctx context.Context, seriesID domain.ID, episodes []domain.ID) error {
 	read := a.store.Read()
+	if err := a.recordArrivals(ctx, seriesID, episodes); err != nil {
+		return err
+	}
 	followers, err := read.SeriesFollowers(ctx, seriesID)
 	if err != nil || len(followers) == 0 {
 		return err
@@ -380,6 +383,41 @@ func (a *App) announceSeries(ctx context.Context, seriesID domain.ID, episodes [
 		list = append(list, n)
 	}
 	a.notify(ctx, list...)
+	return nil
+}
+
+// recordArrivals writes the episodes of a series that arrived in the activity log, followers or
+// not: it is what the alerts of new episodes tell. One is named, several are counted.
+func (a *App) recordArrivals(ctx context.Context, seriesID domain.ID, episodes []domain.ID) error {
+	read := a.store.Read()
+	series, err := read.Item(ctx, seriesID)
+	if store.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var present []domain.Episode
+	for _, id := range episodes {
+		ep, err := read.Episode(ctx, id)
+		if store.IsNotFound(err) {
+			continue // left in the meantime
+		}
+		if err != nil {
+			return err
+		}
+		present = append(present, ep)
+	}
+	var text domain.Text
+	switch len(present) {
+	case 0:
+		return nil
+	case 1:
+		text = domain.T("activity.episode_arrived", "series", series.Title, "season", present[0].SeasonNumber, "episode", present[0].Number)
+	default:
+		text = domain.T("activity.episodes_arrived", "series", series.Title, "count", len(present))
+	}
+	a.record(ctx, domain.Activity{Kind: domain.ActivityEpisodesArrived, ItemID: &seriesID, Text: text})
 	return nil
 }
 

@@ -82,6 +82,41 @@ decrypts as a device would.
 
 A browser needs the page to be served over https to subscribe (or from localhost).
 
+## Alerts: Discord, ntfy and a webhook
+
+Notifications belong to a profile and live in the apps. **Alerts** tell the whole household, outside
+them: a Discord channel, an ntfy topic (on ntfy.sh or a server of one's own), or any web service
+that takes a JSON object (Home Assistant, a script). Administrators set them up
+(`NotificationService.ListAlertChannels`, `SetAlertChannel`, `TestAlertChannel`), one channel of each
+kind, each with the categories it wants:
+
+| Category | Entries of the activity log |
+|---|---|
+| Requests | a request created, approved, declined, available, failed |
+| New episodes | the episodes of a series that arrived, once the series has been quiet (one entry per series, followers or not) |
+| Playback | a playback that starts: who, what, on which device |
+| Problems | what is marked worth a look: a refused sign-in, a background job that failed |
+
+- An alert **is an entry of the activity log**, written in the server's language. The entry and one
+  `alert.send` job per channel that wants it are written in the same transaction, so nothing is
+  lost on a restart, and writing an entry reads the channels from memory, not from the settings.
+- **Discord** gets the text, under the server's name, with mentions turned off (a title holding
+  "@everyone" pings nobody). **ntfy** gets the JSON form of its publishing API: title, message, a tag
+  per category, a higher priority for problems, and the access token as `Bearer` if one is set.
+  **The webhook** gets the server, the category, the kind of entry, the text, its key and params,
+  the date and the item, signed with HMAC-SHA256 when a secret is set
+  (`X-Laterna-Signature: sha256=…`).
+- A Discord URL must be one of Discord. The others take any http or https address, the local
+  network included: unlike a push endpoint, which any profile gives, a channel is chosen by an
+  administrator.
+- What does not arrive is tried again by the job queue (three attempts, increasing delay), except a
+  refusal that will not change (4xx but 408 and 429). Each channel shows its last delivery and its
+  last failure, in words. **The failure of an alert makes no alert**: a broken channel would feed
+  itself.
+- The URLs and tokens are secrets (a Discord webhook URL is enough to post in the channel). They
+  are never sent back: a channel shows where it goes up to its secret part
+  (`discord.com/api/webhooks/1234/…`).
+
 ## Not in this version
 
-A webhook for other programs, and choosing which kinds a profile wants.
+Choosing which kinds a profile wants.
