@@ -1,6 +1,9 @@
 # The FFmpeg build Laterna is tested with and ships: a static GPL build from
 # https://github.com/BtbN/FFmpeg-Builds, pinned by release and checked by SHA-256.
 # Read by packaging/fetch-ffmpeg.sh, which the Docker image, CI and the release bundles all use.
+# BtbN deletes its daily builds after about two weeks, so the FFmpeg mirror workflow copies the
+# pinned one to FFMPEG_MIRROR, where fetch-ffmpeg.sh looks first.
+FFMPEG_MIRROR=https://github.com/laterna-project/laterna/releases/download/ffmpeg-builds
 FFMPEG_RELEASE=autobuild-2026-10-14-13-03
 FFMPEG_NAME=ffmpeg-n9.0.2-27-g7e93014c5b
 FFMPEG_VARIANT=gpl-9.0

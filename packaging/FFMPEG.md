@@ -3,7 +3,10 @@
 This archive or package includes `ffmpeg` and `ffprobe`, unmodified, from the static GPL builds
 published at https://github.com/BtbN/FFmpeg-Builds. The exact release and file are recorded in
 [`packaging/ffmpeg.lock`](https://github.com/laterna-project/laterna/blob/main/packaging/ffmpeg.lock)
-of the Laterna version you downloaded.
+of the Laterna version you downloaded. BtbN only keeps its daily builds for a few weeks; an
+unchanged copy of every pinned build is kept in the
+[`ffmpeg-builds`](https://github.com/laterna-project/laterna/releases/tag/ffmpeg-builds)
+pre-release of the Laterna repository.
 
 FFmpeg is licensed under the GNU General Public License version 3 in this configuration. Its
 source code is at https://ffmpeg.org/ and https://git.ffmpeg.org/ffmpeg.git; the build scripts,
