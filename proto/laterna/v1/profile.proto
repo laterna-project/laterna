@@ -41,6 +41,9 @@ service ProfileService {
   // SetSubtitlePreferences changes when playback starts with a subtitle, for the picked profile.
   // Everyone sets their own, even from a restricted profile.
   rpc SetSubtitlePreferences(SetSubtitlePreferencesRequest) returns (SetSubtitlePreferencesResponse);
+  // SetAudioPreferences changes the audio language playback starts with, for the picked profile.
+  // Everyone sets their own, even from a restricted profile.
+  rpc SetAudioPreferences(SetAudioPreferencesRequest) returns (SetAudioPreferencesResponse);
 }
 
 message Profile {
@@ -63,6 +66,10 @@ message Profile {
   // Language of those subtitles (BCP 47 tag); empty means the profile's language, then the
   // device's (Accept-Language).
   string subtitle_language = 9;
+  // Language of the audio playback starts with (BCP 47 tag: "ja" for anime in the original), when
+  // the file has it and the request names no audio stream; empty means the file's default stream.
+  // In a series, the language last chosen there comes first (StartPlaybackRequest).
+  string audio_language = 10;
 }
 
 // SubtitleMode says when a playback starts with a subtitle in the language of the profile.
@@ -162,5 +169,14 @@ message SetSubtitlePreferencesRequest {
 }
 
 message SetSubtitlePreferencesResponse {
+  Profile profile = 1;
+}
+
+message SetAudioPreferencesRequest {
+  // BCP 47 tag; empty means the file's default stream.
+  string language = 1;
+}
+
+message SetAudioPreferencesResponse {
   Profile profile = 1;
 }

@@ -50,3 +50,27 @@ func rank(s domain.Subtitle, whole bool) int {
 	}
 	return r
 }
+
+// PickSameSubtitle returns the subtitle like the one chosen before in another episode: in lang,
+// forced or not as it was, otherwise another one in lang; then the order of PickSubtitle. false
+// means none in that language.
+func PickSameSubtitle(subs []domain.Subtitle, lang string, forced bool) (int, bool) {
+	score := func(s domain.Subtitle) int {
+		r := rank(s, !forced)
+		if s.Forced != forced {
+			r += 16
+		}
+		return r
+	}
+	var best domain.Subtitle
+	found := false
+	for _, s := range subs {
+		if lang == "" || s.Language != lang {
+			continue
+		}
+		if !found || score(s) < score(best) {
+			best, found = s, true
+		}
+	}
+	return best.Position, found
+}

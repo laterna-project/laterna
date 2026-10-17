@@ -178,6 +178,13 @@ type playSession struct {
 	// track (never a resume point).
 	conv  *conversion
 	music bool
+	// series is the series of an episode, nil otherwise, and subs the subtitles of the file. choice
+	// is what the viewer chose during the playback (the audio language when audioChosen, the
+	// subtitle when choice.SubtitleChosen; s.mu), kept for the series when it ends.
+	series      *domain.ID
+	subs        []domain.Subtitle
+	choice      domain.SeriesChoice
+	audioChosen bool
 
 	mu       sync.Mutex
 	changed  chan struct{} // closed (then replaced) on every change: wakes up waiters
@@ -321,6 +328,19 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 			return PlayInfo{}, err
 		}
 	}
+	// An episode starts as the viewer last chose in its series, before the profile's preferences.
+	var series *domain.ID
+	var choice domain.SeriesChoice
+	if view.Episode != nil {
+		series = &view.Episode.SeriesID
+		if choice, err = read.SeriesChoice(ctx, profile, *series); err != nil {
+			return PlayInfo{}, err
+		}
+	}
+	audio := req.Audio
+	if audio < 0 && !music && p.Profile != nil {
+		audio = preferredAudio(file.Info, choice.Audio, p.Profile.AudioLanguage)
+	}
 	var chosen *domain.Subtitle
 	if req.Subtitle != nil {
 		if *req.Subtitle < 0 || *req.Subtitle >= len(subs) {
@@ -329,7 +349,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		chosen = &subs[*req.Subtitle]
 	}
 	if chosen == nil && req.ProfileSubtitle && !music && p.Profile != nil {
-		chosen = profileSubtitle(*p.Profile, req.Language, file.Info, req.Audio, subs)
+		chosen = profileSubtitle(*p.Profile, choice, req.Language, file.Info, audio, subs)
 	}
 	bitrate, remote := a.bitrateLimit(p.Account, req)
 	info := file.Info
@@ -337,7 +357,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		// Not given by the container: the average over the file.
 		info.Bitrate = int64(float64(file.Size) * 8 / info.Duration.Seconds())
 	}
-	plan := playback.Decide(info, req.Device, req.Audio, chosen, bitrate.Rate)
+	plan := playback.Decide(info, req.Device, audio, chosen, bitrate.Rate)
 	var encoder transcode.Encoder
 	var toneMap *transcode.ToneMapper
 	gpu := false
@@ -384,6 +404,16 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	}
 	if req.Client.IsValid() {
 		s.who.address = req.Client.Unmap().String()
+	}
+	s.series, s.subs = series, subs
+	if series != nil && req.Audio >= 0 {
+		// A stream named by the request is the viewer's choice: its language goes to the series.
+		if st := playback.AudioStream(file.Info, req.Audio); st != nil && naming.Language(st.Language) != "" {
+			s.choice.Audio, s.audioChosen = naming.Language(st.Language), true
+		}
+	}
+	if req.Subtitle != nil {
+		_ = s.noteSubtitle(*req.Subtitle) // checked above
 	}
 	if sess, err := read.Session(ctx, p.SessionID); err == nil {
 		s.who.device = sess.Device.Name
@@ -464,10 +494,25 @@ func (s *playSession) videoRate() int {
 }
 
 // profileSubtitle is the subtitle a playback starts with by the profile's preferences, nil for
-// none (playback.PickSubtitle). Its language is the one the profile names for subtitles, then the
-// profile's, then the device's. Every language is brought to its ISO 639-2/B code: the file says
-// "fra" or "fre", the profile "fr" or "fr-CA".
-func profileSubtitle(profile domain.Profile, device string, info domain.MediaInfo, audio int, subs []domain.Subtitle) *domain.Subtitle {
+// none. In an episode, the choice last made in its series comes first: none, or one like it
+// (playback.PickSameSubtitle). Otherwise playback.PickSubtitle, in the language the profile names
+// for subtitles, then the profile's, then the device's. Every language is brought to its ISO
+// 639-2/B code: the file says "fra" or "fre", the profile "fr" or "fr-CA".
+func profileSubtitle(profile domain.Profile, choice domain.SeriesChoice, device string, info domain.MediaInfo, audio int, subs []domain.Subtitle) *domain.Subtitle {
+	candidates := make([]domain.Subtitle, len(subs))
+	for i, s := range subs {
+		s.Language = naming.Language(s.Language)
+		candidates[i] = s
+	}
+	if choice.SubtitleChosen {
+		if choice.Subtitle == "" {
+			return nil
+		}
+		if pos, ok := playback.PickSameSubtitle(candidates, choice.Subtitle, choice.Forced); ok && pos < len(subs) {
+			return &subs[pos]
+		}
+		// None in that language in this episode: the profile's preferences decide.
+	}
 	lang := ""
 	for _, tag := range []string{profile.SubtitleLanguage, profile.Language, device} {
 		if lang = naming.Language(tag); lang != "" {
@@ -478,16 +523,91 @@ func profileSubtitle(profile domain.Profile, device string, info domain.MediaInf
 	if s := playback.AudioStream(info, audio); s != nil {
 		audioLang = naming.Language(s.Language)
 	}
-	candidates := make([]domain.Subtitle, len(subs))
-	for i, s := range subs {
-		s.Language = naming.Language(s.Language)
-		candidates[i] = s
-	}
 	pos, ok := playback.PickSubtitle(candidates, profile.SubtitleMode, lang, audioLang)
 	if !ok || pos >= len(subs) {
 		return nil
 	}
 	return &subs[pos]
+}
+
+// preferredAudio is the audio stream a playback starts with when the request names none: one in
+// the first of langs the file has (the language last chosen in the series, then the profile's),
+// otherwise -1, the file's default.
+func preferredAudio(info domain.MediaInfo, langs ...string) int {
+	streams := make([]domain.Stream, 0, len(info.Streams))
+	for _, s := range info.Streams {
+		if s.Kind == domain.StreamAudio {
+			s.Language = naming.Language(s.Language)
+			streams = append(streams, s)
+		}
+	}
+	for _, l := range langs {
+		if i, ok := playback.PickAudio(streams, naming.Language(l)); ok {
+			return i
+		}
+	}
+	return -1
+}
+
+// noteSubtitle notes the subtitle shown now (a position in the file's list, -1 for none). In an
+// episode it becomes the choice of its series when the playback ends. A subtitle whose language is
+// unknown cannot be found again in another episode, and is not kept.
+func (s *playSession) noteSubtitle(position int) error {
+	if position < -1 || position >= len(s.subs) {
+		return domain.Invalid("playback.unknown_subtitle", "index", position)
+	}
+	if s.series == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if position == -1 {
+		s.choice.SubtitleChosen, s.choice.Subtitle, s.choice.Forced = true, "", false
+		return nil
+	}
+	sub := s.subs[position]
+	if lang := naming.Language(sub.Language); lang != "" {
+		s.choice.SubtitleChosen, s.choice.Subtitle, s.choice.Forced = true, lang, sub.Forced
+	}
+	return nil
+}
+
+// NoteSubtitle notes the subtitle a playback of the caller's profile shows now (position in the
+// file's list, -1 for none): in an episode, the choice of its series for the next ones.
+func (a *App) NoteSubtitle(p domain.Principal, id domain.ID, position int) error {
+	s, err := a.ownSession(p, id)
+	if err != nil {
+		return err
+	}
+	return s.noteSubtitle(position)
+}
+
+// saveChoice keeps what the viewer chose in an episode for its series: the audio language named by
+// the request, the last subtitle shown. What was not chosen stays as it was.
+func (a *App) saveChoice(ctx context.Context, s *playSession) {
+	s.mu.Lock()
+	choice, audio := s.choice, s.audioChosen
+	s.mu.Unlock()
+	if s.series == nil || (!audio && !choice.SubtitleChosen) {
+		return
+	}
+	err := a.store.Write(ctx, func(q store.Q) error {
+		kept, err := q.SeriesChoice(ctx, s.profile, *s.series)
+		if err != nil {
+			return err
+		}
+		if audio {
+			kept.Audio = choice.Audio
+		}
+		if choice.SubtitleChosen {
+			kept.SubtitleChosen, kept.Subtitle, kept.Forced = true, choice.Subtitle, choice.Forced
+		}
+		kept.UpdatedAt = a.now()
+		return q.SetSeriesChoice(ctx, s.profile, *s.series, kept)
+	})
+	if err != nil {
+		a.log.WarnContext(ctx, "playback: choice of the series not saved", "session", s.id, "err", err)
+	}
 }
 
 func subtitlePosition(s *domain.Subtitle) *int {
@@ -1002,6 +1122,7 @@ func (a *App) saveSessionProgress(ctx context.Context, s *playSession) {
 // closeSession ends a session: position saved, run stopped, segments deleted.
 func (a *App) closeSession(ctx context.Context, s *playSession) {
 	a.saveSessionProgress(ctx, s)
+	a.saveChoice(ctx, s)
 	s.mu.Lock()
 	position, finished := s.position, s.finished
 	// Two closes may cross (stop requested, watchdog): only one play is recorded.

@@ -290,17 +290,22 @@ type StartPlaybackRequest struct {
 	ItemId string `protobuf:"bytes,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
 	// Version to play (MediaFile.id); empty means the first present one.
 	FileId string `protobuf:"bytes,2,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
-	// Audio stream (MediaStream.index); unset means the default one.
+	// Audio stream (MediaStream.index). Unset means the one the profile's preferences pick: in an
+	// episode, one in the language last chosen in its series; then one in Profile.audio_language;
+	// then the file's default. A stream named here is the viewer's choice: in an episode, it becomes
+	// the language of its series.
 	AudioStreamIndex *int32         `protobuf:"varint,3,opt,name=audio_stream_index,json=audioStreamIndex,proto3,oneof" json:"audio_stream_index,omitempty"`
 	Device           *DeviceProfile `protobuf:"bytes,4,opt,name=device,proto3" json:"device,omitempty"`
 	// Subtitle shown from the start (SubtitleTrack.index, from an earlier playback of this file);
 	// unset means none. Only a subtitle the device cannot render changes the playback: it is burned
 	// in.
 	SubtitleIndex *int32 `protobuf:"varint,5,opt,name=subtitle_index,json=subtitleIndex,proto3,oneof" json:"subtitle_index,omitempty"`
-	// When subtitle_index is unset, start with the subtitle the profile's preferences pick
-	// (Profile.subtitle_mode, Profile.subtitle_language): StartPlaybackResponse.subtitle_index says
-	// which. Like a requested one, it is burned in if the device cannot render it. A client sets it
-	// when a playback starts, and leaves it out when it reopens one after a choice of the viewer.
+	// When subtitle_index is unset, start with the subtitle the profile's preferences pick: in an
+	// episode, the subtitle last shown in its series (or none, if subtitles were turned off there,
+	// ReportProgressRequest.subtitle_index); otherwise Profile.subtitle_mode and
+	// Profile.subtitle_language. StartPlaybackResponse.subtitle_index says which. Like a requested
+	// one, it is burned in if the device cannot render it. A client sets it when a playback starts,
+	// and leaves it out when it reopens one after a choice of the viewer.
 	ProfileSubtitle bool `protobuf:"varint,6,opt,name=profile_subtitle,json=profileSubtitle,proto3" json:"profile_subtitle,omitempty"`
 	// Highest bitrate of the stream, in kbit/s: the quality the viewer picked, or what the
 	// connection carries; 0 means no limit. Outside the local network the server may lower it
@@ -911,9 +916,13 @@ func (x *Font) GetSize() int64 {
 }
 
 type ReportProgressRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Position      *durationpb.Duration   `protobuf:"bytes,2,opt,name=position,proto3" json:"position,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Position  *durationpb.Duration   `protobuf:"bytes,2,opt,name=position,proto3" json:"position,omitempty"`
+	// Subtitle shown now (SubtitleTrack.index), -1 for none; unset if the client does not say. In an
+	// episode, the last one reported is remembered for its series: the next episodes start with a
+	// subtitle in the same language, or with none (StartPlaybackRequest.profile_subtitle).
+	SubtitleIndex *int32 `protobuf:"varint,3,opt,name=subtitle_index,json=subtitleIndex,proto3,oneof" json:"subtitle_index,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -962,6 +971,13 @@ func (x *ReportProgressRequest) GetPosition() *durationpb.Duration {
 	return nil
 }
 
+func (x *ReportProgressRequest) GetSubtitleIndex() int32 {
+	if x != nil && x.SubtitleIndex != nil {
+		return *x.SubtitleIndex
+	}
+	return 0
+}
+
 type ReportProgressResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1002,7 +1018,9 @@ type StopPlaybackRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	// Position when stopping; unset means the last one reported.
-	Position      *durationpb.Duration `protobuf:"bytes,2,opt,name=position,proto3" json:"position,omitempty"`
+	Position *durationpb.Duration `protobuf:"bytes,2,opt,name=position,proto3" json:"position,omitempty"`
+	// Subtitle shown when stopping, as in ReportProgressRequest.subtitle_index.
+	SubtitleIndex *int32 `protobuf:"varint,3,opt,name=subtitle_index,json=subtitleIndex,proto3,oneof" json:"subtitle_index,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1049,6 +1067,13 @@ func (x *StopPlaybackRequest) GetPosition() *durationpb.Duration {
 		return x.Position
 	}
 	return nil
+}
+
+func (x *StopPlaybackRequest) GetSubtitleIndex() int32 {
+	if x != nil && x.SubtitleIndex != nil {
+		return *x.SubtitleIndex
+	}
+	return 0
 }
 
 type StopPlaybackResponse struct {
@@ -1280,16 +1305,20 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\x04Font\x12\x14\n" +
 	"\x05names\x18\x01 \x03(\tR\x05names\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x12\n" +
-	"\x04size\x18\x03 \x01(\x03R\x04size\"m\n" +
+	"\x04size\x18\x03 \x01(\x03R\x04size\"\xac\x01\n" +
 	"\x15ReportProgressRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x125\n" +
-	"\bposition\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\bposition\"\x18\n" +
-	"\x16ReportProgressResponse\"k\n" +
+	"\bposition\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\bposition\x12*\n" +
+	"\x0esubtitle_index\x18\x03 \x01(\x05H\x00R\rsubtitleIndex\x88\x01\x01B\x11\n" +
+	"\x0f_subtitle_index\"\x18\n" +
+	"\x16ReportProgressResponse\"\xaa\x01\n" +
 	"\x13StopPlaybackRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x125\n" +
-	"\bposition\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\bposition\"\x16\n" +
+	"\bposition\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\bposition\x12*\n" +
+	"\x0esubtitle_index\x18\x03 \x01(\x05H\x00R\rsubtitleIndex\x88\x01\x01B\x11\n" +
+	"\x0f_subtitle_index\"\x16\n" +
 	"\x14StopPlaybackResponse\"H\n" +
 	"\x13GetSubtitlesRequest\x12\x1d\n" +
 	"\n" +
@@ -1389,6 +1418,8 @@ func file_laterna_v1_playback_proto_init() {
 	file_laterna_v1_text_proto_init()
 	file_laterna_v1_playback_proto_msgTypes[2].OneofWrappers = []any{}
 	file_laterna_v1_playback_proto_msgTypes[3].OneofWrappers = []any{}
+	file_laterna_v1_playback_proto_msgTypes[7].OneofWrappers = []any{}
+	file_laterna_v1_playback_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
