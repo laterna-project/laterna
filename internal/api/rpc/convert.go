@@ -29,7 +29,7 @@ func profileMsg(p domain.Profile) *laternav1.Profile {
 	return &laternav1.Profile{
 		Id: p.ID.String(), Name: p.Name, HasPin: p.HasPIN, Kid: p.Kid, CreatedAt: timestamppb.New(p.CreatedAt),
 		Parental: parentalMsg(p.Parental), Language: p.Language,
-		SubtitleMode: subtitleModes[p.SubtitleMode], SubtitleLanguage: p.SubtitleLanguage,
+		SubtitleMode: subtitleModes[p.SubtitleMode], SubtitleLanguage: p.SubtitleLanguage, AudioLanguage: p.AudioLanguage,
 	}
 }
 

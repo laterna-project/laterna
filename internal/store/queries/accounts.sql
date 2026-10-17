@@ -64,7 +64,7 @@ SELECT count(*) FROM profiles WHERE account_id = ?;
 -- name: UpdateProfile :exec
 UPDATE profiles
 SET name = ?, name_key = ?, pin_hash = ?, kid = ?, max_age = ?, block_unrated = ?, language = ?,
-    subtitle_mode = ?, subtitle_language = ?, updated_at = ?
+    subtitle_mode = ?, subtitle_language = ?, audio_language = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteProfile :exec

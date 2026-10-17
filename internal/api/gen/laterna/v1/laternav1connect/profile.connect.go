@@ -54,6 +54,9 @@ const (
 	// ProfileServiceSetSubtitlePreferencesProcedure is the fully-qualified name of the ProfileService's
 	// SetSubtitlePreferences RPC.
 	ProfileServiceSetSubtitlePreferencesProcedure = "/laterna.v1.ProfileService/SetSubtitlePreferences"
+	// ProfileServiceSetAudioPreferencesProcedure is the fully-qualified name of the ProfileService's
+	// SetAudioPreferences RPC.
+	ProfileServiceSetAudioPreferencesProcedure = "/laterna.v1.ProfileService/SetAudioPreferences"
 )
 
 // ProfileServiceClient is a client for the laterna.v1.ProfileService service.
@@ -74,6 +77,9 @@ type ProfileServiceClient interface {
 	// SetSubtitlePreferences changes when playback starts with a subtitle, for the picked profile.
 	// Everyone sets their own, even from a restricted profile.
 	SetSubtitlePreferences(context.Context, *connect.Request[v1.SetSubtitlePreferencesRequest]) (*connect.Response[v1.SetSubtitlePreferencesResponse], error)
+	// SetAudioPreferences changes the audio language playback starts with, for the picked profile.
+	// Everyone sets their own, even from a restricted profile.
+	SetAudioPreferences(context.Context, *connect.Request[v1.SetAudioPreferencesRequest]) (*connect.Response[v1.SetAudioPreferencesResponse], error)
 }
 
 // NewProfileServiceClient constructs a client for the laterna.v1.ProfileService service. By
@@ -130,6 +136,12 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("SetSubtitlePreferences")),
 			connect.WithClientOptions(opts...),
 		),
+		setAudioPreferences: connect.NewClient[v1.SetAudioPreferencesRequest, v1.SetAudioPreferencesResponse](
+			httpClient,
+			baseURL+ProfileServiceSetAudioPreferencesProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("SetAudioPreferences")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -142,6 +154,7 @@ type profileServiceClient struct {
 	selectProfile          *connect.Client[v1.SelectProfileRequest, v1.SelectProfileResponse]
 	setLanguage            *connect.Client[v1.SetLanguageRequest, v1.SetLanguageResponse]
 	setSubtitlePreferences *connect.Client[v1.SetSubtitlePreferencesRequest, v1.SetSubtitlePreferencesResponse]
+	setAudioPreferences    *connect.Client[v1.SetAudioPreferencesRequest, v1.SetAudioPreferencesResponse]
 }
 
 // ListProfiles calls laterna.v1.ProfileService.ListProfiles.
@@ -179,6 +192,11 @@ func (c *profileServiceClient) SetSubtitlePreferences(ctx context.Context, req *
 	return c.setSubtitlePreferences.CallUnary(ctx, req)
 }
 
+// SetAudioPreferences calls laterna.v1.ProfileService.SetAudioPreferences.
+func (c *profileServiceClient) SetAudioPreferences(ctx context.Context, req *connect.Request[v1.SetAudioPreferencesRequest]) (*connect.Response[v1.SetAudioPreferencesResponse], error) {
+	return c.setAudioPreferences.CallUnary(ctx, req)
+}
+
 // ProfileServiceHandler is an implementation of the laterna.v1.ProfileService service.
 type ProfileServiceHandler interface {
 	// ListProfiles lists the profiles of the account.
@@ -197,6 +215,9 @@ type ProfileServiceHandler interface {
 	// SetSubtitlePreferences changes when playback starts with a subtitle, for the picked profile.
 	// Everyone sets their own, even from a restricted profile.
 	SetSubtitlePreferences(context.Context, *connect.Request[v1.SetSubtitlePreferencesRequest]) (*connect.Response[v1.SetSubtitlePreferencesResponse], error)
+	// SetAudioPreferences changes the audio language playback starts with, for the picked profile.
+	// Everyone sets their own, even from a restricted profile.
+	SetAudioPreferences(context.Context, *connect.Request[v1.SetAudioPreferencesRequest]) (*connect.Response[v1.SetAudioPreferencesResponse], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -249,6 +270,12 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("SetSubtitlePreferences")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profileServiceSetAudioPreferencesHandler := connect.NewUnaryHandler(
+		ProfileServiceSetAudioPreferencesProcedure,
+		svc.SetAudioPreferences,
+		connect.WithSchema(profileServiceMethods.ByName("SetAudioPreferences")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/laterna.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfileServiceListProfilesProcedure:
@@ -265,6 +292,8 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceSetLanguageHandler.ServeHTTP(w, r)
 		case ProfileServiceSetSubtitlePreferencesProcedure:
 			profileServiceSetSubtitlePreferencesHandler.ServeHTTP(w, r)
+		case ProfileServiceSetAudioPreferencesProcedure:
+			profileServiceSetAudioPreferencesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -300,4 +329,8 @@ func (UnimplementedProfileServiceHandler) SetLanguage(context.Context, *connect.
 
 func (UnimplementedProfileServiceHandler) SetSubtitlePreferences(context.Context, *connect.Request[v1.SetSubtitlePreferencesRequest]) (*connect.Response[v1.SetSubtitlePreferencesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.ProfileService.SetSubtitlePreferences is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) SetAudioPreferences(context.Context, *connect.Request[v1.SetAudioPreferencesRequest]) (*connect.Response[v1.SetAudioPreferencesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.ProfileService.SetAudioPreferences is not implemented"))
 }

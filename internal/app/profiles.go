@@ -186,6 +186,29 @@ func (a *App) SetSubtitlePreferences(ctx context.Context, p domain.Principal, mo
 	return profile, err
 }
 
+// SetAudioPreferences changes the audio language playback starts with, for the picked profile.
+// Everyone sets their own, including a restricted profile.
+func (a *App) SetAudioPreferences(ctx context.Context, p domain.Principal, language string) (domain.Profile, error) {
+	if p.Profile == nil {
+		return domain.Profile{}, domain.Precondition("profile.required")
+	}
+	language, err := profileLanguage(language)
+	if err != nil {
+		return domain.Profile{}, err
+	}
+	var profile domain.Profile
+	err = a.store.Write(ctx, func(q store.Q) error {
+		var pinHash string
+		var err error
+		if profile, pinHash, err = q.Profile(ctx, p.Profile.ID); err != nil {
+			return err
+		}
+		profile.AudioLanguage, profile.UpdatedAt = language, a.now()
+		return q.UpdateProfile(ctx, profile, pinHash)
+	})
+	return profile, err
+}
+
 // profileLanguage validates the language of a profile: a well-formed tag, whether the server has a
 // catalog for it or not (the client may have one). Empty means none.
 func profileLanguage(tag string) (string, error) {

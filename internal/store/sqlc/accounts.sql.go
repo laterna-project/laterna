@@ -173,7 +173,7 @@ func (q *Queries) GetAccountByUsername(ctx context.Context, usernameKey string) 
 }
 
 const getProfile = `-- name: GetProfile :one
-SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language FROM profiles WHERE id = ?
+SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language, audio_language FROM profiles WHERE id = ?
 `
 
 func (q *Queries) GetProfile(ctx context.Context, id domain.ID) (Profile, error) {
@@ -195,6 +195,7 @@ func (q *Queries) GetProfile(ctx context.Context, id domain.ID) (Profile, error)
 		&i.Language,
 		&i.SubtitleMode,
 		&i.SubtitleLanguage,
+		&i.AudioLanguage,
 	)
 	return i, err
 }
@@ -506,7 +507,7 @@ func (q *Queries) ListAllAccountLibraries(ctx context.Context) ([]AccountLibrary
 }
 
 const listProfiles = `-- name: ListProfiles :many
-SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language FROM profiles WHERE account_id = ? ORDER BY created_at, id
+SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language, audio_language FROM profiles WHERE account_id = ? ORDER BY created_at, id
 `
 
 func (q *Queries) ListProfiles(ctx context.Context, accountID domain.ID) ([]Profile, error) {
@@ -534,6 +535,7 @@ func (q *Queries) ListProfiles(ctx context.Context, accountID domain.ID) ([]Prof
 			&i.Language,
 			&i.SubtitleMode,
 			&i.SubtitleLanguage,
+			&i.AudioLanguage,
 		); err != nil {
 			return nil, err
 		}
@@ -691,7 +693,7 @@ func (q *Queries) UpdateAccountPassword(ctx context.Context, arg UpdateAccountPa
 const updateProfile = `-- name: UpdateProfile :exec
 UPDATE profiles
 SET name = ?, name_key = ?, pin_hash = ?, kid = ?, max_age = ?, block_unrated = ?, language = ?,
-    subtitle_mode = ?, subtitle_language = ?, updated_at = ?
+    subtitle_mode = ?, subtitle_language = ?, audio_language = ?, updated_at = ?
 WHERE id = ?
 `
 
@@ -705,6 +707,7 @@ type UpdateProfileParams struct {
 	Language         string
 	SubtitleMode     string
 	SubtitleLanguage string
+	AudioLanguage    string
 	UpdatedAt        int64
 	ID               domain.ID
 }
@@ -720,6 +723,7 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) er
 		arg.Language,
 		arg.SubtitleMode,
 		arg.SubtitleLanguage,
+		arg.AudioLanguage,
 		arg.UpdatedAt,
 		arg.ID,
 	)
