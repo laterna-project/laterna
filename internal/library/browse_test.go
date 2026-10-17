@@ -49,7 +49,8 @@ func TestList(t *testing.T) {
 	if l.Path != dir || l.Parent != root || l.Truncated {
 		t.Errorf("folder: %q, parent %q, truncated %v", l.Path, l.Parent, l.Truncated)
 	}
-	if l.Media != (MediaCounts{Videos: 1}) {
+	// The movie and its trailer.
+	if l.Media != (MediaCounts{Videos: 2}) {
 		t.Errorf("media in the folder: %+v", l.Media)
 	}
 	var names []string

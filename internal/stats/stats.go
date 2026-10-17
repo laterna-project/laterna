@@ -109,7 +109,7 @@ func (a *Acc) Add(p *domain.Play) {
 		a.artists.add(p.ArtistID, "", p.Subtitle, w)
 		a.tracks.add(p.ItemID, p.Subtitle, p.Title, w)
 	case domain.ItemSeries, domain.ItemSeason, domain.ItemArtist, domain.ItemAlbum, domain.ItemBookSeries,
-		domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto:
+		domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 	}
 }
 

@@ -61,6 +61,8 @@ type ItemView struct {
 	// Photo is set for a photo. PhotoCount is the photos present in an album.
 	Photo      *Photo
 	PhotoCount int
+	// Extra is set for an extra.
+	Extra *Extra
 	// Images that have been analyzed, so they can be served.
 	Images []Image
 }

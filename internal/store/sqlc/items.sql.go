@@ -147,7 +147,7 @@ func (q *Queries) DeleteItemStudios(ctx context.Context, itemID domain.ID) error
 
 const deleteOrphanLeafItems = `-- name: DeleteOrphanLeafItems :execrows
 DELETE FROM items
-WHERE library_id = ? AND kind IN ('movie', 'episode', 'track', 'book', 'photo')
+WHERE library_id = ? AND kind IN ('movie', 'episode', 'track', 'book', 'photo', 'extra')
   AND NOT EXISTS (SELECT 1 FROM item_files l WHERE l.item_id = items.id)
 `
 

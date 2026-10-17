@@ -131,7 +131,7 @@ func (q Q) attachBooks(ctx context.Context, profileID domain.ID, cards []domain.
 		case domain.ItemBookSeries:
 			series = append(series, c.Item.ID)
 		case domain.ItemMovie, domain.ItemSeries, domain.ItemSeason, domain.ItemEpisode, domain.ItemArtist,
-			domain.ItemAlbum, domain.ItemTrack, domain.ItemPhotoAlbum, domain.ItemPhoto:
+			domain.ItemAlbum, domain.ItemTrack, domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 			continue
 		}
 		index[c.Item.ID] = i

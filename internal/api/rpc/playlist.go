@@ -58,7 +58,7 @@ func (s *PlaylistService) GetPlaylist(ctx context.Context, req *connect.Request[
 		case domain.ItemTrack:
 			entry.Item = &laternav1.PlaylistEntry_Track{Track: trackMsg(ctx, e.Item)}
 		case domain.ItemSeries, domain.ItemSeason, domain.ItemArtist, domain.ItemAlbum, domain.ItemBookSeries, domain.ItemBook,
-			domain.ItemPhotoAlbum, domain.ItemPhoto:
+			domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 			continue
 		}
 		resp.Entries = append(resp.Entries, entry)

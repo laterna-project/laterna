@@ -78,7 +78,7 @@ func (s *HomeService) GetHome(ctx context.Context, req *connect.Request[laternav
 				msg.Items = append(msg.Items, &laternav1.HomeItem{Item: &laternav1.HomeItem_Book{Book: bookSummaryMsg(ctx, v)}})
 			case domain.ItemPhoto:
 				msg.Items = append(msg.Items, &laternav1.HomeItem{Item: &laternav1.HomeItem_Photo{Photo: photoSummaryMsg(v)}})
-			case domain.ItemSeason, domain.ItemArtist, domain.ItemTrack, domain.ItemBookSeries, domain.ItemPhotoAlbum:
+			case domain.ItemSeason, domain.ItemArtist, domain.ItemTrack, domain.ItemBookSeries, domain.ItemPhotoAlbum, domain.ItemExtra:
 			}
 		}
 		out[i] = msg

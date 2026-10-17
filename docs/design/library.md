@@ -18,9 +18,45 @@ Sonarr or Radarr call the webhook, and when a watched folder changes. Writes go 
 File and folder names are parsed by `internal/naming`, pure logic with table tests and fuzzing:
 movie folders with year, version and part; `S01E02`, multi-episode files, season folders,
 absolute numbering as written by Sonarr ("S03E13 (054)") or by fansub groups; tracks and disc
-folders; book volumes. Extras, samples, hidden files and NAS system folders are ignored.
+folders; book volumes; extras (below). Samples, hidden files and NAS system folders are ignored.
 `devtools/namingcheck` runs a real library through the parser and reports doubtful cases without
 writing anything.
+
+## Extras
+
+Trailers, featurettes and the like, laid out the way Plex, Jellyfin, Kodi and tinyMediaManager
+do (`naming.ParseExtra`):
+
+- in a **folder of extras** next to the movie, or in a series or season folder: `Trailers`,
+  `Featurettes`, `Behind The Scenes`, `Deleted Scenes`, `Interviews`, `Scenes`, `Shorts`, and
+  `Extras`, `Extra`, `Bonus`, `Other`, `Clips` for anything else;
+- or **named after the movie** with a suffix: `Movie (2020)-trailer.mkv`, `-trailer2`,
+  `-featurette`, `-behindthescenes`, `-deleted`, `-interview`, `-scene`, `-short`, `-other`.
+  A dash is required: `The.Big.Short.2015.mkv` is a movie.
+
+An extra is an item of kind `extra` whose parent is its movie or series, with its kind in the
+`extras` table. Its title is its file name. It has no NFO; a `<file>-thumb.jpg` is used if there is
+one, otherwise a frame of its video, as for episodes. Its keyframes and subtitles are prepared like
+any video, not its scrubbing thumbnails or intro detection.
+
+**Finding the owner.** A series extra belongs to the series of its first folder, as episodes do. A
+movie's key depends on its file name, so a movie extra looks for the movies with a file in its
+folder: the one it is named after, otherwise the only one (with several, the first file by name).
+
+- A suffix only counts when a movie of the folder, or the folder itself, has that name. A
+  release group can look like a suffix: `Lost (2001)/Lost.2001.BluRay-SCENE.mkv` is a movie.
+- Files are analyzed in any order. An extra whose owner is not there yet waits, with an analysis
+  error; a file named like an extra of a movie that does not exist yet is filed as a movie. When
+  the movie or the series arrives, its extras are analyzed again and filed (`adoptExtras`), and
+  the movie taken by mistake goes away with the next orphan cleanup.
+
+**What an extra is not.** It is in no list, search, home row, recommendation, collection,
+playlist, download or watch party, and is not counted with the movies. It is listed with its owner
+(`CatalogService.ListExtras`; `Movie.extra_count` and `trailer_id` for a button), is visible to a
+profile exactly when its owner is (its owner's rating applies), and plays like a movie, always from
+the start: no resume point, no progress, nothing in the history.
+
+Folders of extras stay out of music, book and photo libraries.
 
 ## File identity: a fingerprint, not a path
 

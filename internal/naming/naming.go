@@ -27,12 +27,8 @@ var metadataExtensions = map[string]bool{".nfo": true, ".opf": true, ".jpg": tru
 // IsMetadata reports a local metadata file (NFO, image) by its extension.
 func IsMetadata(p string) bool { return metadataExtensions[strings.ToLower(path.Ext(p))] }
 
-// bonusDirs are folders whose content is not a main feature.
-var bonusDirs = map[string]bool{
-	"extras": true, "featurettes": true, "behind the scenes": true, "deleted scenes": true,
-	"interviews": true, "scenes": true, "shorts": true, "trailers": true, "sample": true, "samples": true,
-	"bonus": true,
-}
+// sampleDirs hold samples of a release: never indexed.
+var sampleDirs = map[string]bool{"sample": true, "samples": true}
 
 // systemDirs are folders created by file systems, NAS boxes and trash bins.
 var systemDirs = map[string]bool{
@@ -45,18 +41,19 @@ func SystemDir(name string) bool {
 	return strings.HasPrefix(name, ".") || systemDirs[strings.ToLower(name)]
 }
 
-var ignoredSuffix = regexp.MustCompile(`(?i)[ ._-](sample|trailer|featurette|behindthescenes|deleted|interview|scene|short|extra)$`)
+var sampleSuffix = regexp.MustCompile(`(?i)[ ._-]sample$`)
 
-// Ignored reports a path that must not be indexed: hidden file, extra, sample, system folder.
+// Ignored reports a path that must not be indexed: hidden file, sample, system folder. Extras are
+// indexed (ParseExtra), in movie and series libraries only.
 func Ignored(rel string) bool {
 	parts := strings.Split(rel, "/")
 	for i, p := range parts {
-		if strings.HasPrefix(p, ".") || (i < len(parts)-1 && (bonusDirs[strings.ToLower(p)] || systemDirs[strings.ToLower(p)])) {
+		if strings.HasPrefix(p, ".") || (i < len(parts)-1 && (sampleDirs[strings.ToLower(p)] || systemDirs[strings.ToLower(p)])) {
 			return true
 		}
 	}
 	name := strings.TrimSuffix(parts[len(parts)-1], path.Ext(rel))
-	return strings.EqualFold(name, "sample") || ignoredSuffix.MatchString(name)
+	return strings.EqualFold(name, "sample") || sampleSuffix.MatchString(name)
 }
 
 // Name cleanup.

@@ -178,6 +178,8 @@ type playSession struct {
 	// track (never a resume point).
 	conv  *conversion
 	music bool
+	// extra marks an extra: no resume point, no progress, no play in the history.
+	extra bool
 	// series is the series of an episode, nil otherwise, and subs the subtitles of the file. choice
 	// is what the viewer chose during the playback (the audio language when audioChosen, the
 	// subtitle when choice.SubtitleChosen; s.mu), kept for the series when it ends.
@@ -298,7 +300,8 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	read := a.store.Read()
 	view, err := read.View(ctx, v, req.ItemID)
 	it := view.Item
-	if store.IsNotFound(err) || (err == nil && it.Kind != domain.ItemMovie && it.Kind != domain.ItemEpisode && it.Kind != domain.ItemTrack) {
+	if store.IsNotFound(err) || (err == nil && it.Kind != domain.ItemMovie && it.Kind != domain.ItemEpisode && it.Kind != domain.ItemTrack &&
+		it.Kind != domain.ItemExtra) {
 		return PlayInfo{}, domain.NotFound("catalog.item_not_found")
 	}
 	if err != nil {
@@ -319,7 +322,11 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	if file == nil {
 		return PlayInfo{}, domain.NotFound("playback.no_readable_file")
 	}
-	music := it.Kind == domain.ItemTrack
+	music, extra := it.Kind == domain.ItemTrack, it.Kind == domain.ItemExtra
+	if extra {
+		// An extra starts from the beginning, and leaves neither a position nor a play behind.
+		view.UserData = domain.UserData{}
+	}
 	var subs []domain.Subtitle
 	var fonts []domain.Font
 	subsReady := true
@@ -395,7 +402,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		id: domain.NewID(), token: newToken(), profile: profile, item: it.ID, file: *file, plan: plan, limit: bitrate,
 		encoder: encoder, toneMap: toneMap, gpu: gpu, decoder: decoder,
 		changed: make(chan struct{}), ready: map[int]bool{}, lastSeen: a.now(), savedAt: a.now(),
-		position: view.UserData.Position, music: music,
+		position: view.UserData.Position, music: music, extra: extra,
 		play: playOf(profile, view, file.Info.Duration, a.now()), lastPos: view.UserData.Position, lastAt: a.now(),
 		who: playViewer{
 			accountID: p.Account.ID, username: p.Account.Username, profileName: p.Profile.Name,
@@ -1093,7 +1100,7 @@ func (a *App) StopPlayback(ctx context.Context, p domain.Principal, id domain.ID
 // per session.
 func (a *App) saveSessionProgress(ctx context.Context, s *playSession) {
 	s.mu.Lock()
-	if !s.dirty || s.finished {
+	if !s.dirty || s.finished || s.extra {
 		s.mu.Unlock()
 		return
 	}
@@ -1126,7 +1133,7 @@ func (a *App) closeSession(ctx context.Context, s *playSession) {
 	s.mu.Lock()
 	position, finished := s.position, s.finished
 	// Two closes may cross (stop requested, watchdog): only one play is recorded.
-	play, record := s.play, !s.recorded
+	play, record := s.play, !s.recorded && !s.extra
 	s.recorded = true
 	play.Watched, play.Position, play.Completed = s.watched, position, finished
 	s.mu.Unlock()

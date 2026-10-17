@@ -49,7 +49,7 @@ func partyMsg(ctx context.Context, v app.PartyView) *laternav1.Party {
 		case domain.ItemTrack:
 			msg.Items = append(msg.Items, &laternav1.PartyItem{Item: &laternav1.PartyItem_Track{Track: trackMsg(ctx, it)}})
 		case domain.ItemSeries, domain.ItemSeason, domain.ItemArtist, domain.ItemAlbum, domain.ItemBookSeries, domain.ItemBook,
-			domain.ItemPhotoAlbum, domain.ItemPhoto:
+			domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 		}
 	}
 	return msg

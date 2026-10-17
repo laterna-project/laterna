@@ -46,10 +46,11 @@ func TestWalk(t *testing.T) {
 		}
 	}
 	slices.Sort(rels)
-	if !slices.Equal(rels, []string{"Movie (2020)/Movie (2020).mkv", "Other.MP4"}) {
+	// The extra is kept (the library decides what it is), the sample is not.
+	if !slices.Equal(rels, []string{"Movie (2020)/Extras/Making of.mkv", "Movie (2020)/Movie (2020).mkv", "Other.MP4"}) {
 		t.Errorf("files kept: %v", rels)
 	}
-	if len(w.Unavailable) != 1 || w.Counts[root] != 2 {
+	if len(w.Unavailable) != 1 || w.Counts[root] != 3 {
 		t.Errorf("roots: unavailable=%v counts=%v", w.Unavailable, w.Counts)
 	}
 	if len(w.Metadata) != 1 || w.Metadata[0].Rel != "Movie (2020)/poster.jpg" {

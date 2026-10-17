@@ -72,6 +72,7 @@ func (s *CatalogService) GetMovie(ctx context.Context, req *connect.Request[late
 			OfficialRating: it.OfficialRating, CommunityRating: it.CommunityRating, Runtime: durationMsg(it.Runtime),
 			Genres: d.Genres, Studios: d.Studios, Credits: creditsMsg(d.Credits), ProviderIds: d.ProviderIDs, Collections: collectionRefsMsg(d.Collections),
 			Images: imagesMsg(v.Images), UserData: userDataMsg(v.UserData), AddedAt: timestamppb.New(it.AddedAt),
+			ExtraCount: clampInt32(d.Extras), TrailerId: idString(d.Trailer),
 		},
 		Files: filesMsg(d.Files),
 	}), nil
@@ -123,9 +124,46 @@ func (s *CatalogService) GetSeries(ctx context.Context, req *connect.Request[lat
 			Genres: d.Genres, Studios: d.Studios, Credits: creditsMsg(d.Credits), ProviderIds: d.ProviderIDs, Collections: collectionRefsMsg(d.Collections),
 			Images: imagesMsg(v.Images), EpisodeCount: clampInt32(v.EpisodeCount), UnplayedCount: clampInt32(v.UnplayedCount),
 			UserData: userDataMsg(v.UserData), AddedAt: timestamppb.New(it.AddedAt),
+			ExtraCount: clampInt32(d.Extras), TrailerId: idString(d.Trailer),
 		},
 		Seasons: out,
 	}), nil
+}
+
+var extraKinds = map[domain.ExtraKind]laternav1.ExtraKind{
+	domain.ExtraTrailer:         laternav1.ExtraKind_EXTRA_KIND_TRAILER,
+	domain.ExtraFeaturette:      laternav1.ExtraKind_EXTRA_KIND_FEATURETTE,
+	domain.ExtraBehindTheScenes: laternav1.ExtraKind_EXTRA_KIND_BEHIND_THE_SCENES,
+	domain.ExtraDeletedScene:    laternav1.ExtraKind_EXTRA_KIND_DELETED_SCENE,
+	domain.ExtraInterview:       laternav1.ExtraKind_EXTRA_KIND_INTERVIEW,
+	domain.ExtraScene:           laternav1.ExtraKind_EXTRA_KIND_SCENE,
+	domain.ExtraShort:           laternav1.ExtraKind_EXTRA_KIND_SHORT,
+	domain.ExtraOther:           laternav1.ExtraKind_EXTRA_KIND_UNSPECIFIED,
+}
+
+// ListExtras lists the extras of a movie or a series.
+func (s *CatalogService) ListExtras(ctx context.Context, req *connect.Request[laternav1.ListExtrasRequest]) (*connect.Response[laternav1.ListExtrasResponse], error) {
+	id, err := parseID(req.Msg.GetItemId(), "item_id")
+	if err != nil {
+		return nil, err
+	}
+	list, err := s.app.Extras(ctx, principal(ctx), id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*laternav1.Extra, 0, len(list))
+	for _, v := range list {
+		it := v.Item
+		x := &laternav1.Extra{
+			Id: it.ID.String(), OwnerId: idString(it.ParentID), Title: it.Title, Runtime: durationMsg(it.Runtime),
+			Images: imagesMsg(v.Images), AddedAt: timestamppb.New(it.AddedAt),
+		}
+		if v.Extra != nil {
+			x.Kind = extraKinds[v.Extra.Kind]
+		}
+		out = append(out, x)
+	}
+	return connect.NewResponse(&laternav1.ListExtrasResponse{Extras: out}), nil
 }
 
 // ListEpisodes lists the episodes of a series or a season.
@@ -218,7 +256,7 @@ func searchResultMsg(ctx context.Context, v domain.ItemView) *laternav1.SearchRe
 		return &laternav1.SearchResult{Item: &laternav1.SearchResult_Book{Book: bookSummaryMsg(ctx, v)}}
 	case domain.ItemPhotoAlbum:
 		return &laternav1.SearchResult{Item: &laternav1.SearchResult_PhotoAlbum{PhotoAlbum: photoAlbumMsg(v)}}
-	case domain.ItemSeason, domain.ItemPhoto:
+	case domain.ItemSeason, domain.ItemPhoto, domain.ItemExtra:
 	}
 	return nil
 }
@@ -265,7 +303,7 @@ func (s *CatalogService) ListSimilar(ctx context.Context, req *connect.Request[l
 		case domain.ItemSeries:
 			resp.Items = append(resp.Items, &laternav1.SimilarItem{Item: &laternav1.SimilarItem_Series{Series: seriesSummaryMsg(v)}})
 		case domain.ItemSeason, domain.ItemEpisode, domain.ItemArtist, domain.ItemAlbum, domain.ItemTrack, domain.ItemBookSeries,
-			domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto:
+			domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 		}
 	}
 	return connect.NewResponse(resp), nil
