@@ -68,7 +68,7 @@ func downloadMsg(ctx context.Context, v app.DownloadView) *laternav1.Download {
 	case domain.ItemTrack:
 		msg.Item = &laternav1.Download_Track{Track: trackMsg(ctx, v.Item)}
 	case domain.ItemSeries, domain.ItemSeason, domain.ItemArtist, domain.ItemAlbum, domain.ItemBookSeries, domain.ItemBook,
-		domain.ItemPhotoAlbum, domain.ItemPhoto:
+		domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 	}
 	if d.State == domain.DownloadReady {
 		msg.Url = DownloadPath(d.ID)

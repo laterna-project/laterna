@@ -58,6 +58,10 @@ type Details struct {
 	Collections []domain.Collection
 	// Files of a movie or an episode, by version then part.
 	Files []FileVersion
+	// Extras is the number of extras of a movie or a series, Trailer its first trailer (nil if it
+	// has none).
+	Extras  int
+	Trailer *domain.ID
 }
 
 // FileVersion is a file of an item, with its version ("4K") and part (CD1...).
@@ -265,6 +269,23 @@ func (a *App) Series(ctx context.Context, p domain.Principal, id domain.ID) (dom
 	return view, details, seasons, err
 }
 
+// Extras lists the present extras of a movie or a series: trailers first, then by kind and title.
+func (a *App) Extras(ctx context.Context, p domain.Principal, ownerID domain.ID) ([]domain.ItemView, error) {
+	v, err := viewerOf(p)
+	if err != nil {
+		return nil, err
+	}
+	read := a.store.Read()
+	owner, err := read.View(ctx, v, ownerID)
+	if store.IsNotFound(err) || (err == nil && owner.Item.Kind != domain.ItemMovie && owner.Item.Kind != domain.ItemSeries) {
+		return nil, domain.NotFound("catalog.item_not_found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return read.Extras(ctx, v, ownerID)
+}
+
 // Episodes lists the present episodes of a series, or of one of its seasons.
 func (a *App) Episodes(ctx context.Context, p domain.Principal, seriesID domain.ID, seasonID *domain.ID) ([]domain.ItemView, error) {
 	v, err := viewerOf(p)
@@ -379,6 +400,9 @@ func (a *App) itemWithDetails(ctx context.Context, p domain.Principal, id domain
 		if out.Collections, err = read.ItemCollections(ctx, id); err != nil {
 			return domain.ItemView{}, Details{}, err
 		}
+		if out.Extras, out.Trailer, err = read.ExtraSummary(ctx, id); err != nil {
+			return domain.ItemView{}, Details{}, err
+		}
 	}
 	if files {
 		list, err := read.ItemFiles(ctx, id)
@@ -462,7 +486,7 @@ func (a *App) SetPlayed(ctx context.Context, p domain.Principal, itemID domain.I
 			ids, err = q.ArtistTrackIDs(ctx, it.ID)
 		case domain.ItemBookSeries:
 			ids, err = q.SeriesBookIDs(ctx, it.ID)
-		case domain.ItemMovie, domain.ItemEpisode, domain.ItemTrack, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto:
+		case domain.ItemMovie, domain.ItemEpisode, domain.ItemTrack, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 		}
 		if err != nil {
 			return err

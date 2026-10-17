@@ -53,6 +53,9 @@ const (
 	// CatalogServiceGetEpisodeProcedure is the fully-qualified name of the CatalogService's GetEpisode
 	// RPC.
 	CatalogServiceGetEpisodeProcedure = "/laterna.v1.CatalogService/GetEpisode"
+	// CatalogServiceListExtrasProcedure is the fully-qualified name of the CatalogService's ListExtras
+	// RPC.
+	CatalogServiceListExtrasProcedure = "/laterna.v1.CatalogService/ListExtras"
 	// CatalogServiceListGenresProcedure is the fully-qualified name of the CatalogService's ListGenres
 	// RPC.
 	CatalogServiceListGenresProcedure = "/laterna.v1.CatalogService/ListGenres"
@@ -86,6 +89,10 @@ type CatalogServiceClient interface {
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
 	// GetEpisode returns the details of an episode and its files.
 	GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error)
+	// ListExtras lists the extras of a movie or a series (trailers, featurettes...): trailers first,
+	// then by kind and title. They play like a movie (PlaybackService.StartPlayback), always from the
+	// start, and leave nothing in the history.
+	ListExtras(context.Context, *connect.Request[v1.ListExtrasRequest]) (*connect.Response[v1.ListExtrasResponse], error)
 	// ListGenres lists the genres of movies, series and albums, to filter lists.
 	ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error)
 	// Search looks up movies, series, episodes, artists, albums and tracks by title, ignoring accents
@@ -162,6 +169,13 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		listExtras: connect.NewClient[v1.ListExtrasRequest, v1.ListExtrasResponse](
+			httpClient,
+			baseURL+CatalogServiceListExtrasProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("ListExtras")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		listGenres: connect.NewClient[v1.ListGenresRequest, v1.ListGenresResponse](
 			httpClient,
 			baseURL+CatalogServiceListGenresProcedure,
@@ -209,6 +223,7 @@ type catalogServiceClient struct {
 	getSeries            *connect.Client[v1.GetSeriesRequest, v1.GetSeriesResponse]
 	listEpisodes         *connect.Client[v1.ListEpisodesRequest, v1.ListEpisodesResponse]
 	getEpisode           *connect.Client[v1.GetEpisodeRequest, v1.GetEpisodeResponse]
+	listExtras           *connect.Client[v1.ListExtrasRequest, v1.ListExtrasResponse]
 	listGenres           *connect.Client[v1.ListGenresRequest, v1.ListGenresResponse]
 	search               *connect.Client[v1.SearchRequest, v1.SearchResponse]
 	listSimilar          *connect.Client[v1.ListSimilarRequest, v1.ListSimilarResponse]
@@ -249,6 +264,11 @@ func (c *catalogServiceClient) ListEpisodes(ctx context.Context, req *connect.Re
 // GetEpisode calls laterna.v1.CatalogService.GetEpisode.
 func (c *catalogServiceClient) GetEpisode(ctx context.Context, req *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error) {
 	return c.getEpisode.CallUnary(ctx, req)
+}
+
+// ListExtras calls laterna.v1.CatalogService.ListExtras.
+func (c *catalogServiceClient) ListExtras(ctx context.Context, req *connect.Request[v1.ListExtrasRequest]) (*connect.Response[v1.ListExtrasResponse], error) {
+	return c.listExtras.CallUnary(ctx, req)
 }
 
 // ListGenres calls laterna.v1.CatalogService.ListGenres.
@@ -293,6 +313,10 @@ type CatalogServiceHandler interface {
 	ListEpisodes(context.Context, *connect.Request[v1.ListEpisodesRequest]) (*connect.Response[v1.ListEpisodesResponse], error)
 	// GetEpisode returns the details of an episode and its files.
 	GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error)
+	// ListExtras lists the extras of a movie or a series (trailers, featurettes...): trailers first,
+	// then by kind and title. They play like a movie (PlaybackService.StartPlayback), always from the
+	// start, and leave nothing in the history.
+	ListExtras(context.Context, *connect.Request[v1.ListExtrasRequest]) (*connect.Response[v1.ListExtrasResponse], error)
 	// ListGenres lists the genres of movies, series and albums, to filter lists.
 	ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error)
 	// Search looks up movies, series, episodes, artists, albums and tracks by title, ignoring accents
@@ -365,6 +389,13 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceListExtrasHandler := connect.NewUnaryHandler(
+		CatalogServiceListExtrasProcedure,
+		svc.ListExtras,
+		connect.WithSchema(catalogServiceMethods.ByName("ListExtras")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	catalogServiceListGenresHandler := connect.NewUnaryHandler(
 		CatalogServiceListGenresProcedure,
 		svc.ListGenres,
@@ -416,6 +447,8 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceListEpisodesHandler.ServeHTTP(w, r)
 		case CatalogServiceGetEpisodeProcedure:
 			catalogServiceGetEpisodeHandler.ServeHTTP(w, r)
+		case CatalogServiceListExtrasProcedure:
+			catalogServiceListExtrasHandler.ServeHTTP(w, r)
 		case CatalogServiceListGenresProcedure:
 			catalogServiceListGenresHandler.ServeHTTP(w, r)
 		case CatalogServiceSearchProcedure:
@@ -461,6 +494,10 @@ func (UnimplementedCatalogServiceHandler) ListEpisodes(context.Context, *connect
 
 func (UnimplementedCatalogServiceHandler) GetEpisode(context.Context, *connect.Request[v1.GetEpisodeRequest]) (*connect.Response[v1.GetEpisodeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.CatalogService.GetEpisode is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) ListExtras(context.Context, *connect.Request[v1.ListExtrasRequest]) (*connect.Response[v1.ListExtrasResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.CatalogService.ListExtras is not implemented"))
 }
 
 func (UnimplementedCatalogServiceHandler) ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error) {

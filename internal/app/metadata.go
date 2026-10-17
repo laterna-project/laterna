@@ -63,7 +63,7 @@ func (a *App) refreshMetadata(ctx context.Context, target string) error {
 	case domain.ItemPhoto:
 		return nil // everything that describes it comes from the file, read at analysis time
 	case domain.ItemMovie, domain.ItemSeries, domain.ItemSeason, domain.ItemEpisode, domain.ItemArtist, domain.ItemAlbum,
-		domain.ItemTrack:
+		domain.ItemTrack, domain.ItemExtra:
 	}
 	src, ok, err := a.localSources(ctx, lib, item)
 	if err != nil || !ok {
@@ -101,7 +101,7 @@ func (a *App) refreshMetadata(ctx context.Context, target string) error {
 			embedded = append(embedded, w)
 		}
 	}
-	if item.Kind == domain.ItemEpisode && src.file != nil && a.needsStill(art, nfo) {
+	if (item.Kind == domain.ItemEpisode || item.Kind == domain.ItemExtra) && src.file != nil && a.needsStill(art, nfo) {
 		if w, ok := a.episodeStill(ctx, item.ID, *src.file); ok {
 			embedded = append(embedded, w)
 		}
@@ -139,7 +139,7 @@ func (a *App) refreshMetadata(ctx context.Context, target string) error {
 func (a *App) localSources(ctx context.Context, lib domain.Library, item domain.Item) (localSources, bool, error) {
 	read := a.store.Read()
 	switch item.Kind {
-	case domain.ItemMovie, domain.ItemEpisode:
+	case domain.ItemMovie, domain.ItemEpisode, domain.ItemExtra:
 		files, err := read.ItemFiles(ctx, item.ID)
 		if err != nil || len(files) == 0 {
 			return localSources{}, false, err
@@ -162,9 +162,13 @@ func (a *App) localSources(ctx context.Context, lib domain.Library, item domain.
 			src.names = domain.Metadata{Title: title, SortTitle: naming.SortTitle(title), Year: m.Year, ProviderIDs: m.IDs}
 			src.artwork = func() ([]metadata.Artwork, error) { return metadata.MovieArtwork(dir, base, ownFolder) }
 		} else {
-			if e, ok := naming.ParseEpisode(rel); ok {
+			if x, ok := naming.ParseExtra(rel); ok && item.Kind == domain.ItemExtra {
+				src.names.Title = x.Title
+				src.names.SortTitle = naming.SortTitle(x.Title)
+			} else if e, ok := naming.ParseEpisode(rel); ok {
 				src.names.Title = episodeTitle(e)
 			}
+			// An extra, like an episode, may have a "<file>-thumb.jpg"; otherwise a frame of its video.
 			src.artwork = func() ([]metadata.Artwork, error) { return metadata.EpisodeArtwork(dir, base) }
 		}
 		return src, true, nil

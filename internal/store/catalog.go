@@ -90,16 +90,17 @@ func presentCond(kind domain.ItemKind) string {
 		return fmt.Sprintf(presentChildOf, "i.id")
 	case domain.ItemPhotoAlbum:
 		return fmt.Sprintf(presentAlbumOf, "i.id")
-	case domain.ItemMovie, domain.ItemEpisode, domain.ItemTrack, domain.ItemBook, domain.ItemPhoto:
+	case domain.ItemMovie, domain.ItemEpisode, domain.ItemTrack, domain.ItemBook, domain.ItemPhoto, domain.ItemExtra:
 	}
 	return presentHere
 }
 
 // ageOf is the age of an item's rating, or failing that the one of its series (seasons and
-// episodes); -1 if unrated.
+// episodes) or of its movie or series (extras); -1 if unrated.
 const ageOf = `COALESCE(i.age_rating, (SELECT sa.age_rating FROM items sa WHERE sa.id = COALESCE(
 	(SELECT ae.series_id FROM episodes ae WHERE ae.item_id = i.id),
-	(SELECT as2.series_id FROM seasons as2 WHERE as2.item_id = i.id))), -1)`
+	(SELECT as2.series_id FROM seasons as2 WHERE as2.item_id = i.id),
+	CASE WHEN i.kind = 'extra' THEN i.parent_id END)), -1)`
 
 // cond is an SQL condition and its arguments.
 type cond struct {
@@ -272,7 +273,7 @@ func (q Q) cards(ctx context.Context, b *query) ([]domain.ItemView, error) {
 				}
 			}
 		case domain.ItemMovie, domain.ItemArtist, domain.ItemAlbum, domain.ItemBookSeries, domain.ItemBook,
-			domain.ItemPhotoAlbum, domain.ItemPhoto:
+			domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 		}
 		out = append(out, c)
 	}
@@ -283,6 +284,9 @@ func (q Q) cards(ctx context.Context, b *query) ([]domain.ItemView, error) {
 		return nil, err
 	}
 	if err := q.attachPhotos(ctx, out); err != nil {
+		return nil, err
+	}
+	if err := q.attachExtras(ctx, out); err != nil {
 		return nil, err
 	}
 	return out, q.attachImages(ctx, out)
@@ -562,7 +566,7 @@ func (q Q) EpisodeIDs(ctx context.Context, parent domain.Item) ([]domain.ID, err
 	case domain.ItemSeason:
 		return q.q.ListSeasonEpisodeIDs(ctx, parent.ID)
 	case domain.ItemMovie, domain.ItemEpisode, domain.ItemArtist, domain.ItemAlbum, domain.ItemTrack,
-		domain.ItemBookSeries, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto:
+		domain.ItemBookSeries, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 	}
 	return nil, fmt.Errorf("store: %s has no episodes", parent.Kind)
 }
@@ -580,7 +584,7 @@ func (q Q) Tracks(ctx context.Context, v domain.Viewer, parent domain.Item) ([]d
 		b.where("t.artist_id = ?", parent.ID).flushWhere()
 		b.add(" ORDER BY tal.year, tal.sort_title, t.disc, t.number, i.sort_title")
 	case domain.ItemMovie, domain.ItemSeries, domain.ItemSeason, domain.ItemEpisode, domain.ItemTrack,
-		domain.ItemBookSeries, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto:
+		domain.ItemBookSeries, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 		return nil, fmt.Errorf("store: %s has no tracks", parent.Kind)
 	}
 	return q.cards(ctx, b)

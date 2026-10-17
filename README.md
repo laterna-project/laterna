@@ -40,9 +40,10 @@ server without a client.
   enforced on the server. Sign-in by password, passkey, OpenID Connect, or a code shown on a TV.
 - **More than video.** Music from tags with whole-file playback, EPUB/CBZ/PDF books with pages
   scaled for the screen, photo libraries with EXIF and a timeline.
-- **The extras.** Intro and credits detection, scrubbing thumbnails, offline downloads, watch
-  parties, play history with yearly statistics, recommendations computed locally, collections
-  and playlists, themes, import of users and watch state from Jellyfin.
+- **The extras.** Trailers and featurettes next to movies and series, intro and credits
+  detection, scrubbing thumbnails, offline downloads, watch parties, play history with yearly
+  statistics, recommendations computed locally, collections and playlists, themes, import of users
+  and watch state from Jellyfin.
 - **Easy to run.** No external database. Hot backups, including one before every schema
   migration. Prometheus metrics and OpenTelemetry traces. Starts in well under a second and
   idles under 60 MB.

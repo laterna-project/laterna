@@ -242,6 +242,8 @@ func (a *App) playable(ctx context.Context, v domain.Viewer, itemIDs []domain.ID
 			return nil, domain.Invalid("catalog.not_queueable", "kind", domain.ItemBook)
 		case domain.ItemPhotoAlbum, domain.ItemPhoto:
 			return nil, domain.Invalid("catalog.not_queueable", "kind", domain.ItemPhoto)
+		case domain.ItemExtra:
+			return nil, domain.Invalid("catalog.not_queueable", "kind", domain.ItemExtra)
 		}
 	}
 	if len(out) > maxPlaylistEntries {
