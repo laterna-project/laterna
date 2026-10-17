@@ -116,6 +116,11 @@ type Episode struct {
 	Absolute     int64
 }
 
+type Extra struct {
+	ItemID domain.ID
+	Kind   string
+}
+
 type FileFont struct {
 	FileID domain.ID
 	Sha256 string

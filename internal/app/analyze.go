@@ -37,7 +37,7 @@ func (a *App) analyzeFile(ctx context.Context, target string) error {
 	if err != nil {
 		return err
 	}
-	_, rel, ok := relativeTo(lib.Paths, f.Path)
+	root, rel, ok := relativeTo(lib.Paths, f.Path)
 	if !ok {
 		return jobs.Permanent(fmt.Errorf("%s is outside the library folders", f.Path))
 	}
@@ -69,14 +69,20 @@ func (a *App) analyzeFile(ctx context.Context, target string) error {
 			return err
 		}
 		var err error
-		switch lib.Kind {
-		case domain.LibraryMovies:
-			enrich, err = a.placeMovie(ctx, q, lib, f, rel)
-		case domain.LibraryShows:
-			enrich, arrived, err = a.placeEpisode(ctx, q, lib, f, rel)
-		case domain.LibraryMusic:
+		extra := false
+		if x, ok := naming.ParseExtra(rel); ok && (lib.Kind == domain.LibraryMovies || lib.Kind == domain.LibraryShows) {
+			if enrich, extra, err = a.placeExtra(ctx, q, lib, f, root, rel, x); err != nil {
+				return err
+			}
+		}
+		switch {
+		case extra:
+		case lib.Kind == domain.LibraryMovies:
+			enrich, err = a.placeMovie(ctx, q, lib, f, root, rel)
+		case lib.Kind == domain.LibraryShows:
+			enrich, arrived, err = a.placeEpisode(ctx, q, lib, f, root, rel)
+		case lib.Kind == domain.LibraryMusic:
 			enrich, err = a.placeTrack(ctx, q, lib, f, rel)
-		case domain.LibraryBooks, domain.LibraryPhotos: // analyzeBook, analyzePhoto
 		}
 		if err != nil {
 			return err
@@ -86,9 +92,14 @@ func (a *App) analyzeFile(ctx context.Context, target string) error {
 				return err
 			}
 		}
-		// The keyframe index (HLS playback) and the subtitles are ready before the first playback.
+		// The keyframe index (HLS playback) and the subtitles are ready before the first playback. An
+		// extra does without scrubbing thumbnails and intro detection.
 		if hasVideo(info) {
-			for _, kind := range []string{jobIndexFile, jobExtractSubtitles, jobTrickplay, jobDetectSegments} {
+			kinds := []string{jobIndexFile, jobExtractSubtitles, jobTrickplay, jobDetectSegments}
+			if extra {
+				kinds = kinds[:2]
+			}
+			for _, kind := range kinds {
 				if err := a.jobs.Enqueue(ctx, q, kind, f.ID.String(), priorityBackground); err != nil {
 					return err
 				}
@@ -118,7 +129,7 @@ func (a *App) analyzeFile(ctx context.Context, target string) error {
 }
 
 // placeMovie files a movie file. It returns the items whose metadata must be read.
-func (a *App) placeMovie(ctx context.Context, q store.Q, lib domain.Library, f domain.MediaFile, rel string) ([]domain.ID, error) {
+func (a *App) placeMovie(ctx context.Context, q store.Q, lib domain.Library, f domain.MediaFile, root, rel string) ([]domain.ID, error) {
 	m := naming.ParseMovie(rel)
 	title := movieTitle(m, rel)
 	key := "movie:" + m.GroupKey
@@ -134,13 +145,19 @@ func (a *App) placeMovie(ctx context.Context, q store.Q, lib domain.Library, f d
 	if err := q.LinkFile(ctx, item.ID, f.ID, m.Version, m.Part); err != nil {
 		return nil, err
 	}
+	stem := strings.TrimSuffix(path.Base(rel), path.Ext(rel))
+	if err := a.adoptExtras(ctx, q, lib, root, path.Dir(rel), f.ID, func(x naming.Extra) bool {
+		return x.Owner == path.Dir(rel) && (x.OwnerName == "" || strings.EqualFold(x.OwnerName, stem))
+	}); err != nil {
+		return nil, err
+	}
 	// Even for an existing movie (new version, renamed folder) the local metadata is read again:
 	// the new file may bring an NFO or a poster.
 	return []domain.ID{item.ID}, nil
 }
 
 // placeEpisode files an episode file, creating the series and season if needed.
-func (a *App) placeEpisode(ctx context.Context, q store.Q, lib domain.Library, f domain.MediaFile, rel string) ([]domain.ID, *newEpisode, error) {
+func (a *App) placeEpisode(ctx context.Context, q store.Q, lib domain.Library, f domain.MediaFile, root, rel string) ([]domain.ID, *newEpisode, error) {
 	e, ok := naming.ParseEpisode(rel)
 	if !ok {
 		a.log.InfoContext(ctx, "file not recognised as an episode, ignored", "path", f.Path)
@@ -162,6 +179,11 @@ func (a *App) placeEpisode(ctx context.Context, q store.Q, lib domain.Library, f
 	}
 	if created {
 		enrich = append(enrich, series.ID)
+		if e.SeriesDir != "" {
+			if err := a.adoptExtras(ctx, q, lib, root, e.SeriesDir, f.ID, func(x naming.Extra) bool { return extraSeriesDir(x.Owner) == e.SeriesDir }); err != nil {
+				return nil, nil, err
+			}
+		}
 	}
 	season, created, err := a.findOrCreate(ctx, q, domain.Item{
 		LibraryID: lib.ID, Kind: domain.ItemSeason, ParentID: &series.ID,
