@@ -6,6 +6,7 @@
 //	laterna restore      prepare the restore of a backup
 //	laterna version      print the version
 //	laterna healthcheck  query /health on the local server (Docker healthcheck)
+//	laterna service      install, start, stop or remove the Windows service
 package main
 
 import (
@@ -37,6 +38,7 @@ Commands:
   restore <backup>  stage a restore, applied at the next start
   version   print the version
   healthcheck  query /health on the local server (Docker probe)
+  service install|uninstall|start|stop  run Laterna as a Windows service
 
 Options of serve, migrate, backup and restore:
   -config <file>      TOML file (default: $LATERNA_CONFIG, else ./laterna.toml if it exists)
@@ -60,6 +62,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		err = restoreCommand(ctx, args, stdout, stderr)
 	case "healthcheck":
 		err = healthcheckCommand(ctx, args, stdout, stderr)
+	case "service":
+		err = serviceCommand(ctx, args, stdout, stderr)
 	case "version":
 		_, _ = fmt.Fprintln(stdout, versionString())
 	case "help", "-h", "--help":
@@ -86,16 +90,17 @@ func versionString() string {
 	return v
 }
 
-// configPath picks the configuration file: flag, environment variable, then ./laterna.toml.
-func configPath(flagValue string) string {
+// configPath picks the configuration file: flag, environment variable, then fallback if it exists
+// (./laterna.toml from a console, laterna.toml in its folder for the Windows service).
+func configPath(flagValue, fallback string) string {
 	if flagValue != "" {
 		return flagValue
 	}
 	if env := os.Getenv("LATERNA_CONFIG"); env != "" {
 		return env
 	}
-	if _, err := os.Stat("laterna.toml"); err == nil {
-		return "laterna.toml"
+	if _, err := os.Stat(fallback); err == nil {
+		return fallback
 	}
 	return ""
 }

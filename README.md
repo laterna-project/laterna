@@ -69,7 +69,8 @@ release; `edge` follows the development branch.
 ### Packages and archives
 
 Releases come as `.deb` and `.rpm` packages with a systemd service, and as archives for Linux,
-Windows, macOS and FreeBSD, with or without FFmpeg included. See [docs/install.md](docs/install.md).
+Windows, macOS and FreeBSD, with or without FFmpeg included. On Windows, `laterna service install`
+runs the server as a service. See [docs/install.md](docs/install.md).
 
 ### From source
 

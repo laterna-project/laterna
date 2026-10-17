@@ -22,7 +22,7 @@ func healthcheckCommand(ctx context.Context, args []string, stdout, stderr io.Wr
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	cfg, err := config.Load(configPath(*cfgFile), os.LookupEnv)
+	cfg, err := config.Load(configPath(*cfgFile, console.config), os.LookupEnv)
 	if err != nil {
 		return err
 	}

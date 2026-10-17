@@ -129,6 +129,10 @@ jobs:
           ffmpeg -hide_banner -version | head -n 1
       - run: go build ./...
       - run: go test ./...
+        env:
+          # The test of the Windows service installs a real one: the runner is a throwaway machine
+          # where the tests run as an administrator.
+          LATERNA_SERVICE_TEST: ${{ runner.os == 'Windows' && '1' || '' }}
 
   build:
     name: Cross-build

@@ -87,6 +87,34 @@ func defaultDirs(goos string, getenv func(string) string, home func() (string, e
 	}
 }
 
+// ServiceRoot returns the folder of the Windows service, %ProgramData%\Laterna: its laterna.toml
+// and, unless the configuration says otherwise, its data, cache and metadata. The service runs
+// under an account of its own, whose profile is no place for a database.
+func ServiceRoot() (string, error) {
+	return serviceRoot(os.Getenv)
+}
+
+func serviceRoot(getenv func(string) string) (string, error) {
+	base := getenv("ProgramData")
+	if base == "" {
+		return "", errors.New("platform: %ProgramData% is not set")
+	}
+	return filepath.Join(base, "Laterna"), nil
+}
+
+// ServiceDirs returns the default folders of the Windows service, under ServiceRoot.
+func ServiceDirs() (Dirs, error) {
+	root, err := ServiceRoot()
+	if err != nil {
+		return Dirs{}, err
+	}
+	return Dirs{
+		Data:     filepath.Join(root, "data"),
+		Cache:    filepath.Join(root, "cache"),
+		Metadata: filepath.Join(root, "metadata"),
+	}, nil
+}
+
 // Ensure creates the missing folders.
 func (d Dirs) Ensure() error {
 	for _, p := range []string{d.Data, d.Cache, d.Metadata, d.Log(), d.BackupDir()} {
