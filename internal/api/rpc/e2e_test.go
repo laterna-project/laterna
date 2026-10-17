@@ -25,11 +25,12 @@ import (
 
 // testServer starts the services on a real HTTP server and provides generated clients.
 type testServer struct {
-	url     string
-	server  laternav1connect.ServerServiceClient
-	auth    laternav1connect.AuthServiceClient
-	profile laternav1connect.ProfileServiceClient
-	library laternav1connect.LibraryServiceClient
+	url        string
+	httpClient *http.Client
+	server     laternav1connect.ServerServiceClient
+	auth       laternav1connect.AuthServiceClient
+	profile    laternav1connect.ProfileServiceClient
+	library    laternav1connect.LibraryServiceClient
 }
 
 func newTestServer(t *testing.T) *testServer {
@@ -50,11 +51,12 @@ func newTestServer(t *testing.T) *testServer {
 	t.Cleanup(srv.Close)
 	c := srv.Client()
 	return &testServer{
-		url:     srv.URL,
-		server:  laternav1connect.NewServerServiceClient(c, srv.URL),
-		auth:    laternav1connect.NewAuthServiceClient(c, srv.URL),
-		profile: laternav1connect.NewProfileServiceClient(c, srv.URL),
-		library: laternav1connect.NewLibraryServiceClient(c, srv.URL),
+		url:        srv.URL,
+		httpClient: c,
+		server:     laternav1connect.NewServerServiceClient(c, srv.URL),
+		auth:       laternav1connect.NewAuthServiceClient(c, srv.URL),
+		profile:    laternav1connect.NewProfileServiceClient(c, srv.URL),
+		library:    laternav1connect.NewLibraryServiceClient(c, srv.URL),
 	}
 }
 

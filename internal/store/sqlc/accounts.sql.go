@@ -23,6 +23,17 @@ func (q *Queries) CountAccounts(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countApiTokens = `-- name: CountApiTokens :one
+SELECT count(*) FROM sessions WHERE account_id = ? AND kind = 'api'
+`
+
+func (q *Queries) CountApiTokens(ctx context.Context, accountID domain.ID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countApiTokens, accountID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countEnabledAdmins = `-- name: CountEnabledAdmins :one
 SELECT count(*) FROM accounts WHERE is_admin = 1 AND disabled = 0
 `
@@ -201,7 +212,7 @@ func (q *Queries) GetProfile(ctx context.Context, id domain.ID) (Profile, error)
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, account_id, profile_id, token_hash, device_name, client, client_version, platform, created_at, last_used_at, expires_at, last_ip FROM sessions WHERE id = ?
+SELECT id, account_id, profile_id, token_hash, device_name, client, client_version, platform, created_at, last_used_at, expires_at, last_ip, kind, read_only FROM sessions WHERE id = ?
 `
 
 func (q *Queries) GetSession(ctx context.Context, id domain.ID) (Session, error) {
@@ -220,12 +231,14 @@ func (q *Queries) GetSession(ctx context.Context, id domain.ID) (Session, error)
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.LastIp,
+		&i.Kind,
+		&i.ReadOnly,
 	)
 	return i, err
 }
 
 const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
-SELECT id, account_id, profile_id, token_hash, device_name, client, client_version, platform, created_at, last_used_at, expires_at, last_ip FROM sessions WHERE token_hash = ?
+SELECT id, account_id, profile_id, token_hash, device_name, client, client_version, platform, created_at, last_used_at, expires_at, last_ip, kind, read_only FROM sessions WHERE token_hash = ?
 `
 
 func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error) {
@@ -244,6 +257,8 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.LastIp,
+		&i.Kind,
+		&i.ReadOnly,
 	)
 	return i, err
 }
@@ -346,13 +361,14 @@ func (q *Queries) InsertProfile(ctx context.Context, arg InsertProfileParams) er
 
 const insertSession = `-- name: InsertSession :exec
 INSERT INTO sessions (id, account_id, profile_id, token_hash, device_name, client, client_version, platform,
-                      created_at, last_used_at, expires_at, last_ip)
-VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      created_at, last_used_at, expires_at, last_ip, kind, read_only)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertSessionParams struct {
 	ID            domain.ID
 	AccountID     domain.ID
+	ProfileID     *domain.ID
 	TokenHash     string
 	DeviceName    string
 	Client        string
@@ -362,12 +378,15 @@ type InsertSessionParams struct {
 	LastUsedAt    int64
 	ExpiresAt     int64
 	LastIp        string
+	Kind          string
+	ReadOnly      int64
 }
 
 func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) error {
 	_, err := q.db.ExecContext(ctx, insertSession,
 		arg.ID,
 		arg.AccountID,
+		arg.ProfileID,
 		arg.TokenHash,
 		arg.DeviceName,
 		arg.Client,
@@ -377,6 +396,8 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) er
 		arg.LastUsedAt,
 		arg.ExpiresAt,
 		arg.LastIp,
+		arg.Kind,
+		arg.ReadOnly,
 	)
 	return err
 }
@@ -506,6 +527,48 @@ func (q *Queries) ListAllAccountLibraries(ctx context.Context) ([]AccountLibrary
 	return items, nil
 }
 
+const listApiTokens = `-- name: ListApiTokens :many
+SELECT id, account_id, profile_id, token_hash, device_name, client, client_version, platform, created_at, last_used_at, expires_at, last_ip, kind, read_only FROM sessions WHERE account_id = ? AND kind = 'api' ORDER BY last_used_at DESC, id
+`
+
+func (q *Queries) ListApiTokens(ctx context.Context, accountID domain.ID) ([]Session, error) {
+	rows, err := q.db.QueryContext(ctx, listApiTokens, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Session{}
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.ProfileID,
+			&i.TokenHash,
+			&i.DeviceName,
+			&i.Client,
+			&i.ClientVersion,
+			&i.Platform,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.LastIp,
+			&i.Kind,
+			&i.ReadOnly,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProfiles = `-- name: ListProfiles :many
 SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language, audio_language FROM profiles WHERE account_id = ? ORDER BY created_at, id
 `
@@ -551,7 +614,7 @@ func (q *Queries) ListProfiles(ctx context.Context, accountID domain.ID) ([]Prof
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, account_id, profile_id, token_hash, device_name, client, client_version, platform, created_at, last_used_at, expires_at, last_ip FROM sessions WHERE account_id = ? AND expires_at > ? ORDER BY last_used_at DESC, id
+SELECT id, account_id, profile_id, token_hash, device_name, client, client_version, platform, created_at, last_used_at, expires_at, last_ip, kind, read_only FROM sessions WHERE account_id = ? AND kind = 'device' AND expires_at > ? ORDER BY last_used_at DESC, id
 `
 
 type ListSessionsParams struct {
@@ -581,6 +644,8 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]S
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.LastIp,
+			&i.Kind,
+			&i.ReadOnly,
 		); err != nil {
 			return nil, err
 		}

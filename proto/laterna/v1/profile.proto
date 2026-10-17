@@ -22,18 +22,22 @@ service ProfileService {
   // CreateProfile adds a profile to the account.
   rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // UpdateProfile changes a profile (name, PIN, kid profile).
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // DeleteProfile deletes a profile and its data (history, favorites).
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // SelectProfile picks the profile used by the current session.
   rpc SelectProfile(SelectProfileRequest) returns (SelectProfileResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // SetLanguage changes the language of the picked profile. Everyone sets their own, even from a
   // restricted profile.

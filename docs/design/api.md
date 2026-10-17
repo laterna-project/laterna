@@ -43,6 +43,11 @@ A method without the option is `PROFILE`, the most common and a strict one, so a
 stay open by oversight. One interceptor reads the option, authenticates the bearer token and puts
 the caller in the context. Handlers never check access themselves.
 
+A second option, `option (api_tokens)`, says what an API token may call: by default any token for
+a method without side effects and only a full one otherwise, `API_TOKENS_READ` to let read-only
+tokens into a read-only stream, `API_TOKENS_NONE` for the methods that manage credentials or
+profiles ([API tokens](accounts.md#api-tokens)).
+
 Received messages are limited to 4 MiB once decompressed (32 MiB for the theme service, which
 receives images).
 

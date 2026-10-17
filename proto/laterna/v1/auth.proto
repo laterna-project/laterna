@@ -31,7 +31,8 @@ service AuthService {
     option idempotency_level = NO_SIDE_EFFECTS;
     option (access) = ACCESS_ACCOUNT;
   }
-  // ListSessions lists the devices signed in to the account.
+  // ListSessions lists the devices signed in to the account; API tokens are listed apart
+  // (ListApiTokens).
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
     option (access) = ACCESS_ACCOUNT;
@@ -39,10 +40,36 @@ service AuthService {
   // RevokeSession signs a device out of the account.
   rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
-  // ChangePassword changes the account's password and signs out the other devices.
+  // ChangePassword changes the account's password and signs out the other devices, API tokens
+  // included.
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
+  }
+
+  // API tokens let a tool (Home Assistant, a dashboard, a script) call the API as the profile that
+  // creates them, with an "Authorization: Bearer" header like a device. A token does not expire; it
+  // is revoked here, and with the other sessions when the password changes or the account is
+  // disabled. A read-only token only calls the methods that change nothing; no token calls those
+  // that manage credentials or profiles (option api_tokens).
+
+  // CreateApiToken creates a token for the picked profile and returns it, once: only its hash is
+  // kept. Refused to a restricted profile; 50 tokens per account at most.
+  rpc CreateApiToken(CreateApiTokenRequest) returns (CreateApiTokenResponse) {
+    option (api_tokens) = API_TOKENS_NONE;
+  }
+  // ListApiTokens lists the tokens of the account, the most recently used first.
+  rpc ListApiTokens(ListApiTokensRequest) returns (ListApiTokensResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
+  }
+  // RevokeApiToken revokes a token of the account. Refused to a restricted profile.
+  rpc RevokeApiToken(RevokeApiTokenRequest) returns (RevokeApiTokenResponse) {
+    option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
 
   // Device login (modeled on RFC 8628), for a device without a convenient keyboard: it asks for a
@@ -63,15 +90,18 @@ service AuthService {
   // GetDeviceLogin describes the device waiting behind a code, before approving it.
   rpc GetDeviceLogin(GetDeviceLoginRequest) returns (GetDeviceLoginResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // ApproveDeviceLogin signs the device in to the caller's account. Refused for a restricted
   // profile.
   rpc ApproveDeviceLogin(ApproveDeviceLoginRequest) returns (ApproveDeviceLoginResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // DenyDeviceLogin refuses the request.
   rpc DenyDeviceLogin(DenyDeviceLoginRequest) returns (DenyDeviceLoginResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
 
   // Passkeys: signing in without a password, with a WebAuthn key (phone, computer, security key).
@@ -88,11 +118,13 @@ service AuthService {
   // BeginPasskeyRegistration prepares registering a passkey on the signed-in account.
   rpc BeginPasskeyRegistration(BeginPasskeyRegistrationRequest) returns (BeginPasskeyRegistrationResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // FinishPasskeyRegistration verifies the authenticator's response and registers the passkey (20
   // per account at most).
   rpc FinishPasskeyRegistration(FinishPasskeyRegistrationRequest) returns (FinishPasskeyRegistrationResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // ListPasskeys lists the passkeys of the signed-in account.
   rpc ListPasskeys(ListPasskeysRequest) returns (ListPasskeysResponse) {
@@ -102,6 +134,7 @@ service AuthService {
   // DeletePasskey removes a passkey from the signed-in account.
   rpc DeletePasskey(DeletePasskeyRequest) returns (DeletePasskeyResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // BeginPasskeyLogin prepares a passkey login, without a username.
   rpc BeginPasskeyLogin(BeginPasskeyLoginRequest) returns (BeginPasskeyLoginResponse) {
@@ -245,6 +278,45 @@ message ChangePasswordRequest {
 }
 
 message ChangePasswordResponse {}
+
+// ApiToken is an API token, without its secret.
+message ApiToken {
+  string id = 1;
+  // What it is for ("Home Assistant").
+  string name = 2;
+  // It only calls the methods that change nothing.
+  bool read_only = 3;
+  // The profile it acts as; unset if that profile was deleted (the token then only reaches what
+  // needs no profile).
+  optional Profile profile = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp last_used_at = 6;
+  string last_ip = 7;
+}
+
+message CreateApiTokenRequest {
+  // 1 to 64 characters.
+  string name = 1;
+  bool read_only = 2;
+}
+
+message CreateApiTokenResponse {
+  // The secret, shown this once.
+  string token = 1;
+  ApiToken api_token = 2;
+}
+
+message ListApiTokensRequest {}
+
+message ListApiTokensResponse {
+  repeated ApiToken api_tokens = 1;
+}
+
+message RevokeApiTokenRequest {
+  string api_token_id = 1;
+}
+
+message RevokeApiTokenResponse {}
 
 message StartDeviceLoginRequest {
   // The device asking (its name is shown to the user who approves).

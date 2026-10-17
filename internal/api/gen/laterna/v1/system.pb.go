@@ -3137,16 +3137,16 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\x10BACKUP_KIND_AUTO\x10\x01\x12\x16\n" +
 	"\x12BACKUP_KIND_MANUAL\x10\x02\x12\x19\n" +
 	"\x15BACKUP_KIND_MIGRATION\x10\x03\x12\x18\n" +
-	"\x14BACKUP_KIND_REPLACED\x10\x042\xb0\r\n" +
+	"\x14BACKUP_KIND_REPLACED\x10\x042\xb8\r\n" +
 	"\rSystemService\x12c\n" +
 	"\x0fGetSystemStatus\x12\".laterna.v1.GetSystemStatusRequest\x1a#.laterna.v1.GetSystemStatusResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +
 	"\vGetSettings\x12\x1e.laterna.v1.GetSettingsRequest\x1a\x1f.laterna.v1.GetSettingsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12]\n" +
 	"\x0eUpdateSettings\x12!.laterna.v1.UpdateSettingsRequest\x1a\".laterna.v1.UpdateSettingsResponse\"\x04\x88\xb5\x18\x04\x12c\n" +
-	"\x0fGetOidcProvider\x12\".laterna.v1.GetOidcProviderRequest\x1a#.laterna.v1.GetOidcProviderResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12`\n" +
-	"\x0fSetOidcProvider\x12\".laterna.v1.SetOidcProviderRequest\x1a#.laterna.v1.SetOidcProviderResponse\"\x04\x88\xb5\x18\x04\x12T\n" +
+	"\x0fGetOidcProvider\x12\".laterna.v1.GetOidcProviderRequest\x1a#.laterna.v1.GetOidcProviderResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12d\n" +
+	"\x0fSetOidcProvider\x12\".laterna.v1.SetOidcProviderRequest\x1a#.laterna.v1.SetOidcProviderResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02\x12T\n" +
 	"\n" +
-	"GetMetrics\x12\x1d.laterna.v1.GetMetricsRequest\x1a\x1e.laterna.v1.GetMetricsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12Z\n" +
-	"\rEnableMetrics\x12 .laterna.v1.EnableMetricsRequest\x1a!.laterna.v1.EnableMetricsResponse\"\x04\x88\xb5\x18\x04\x12]\n" +
+	"GetMetrics\x12\x1d.laterna.v1.GetMetricsRequest\x1a\x1e.laterna.v1.GetMetricsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12^\n" +
+	"\rEnableMetrics\x12 .laterna.v1.EnableMetricsRequest\x1a!.laterna.v1.EnableMetricsResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02\x12]\n" +
 	"\x0eDisableMetrics\x12!.laterna.v1.DisableMetricsRequest\x1a\".laterna.v1.DisableMetricsResponse\"\x04\x88\xb5\x18\x04\x12W\n" +
 	"\vListBackups\x12\x1e.laterna.v1.ListBackupsRequest\x1a\x1f.laterna.v1.ListBackupsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +
 	"\fCreateBackup\x12\x1f.laterna.v1.CreateBackupRequest\x1a .laterna.v1.CreateBackupResponse\"\x04\x88\xb5\x18\x04\x12W\n" +

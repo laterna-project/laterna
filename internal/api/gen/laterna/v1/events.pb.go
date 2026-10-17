@@ -935,9 +935,9 @@ const file_laterna_v1_events_proto_rawDesc = "" +
 	"requestIds\"\x16\n" +
 	"\x14NotificationsChanged\"0\n" +
 	"\x15SubtitleSearchChanged\x12\x17\n" +
-	"\afile_id\x18\x01 \x01(\tR\x06fileId2`\n" +
-	"\fEventService\x12P\n" +
-	"\tSubscribe\x12\x1c.laterna.v1.SubscribeRequest\x1a\x1d.laterna.v1.SubscribeResponse\"\x04\x88\xb5\x18\x020\x01BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
+	"\afile_id\x18\x01 \x01(\tR\x06fileId2d\n" +
+	"\fEventService\x12T\n" +
+	"\tSubscribe\x12\x1c.laterna.v1.SubscribeRequest\x1a\x1d.laterna.v1.SubscribeResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x010\x01BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
 var (
 	file_laterna_v1_events_proto_rawDescOnce sync.Once

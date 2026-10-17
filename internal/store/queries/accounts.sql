@@ -72,8 +72,8 @@ DELETE FROM profiles WHERE id = ?;
 
 -- name: InsertSession :exec
 INSERT INTO sessions (id, account_id, profile_id, token_hash, device_name, client, client_version, platform,
-                      created_at, last_used_at, expires_at, last_ip)
-VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                      created_at, last_used_at, expires_at, last_ip, kind, read_only)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetSessionByTokenHash :one
 SELECT * FROM sessions WHERE token_hash = ?;
@@ -82,7 +82,13 @@ SELECT * FROM sessions WHERE token_hash = ?;
 SELECT * FROM sessions WHERE id = ?;
 
 -- name: ListSessions :many
-SELECT * FROM sessions WHERE account_id = ? AND expires_at > ? ORDER BY last_used_at DESC, id;
+SELECT * FROM sessions WHERE account_id = ? AND kind = 'device' AND expires_at > ? ORDER BY last_used_at DESC, id;
+
+-- name: ListApiTokens :many
+SELECT * FROM sessions WHERE account_id = ? AND kind = 'api' ORDER BY last_used_at DESC, id;
+
+-- name: CountApiTokens :one
+SELECT count(*) FROM sessions WHERE account_id = ? AND kind = 'api';
 
 -- name: TouchSession :exec
 UPDATE sessions SET last_used_at = ?, expires_at = ?, last_ip = ? WHERE id = ?;

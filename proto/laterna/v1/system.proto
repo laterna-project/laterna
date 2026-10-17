@@ -38,6 +38,7 @@ service SystemService {
   // discovered before being stored (INVALID_ARGUMENT if it does not answer).
   rpc SetOidcProvider(SetOidcProviderRequest) returns (SetOidcProviderResponse) {
     option (access) = ACCESS_ADMIN;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // GetMetrics reports whether metrics (/metrics, Prometheus text format) are on.
   rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {
@@ -48,6 +49,7 @@ service SystemService {
   // working): give it to Prometheus as a Bearer token.
   rpc EnableMetrics(EnableMetricsRequest) returns (EnableMetricsResponse) {
     option (access) = ACCESS_ADMIN;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // DisableMetrics turns /metrics off.
   rpc DisableMetrics(DisableMetricsRequest) returns (DisableMetricsResponse) {

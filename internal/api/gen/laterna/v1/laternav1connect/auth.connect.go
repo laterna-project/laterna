@@ -50,6 +50,15 @@ const (
 	// AuthServiceChangePasswordProcedure is the fully-qualified name of the AuthService's
 	// ChangePassword RPC.
 	AuthServiceChangePasswordProcedure = "/laterna.v1.AuthService/ChangePassword"
+	// AuthServiceCreateApiTokenProcedure is the fully-qualified name of the AuthService's
+	// CreateApiToken RPC.
+	AuthServiceCreateApiTokenProcedure = "/laterna.v1.AuthService/CreateApiToken"
+	// AuthServiceListApiTokensProcedure is the fully-qualified name of the AuthService's ListApiTokens
+	// RPC.
+	AuthServiceListApiTokensProcedure = "/laterna.v1.AuthService/ListApiTokens"
+	// AuthServiceRevokeApiTokenProcedure is the fully-qualified name of the AuthService's
+	// RevokeApiToken RPC.
+	AuthServiceRevokeApiTokenProcedure = "/laterna.v1.AuthService/RevokeApiToken"
 	// AuthServiceStartDeviceLoginProcedure is the fully-qualified name of the AuthService's
 	// StartDeviceLogin RPC.
 	AuthServiceStartDeviceLoginProcedure = "/laterna.v1.AuthService/StartDeviceLogin"
@@ -102,12 +111,21 @@ type AuthServiceClient interface {
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	// GetSession describes the current session: account, picked profile, device.
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
-	// ListSessions lists the devices signed in to the account.
+	// ListSessions lists the devices signed in to the account; API tokens are listed apart
+	// (ListApiTokens).
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	// RevokeSession signs a device out of the account.
 	RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.RevokeSessionResponse], error)
-	// ChangePassword changes the account's password and signs out the other devices.
+	// ChangePassword changes the account's password and signs out the other devices, API tokens
+	// included.
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// CreateApiToken creates a token for the picked profile and returns it, once: only its hash is
+	// kept. Refused to a restricted profile; 50 tokens per account at most.
+	CreateApiToken(context.Context, *connect.Request[v1.CreateApiTokenRequest]) (*connect.Response[v1.CreateApiTokenResponse], error)
+	// ListApiTokens lists the tokens of the account, the most recently used first.
+	ListApiTokens(context.Context, *connect.Request[v1.ListApiTokensRequest]) (*connect.Response[v1.ListApiTokensResponse], error)
+	// RevokeApiToken revokes a token of the account. Refused to a restricted profile.
+	RevokeApiToken(context.Context, *connect.Request[v1.RevokeApiTokenRequest]) (*connect.Response[v1.RevokeApiTokenResponse], error)
 	// StartDeviceLogin opens a device login request (valid for 10 minutes).
 	StartDeviceLogin(context.Context, *connect.Request[v1.StartDeviceLoginRequest]) (*connect.Response[v1.StartDeviceLoginResponse], error)
 	// PollDeviceLogin returns the state of the request and, once approved, the session (handed over
@@ -195,6 +213,25 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+AuthServiceChangePasswordProcedure,
 			connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
+			connect.WithClientOptions(opts...),
+		),
+		createApiToken: connect.NewClient[v1.CreateApiTokenRequest, v1.CreateApiTokenResponse](
+			httpClient,
+			baseURL+AuthServiceCreateApiTokenProcedure,
+			connect.WithSchema(authServiceMethods.ByName("CreateApiToken")),
+			connect.WithClientOptions(opts...),
+		),
+		listApiTokens: connect.NewClient[v1.ListApiTokensRequest, v1.ListApiTokensResponse](
+			httpClient,
+			baseURL+AuthServiceListApiTokensProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ListApiTokens")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		revokeApiToken: connect.NewClient[v1.RevokeApiTokenRequest, v1.RevokeApiTokenResponse](
+			httpClient,
+			baseURL+AuthServiceRevokeApiTokenProcedure,
+			connect.WithSchema(authServiceMethods.ByName("RevokeApiToken")),
 			connect.WithClientOptions(opts...),
 		),
 		startDeviceLogin: connect.NewClient[v1.StartDeviceLoginRequest, v1.StartDeviceLoginResponse](
@@ -288,6 +325,9 @@ type authServiceClient struct {
 	listSessions              *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	revokeSession             *connect.Client[v1.RevokeSessionRequest, v1.RevokeSessionResponse]
 	changePassword            *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
+	createApiToken            *connect.Client[v1.CreateApiTokenRequest, v1.CreateApiTokenResponse]
+	listApiTokens             *connect.Client[v1.ListApiTokensRequest, v1.ListApiTokensResponse]
+	revokeApiToken            *connect.Client[v1.RevokeApiTokenRequest, v1.RevokeApiTokenResponse]
 	startDeviceLogin          *connect.Client[v1.StartDeviceLoginRequest, v1.StartDeviceLoginResponse]
 	pollDeviceLogin           *connect.Client[v1.PollDeviceLoginRequest, v1.PollDeviceLoginResponse]
 	getDeviceLogin            *connect.Client[v1.GetDeviceLoginRequest, v1.GetDeviceLoginResponse]
@@ -336,6 +376,21 @@ func (c *authServiceClient) RevokeSession(ctx context.Context, req *connect.Requ
 // ChangePassword calls laterna.v1.AuthService.ChangePassword.
 func (c *authServiceClient) ChangePassword(ctx context.Context, req *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
 	return c.changePassword.CallUnary(ctx, req)
+}
+
+// CreateApiToken calls laterna.v1.AuthService.CreateApiToken.
+func (c *authServiceClient) CreateApiToken(ctx context.Context, req *connect.Request[v1.CreateApiTokenRequest]) (*connect.Response[v1.CreateApiTokenResponse], error) {
+	return c.createApiToken.CallUnary(ctx, req)
+}
+
+// ListApiTokens calls laterna.v1.AuthService.ListApiTokens.
+func (c *authServiceClient) ListApiTokens(ctx context.Context, req *connect.Request[v1.ListApiTokensRequest]) (*connect.Response[v1.ListApiTokensResponse], error) {
+	return c.listApiTokens.CallUnary(ctx, req)
+}
+
+// RevokeApiToken calls laterna.v1.AuthService.RevokeApiToken.
+func (c *authServiceClient) RevokeApiToken(ctx context.Context, req *connect.Request[v1.RevokeApiTokenRequest]) (*connect.Response[v1.RevokeApiTokenResponse], error) {
+	return c.revokeApiToken.CallUnary(ctx, req)
 }
 
 // StartDeviceLogin calls laterna.v1.AuthService.StartDeviceLogin.
@@ -414,12 +469,21 @@ type AuthServiceHandler interface {
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	// GetSession describes the current session: account, picked profile, device.
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
-	// ListSessions lists the devices signed in to the account.
+	// ListSessions lists the devices signed in to the account; API tokens are listed apart
+	// (ListApiTokens).
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	// RevokeSession signs a device out of the account.
 	RevokeSession(context.Context, *connect.Request[v1.RevokeSessionRequest]) (*connect.Response[v1.RevokeSessionResponse], error)
-	// ChangePassword changes the account's password and signs out the other devices.
+	// ChangePassword changes the account's password and signs out the other devices, API tokens
+	// included.
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// CreateApiToken creates a token for the picked profile and returns it, once: only its hash is
+	// kept. Refused to a restricted profile; 50 tokens per account at most.
+	CreateApiToken(context.Context, *connect.Request[v1.CreateApiTokenRequest]) (*connect.Response[v1.CreateApiTokenResponse], error)
+	// ListApiTokens lists the tokens of the account, the most recently used first.
+	ListApiTokens(context.Context, *connect.Request[v1.ListApiTokensRequest]) (*connect.Response[v1.ListApiTokensResponse], error)
+	// RevokeApiToken revokes a token of the account. Refused to a restricted profile.
+	RevokeApiToken(context.Context, *connect.Request[v1.RevokeApiTokenRequest]) (*connect.Response[v1.RevokeApiTokenResponse], error)
 	// StartDeviceLogin opens a device login request (valid for 10 minutes).
 	StartDeviceLogin(context.Context, *connect.Request[v1.StartDeviceLoginRequest]) (*connect.Response[v1.StartDeviceLoginResponse], error)
 	// PollDeviceLogin returns the state of the request and, once approved, the session (handed over
@@ -503,6 +567,25 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		AuthServiceChangePasswordProcedure,
 		svc.ChangePassword,
 		connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceCreateApiTokenHandler := connect.NewUnaryHandler(
+		AuthServiceCreateApiTokenProcedure,
+		svc.CreateApiToken,
+		connect.WithSchema(authServiceMethods.ByName("CreateApiToken")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceListApiTokensHandler := connect.NewUnaryHandler(
+		AuthServiceListApiTokensProcedure,
+		svc.ListApiTokens,
+		connect.WithSchema(authServiceMethods.ByName("ListApiTokens")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceRevokeApiTokenHandler := connect.NewUnaryHandler(
+		AuthServiceRevokeApiTokenProcedure,
+		svc.RevokeApiToken,
+		connect.WithSchema(authServiceMethods.ByName("RevokeApiToken")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceStartDeviceLoginHandler := connect.NewUnaryHandler(
@@ -600,6 +683,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceRevokeSessionHandler.ServeHTTP(w, r)
 		case AuthServiceChangePasswordProcedure:
 			authServiceChangePasswordHandler.ServeHTTP(w, r)
+		case AuthServiceCreateApiTokenProcedure:
+			authServiceCreateApiTokenHandler.ServeHTTP(w, r)
+		case AuthServiceListApiTokensProcedure:
+			authServiceListApiTokensHandler.ServeHTTP(w, r)
+		case AuthServiceRevokeApiTokenProcedure:
+			authServiceRevokeApiTokenHandler.ServeHTTP(w, r)
 		case AuthServiceStartDeviceLoginProcedure:
 			authServiceStartDeviceLoginHandler.ServeHTTP(w, r)
 		case AuthServicePollDeviceLoginProcedure:
@@ -661,6 +750,18 @@ func (UnimplementedAuthServiceHandler) RevokeSession(context.Context, *connect.R
 
 func (UnimplementedAuthServiceHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.AuthService.ChangePassword is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) CreateApiToken(context.Context, *connect.Request[v1.CreateApiTokenRequest]) (*connect.Response[v1.CreateApiTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.AuthService.CreateApiToken is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ListApiTokens(context.Context, *connect.Request[v1.ListApiTokensRequest]) (*connect.Response[v1.ListApiTokensResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.AuthService.ListApiTokens is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) RevokeApiToken(context.Context, *connect.Request[v1.RevokeApiTokenRequest]) (*connect.Response[v1.RevokeApiTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.AuthService.RevokeApiToken is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) StartDeviceLogin(context.Context, *connect.Request[v1.StartDeviceLoginRequest]) (*connect.Response[v1.StartDeviceLoginResponse], error) {

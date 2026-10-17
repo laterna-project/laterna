@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	laternav1 "github.com/laterna-project/laterna/internal/api/gen/laterna/v1"
 	"github.com/laterna-project/laterna/internal/app"
@@ -82,6 +83,52 @@ func (s *AuthService) RevokeSession(ctx context.Context, req *connect.Request[la
 		return nil, err
 	}
 	return connect.NewResponse(&laternav1.RevokeSessionResponse{}), nil
+}
+
+// CreateApiToken creates an API token for the picked profile.
+func (s *AuthService) CreateApiToken(ctx context.Context, req *connect.Request[laternav1.CreateApiTokenRequest]) (*connect.Response[laternav1.CreateApiTokenResponse], error) { //nolint:revive // name generated from the contract
+	token, t, err := s.app.CreateAPIToken(ctx, principal(ctx), req.Msg.GetName(), req.Msg.GetReadOnly())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.CreateApiTokenResponse{Token: token, ApiToken: apiTokenMsg(t)}), nil
+}
+
+// ListApiTokens lists the API tokens of the account.
+func (s *AuthService) ListApiTokens(ctx context.Context, _ *connect.Request[laternav1.ListApiTokensRequest]) (*connect.Response[laternav1.ListApiTokensResponse], error) { //nolint:revive // name generated from the contract
+	list, err := s.app.APITokens(ctx, principal(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*laternav1.ApiToken, len(list))
+	for i, t := range list {
+		out[i] = apiTokenMsg(t)
+	}
+	return connect.NewResponse(&laternav1.ListApiTokensResponse{ApiTokens: out}), nil
+}
+
+// RevokeApiToken revokes an API token of the account.
+func (s *AuthService) RevokeApiToken(ctx context.Context, req *connect.Request[laternav1.RevokeApiTokenRequest]) (*connect.Response[laternav1.RevokeApiTokenResponse], error) { //nolint:revive // name generated from the contract
+	id, err := parseID(req.Msg.GetApiTokenId(), "api_token_id")
+	if err != nil {
+		return nil, err
+	}
+	if err := s.app.RevokeAPIToken(ctx, principal(ctx), id); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.RevokeApiTokenResponse{}), nil
+}
+
+func apiTokenMsg(t app.APIToken) *laternav1.ApiToken {
+	s := t.Session
+	msg := &laternav1.ApiToken{
+		Id: s.ID.String(), Name: s.Device.Name, ReadOnly: s.ReadOnly,
+		CreatedAt: timestamppb.New(s.CreatedAt), LastUsedAt: timestamppb.New(s.LastUsedAt), LastIp: s.LastIP,
+	}
+	if t.Profile != nil {
+		msg.Profile = profileMsg(*t.Profile)
+	}
+	return msg
 }
 
 // ChangePassword changes the account's password.
