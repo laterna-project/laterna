@@ -137,7 +137,8 @@ backups = "/mnt/other-disk/laterna-backups"
 ```
 
 Behind a reverse proxy, declare it in `trusted_proxies`; otherwise every client appears to come
-from the proxy and shares the same rate limits.
+from the proxy, shares the same rate limits, and counts as local for the bitrate limit of
+playbacks from the Internet.
 
 **Backups.** The database is copied every night (7 kept by default) and before each schema
 migration. `laterna backup` takes one right now, and `laterna restore <backup>` stages a restore

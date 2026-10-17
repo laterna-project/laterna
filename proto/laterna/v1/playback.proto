@@ -96,6 +96,22 @@ message StartPlaybackRequest {
   // which. Like a requested one, it is burned in if the device cannot render it. A client sets it
   // when a playback starts, and leaves it out when it reopens one after a choice of the viewer.
   bool profile_subtitle = 6;
+  // Highest bitrate of the stream, in kbit/s: the quality the viewer picked, or what the
+  // connection carries; 0 means no limit. Outside the local network the server may lower it
+  // (Settings.remote_max_bitrate, Account.remote_max_bitrate). A file above the limit has its video
+  // re-encoded at a lower bitrate, and its picture scaled down to fit it.
+  int32 max_bitrate = 7;
+}
+
+// BitrateLimitSource says where the bitrate limit of a playback comes from.
+enum BitrateLimitSource {
+  // No limit.
+  BITRATE_LIMIT_SOURCE_UNSPECIFIED = 0;
+  // The client's (StartPlaybackRequest.max_bitrate).
+  BITRATE_LIMIT_SOURCE_CLIENT = 1;
+  // The server's for a connection from outside the local network: Settings.remote_max_bitrate or
+  // Account.remote_max_bitrate, the lower one.
+  BITRATE_LIMIT_SOURCE_REMOTE = 2;
 }
 
 message StartPlaybackResponse {
@@ -148,6 +164,13 @@ message StartPlaybackResponse {
   // that shows subtitles only from the stream, like Safari's own HLS player on iPhone, in its
   // fullscreen too. Empty for a direct playback.
   string master_url = 22;
+  // Bitrate limit applied, in kbit/s: the lowest of the client's and, outside the local network,
+  // the server's; 0 means none. The file plays as it is when it stays below it.
+  int32 bitrate_limit = 23;
+  BitrateLimitSource bitrate_limit_source = 24;
+  // Bitrate the re-encoded video aims at under that limit, in kbit/s; 0 if the video is copied or
+  // re-encoded without a limit.
+  int32 video_bitrate = 25;
 }
 
 // SubtitleTrack is a subtitle of the file played: one of its streams or a file next to it.

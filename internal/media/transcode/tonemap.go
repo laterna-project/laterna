@@ -82,7 +82,7 @@ func tryToneMap(ctx context.Context, ffmpeg string, e Encoder, tm ToneMapper) er
 	args := append([]string{"-hide_banner", "-v", "error", "-nostdin"}, e.device...)
 	args = append(args, tm.device...)
 	args = append(args, "-f", "lavfi", "-i", hdrTestSource, "-vf", videoFilter(e, 0, &tm))
-	args = append(args, e.encode()...)
+	args = append(args, e.encode(0)...)
 	args = append(args, "-f", "null", "-")
 	if err := trial(ctx, 30*time.Second, ffmpeg, args); err != nil {
 		return fmt.Errorf("%s: %w", tm.Name, err)

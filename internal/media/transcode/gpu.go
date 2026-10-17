@@ -52,7 +52,7 @@ func DetectGPU(ctx context.Context, ffmpeg string, e Encoder) bool {
 	args := append([]string{"-hide_banner", "-v", "error", "-nostdin"}, e.device...)
 	args = append(args, gpuDevice...)
 	args = append(args, "-i", "file:"+sample, "-vf", gpuFilter(e, 1080, true))
-	args = append(args, e.encode()...)
+	args = append(args, e.encode(0)...)
 	return runQuiet(ctx, ffmpeg, append(args, "-f", "null", "-")) == nil
 }
 

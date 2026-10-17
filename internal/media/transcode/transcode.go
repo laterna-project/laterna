@@ -31,23 +31,62 @@ type Encoder struct {
 	// quality holds the quality settings (aiming close to x264 CRF 21 to 23) and makes forced
 	// keyframes IDR frames (independent segments).
 	quality []string
-	// capped means the encoder can cap the bitrate (-maxrate, -bufsize) without leaving this
-	// quality mode (downloaded files).
-	capped bool
+	// rated holds the settings that keep the stream under a bitrate ({rate}, with a buffer of
+	// {buf}), for playbacks with a bitrate limit and downloads below the original quality. The same
+	// quality where the encoder can cap it, a bitrate mode otherwise.
+	rated []string
+	// Rated means the bitrate settings passed their test (Detect). Otherwise a stream under a
+	// limit keeps the quality settings and is only scaled down.
+	Rated bool
 }
 
 // encoders in order of preference. Hardware takes load off the CPU; software (libx264, always there
 // in GPL builds) makes sure transcoding works everywhere.
 var encoders = []Encoder{
-	{Name: "h264_nvenc", Hardware: true, pixel: "yuv420p", quality: []string{"-preset", "p4", "-rc", "vbr", "-cq", "23", "-b:v", "0", "-forced-idr", "1", "-profile:v", "high"}, capped: true},
-	{Name: "h264_qsv", Hardware: true, pixel: "nv12", quality: []string{"-preset", "veryfast", "-global_quality", "23", "-forced_idr", "1", "-profile:v", "high"}},
-	{Name: "h264_amf", Hardware: true, pixel: "nv12", quality: []string{"-quality", "balanced", "-rc", "cqp", "-qp_i", "21", "-qp_p", "23", "-qp_b", "25", "-profile:v", "high"}},
-	{Name: "h264_vaapi", Hardware: true, device: []string{"-vaapi_device", "/dev/dri/renderD128"}, upload: true, pixel: "nv12", quality: []string{"-qp", "23", "-profile:v", "high"}},
-	{Name: "h264_videotoolbox", Hardware: true, pixel: "nv12", quality: []string{"-q:v", "65", "-profile:v", "high"}},
-	{Name: "h264_v4l2m2m", Hardware: true, pixel: "yuv420p", quality: []string{"-b:v", "8M"}},
-	{Name: "h264_mf", Hardware: true, pixel: "nv12", quality: []string{"-rate_control", "quality", "-quality", "70", "-hw_encoding", "1"}},
-	{Name: "libx264", pixel: "yuv420p", quality: []string{"-preset", "veryfast", "-crf", "21", "-profile:v", "high"}, capped: true},
+	{
+		Name: "h264_nvenc", Hardware: true, pixel: "yuv420p",
+		quality: []string{"-preset", "p4", "-rc", "vbr", "-cq", "23", "-b:v", "0", "-forced-idr", "1", "-profile:v", "high"},
+		rated:   []string{"-preset", "p4", "-rc", "vbr", "-cq", "23", "-b:v", "0", "-maxrate", "{rate}", "-bufsize", "{buf}", "-forced-idr", "1", "-profile:v", "high"},
+	},
+	{
+		Name: "h264_qsv", Hardware: true, pixel: "nv12",
+		quality: []string{"-preset", "veryfast", "-global_quality", "23", "-forced_idr", "1", "-profile:v", "high"},
+		rated:   []string{"-preset", "veryfast", "-b:v", "{rate}", "-maxrate", "{rate}", "-bufsize", "{buf}", "-forced_idr", "1", "-profile:v", "high"},
+	},
+	{
+		Name: "h264_amf", Hardware: true, pixel: "nv12",
+		quality: []string{"-quality", "balanced", "-rc", "cqp", "-qp_i", "21", "-qp_p", "23", "-qp_b", "25", "-profile:v", "high"},
+		rated:   []string{"-quality", "balanced", "-rc", "vbr_peak", "-b:v", "{rate}", "-maxrate", "{rate}", "-bufsize", "{buf}", "-profile:v", "high"},
+	},
+	{
+		Name: "h264_vaapi", Hardware: true, device: []string{"-vaapi_device", "/dev/dri/renderD128"}, upload: true, pixel: "nv12",
+		quality: []string{"-qp", "23", "-profile:v", "high"},
+		rated:   []string{"-rc_mode", "VBR", "-b:v", "{rate}", "-maxrate", "{rate}", "-bufsize", "{buf}", "-profile:v", "high"},
+	},
+	{
+		Name: "h264_videotoolbox", Hardware: true, pixel: "nv12",
+		quality: []string{"-q:v", "65", "-profile:v", "high"},
+		rated:   []string{"-b:v", "{rate}", "-profile:v", "high"},
+	},
+	{
+		Name: "h264_v4l2m2m", Hardware: true, pixel: "yuv420p",
+		quality: []string{"-b:v", "8M"},
+		rated:   []string{"-b:v", "{rate}"},
+	},
+	{
+		Name: "h264_mf", Hardware: true, pixel: "nv12",
+		quality: []string{"-rate_control", "quality", "-quality", "70", "-hw_encoding", "1"},
+		rated:   []string{"-rate_control", "pc_vbr", "-b:v", "{rate}", "-hw_encoding", "1"},
+	},
+	{
+		Name: "libx264", pixel: "yuv420p",
+		quality: []string{"-preset", "veryfast", "-crf", "21", "-profile:v", "high"},
+		rated:   []string{"-preset", "veryfast", "-crf", "21", "-maxrate", "{rate}", "-bufsize", "{buf}", "-profile:v", "high"},
+	},
 }
+
+// trialRate is the bitrate (kbit/s) the bitrate settings are tested at.
+const trialRate = 2000
 
 // Caps is what the machine can encode.
 type Caps struct {
@@ -121,7 +160,8 @@ func Detect(ctx context.Context, ffmpeg string) (Caps, error) {
 		if !listed[e.Name] {
 			continue
 		}
-		if err := try(ctx, ffmpeg, e); err == nil {
+		if err := try(ctx, ffmpeg, e, 0); err == nil {
+			e.Rated = try(ctx, ffmpeg, e, trialRate) == nil
 			caps.Encoders = append(caps.Encoders, e)
 		}
 	}
@@ -131,12 +171,16 @@ func Detect(ctx context.Context, ffmpeg string) (Caps, error) {
 	return caps, nil
 }
 
-// try encodes one second of a test pattern with e, the way playback would (same filter chain).
-func try(ctx context.Context, ffmpeg string, e Encoder) error {
+// try encodes one second of a test pattern with e, the way playback would (same filter chain), in
+// its quality settings or under a bitrate (kbit/s, 0 for none).
+func try(ctx context.Context, ffmpeg string, e Encoder, kbps int) error {
 	args := append([]string{"-hide_banner", "-v", "error", "-nostdin"}, e.device...)
 	args = append(args, "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=1",
 		"-vf", videoFilter(e, 0, nil))
-	args = append(args, e.encode()...)
+	if kbps > 0 {
+		e.Rated = true
+	}
+	args = append(args, e.encode(kbps)...)
 	args = append(args, "-f", "null", "-")
 	if err := trial(ctx, 20*time.Second, ffmpeg, args); err != nil {
 		return fmt.Errorf("%s: %w", e.Name, err)
@@ -144,14 +188,32 @@ func try(ctx context.Context, ffmpeg string, e Encoder) error {
 	return nil
 }
 
-// encode returns the encoder, its quality settings and no B-frames. Without B-frames the decode
+// encode returns the encoder, its settings (settings) and no B-frames. Without B-frames the decode
 // order is the display order: decode timestamps equal those of the source wherever the run starts,
 // and two segments from different runs follow each other without going back in time. With B-frames
 // the reordering delay depends on the first frames of the run and a player may drop the keyframe at
-// the junction. The cost is a slightly higher bitrate for the same quality, which does not matter
-// on a local network.
-func (e Encoder) encode() []string {
-	return append(append([]string{"-c:v", e.Name}, e.quality...), "-bf", "0")
+// the junction. The cost is a slightly higher bitrate for the same quality.
+func (e Encoder) encode(kbps int) []string {
+	return append(append([]string{"-c:v", e.Name}, e.settings(kbps)...), "-bf", "0")
+}
+
+// settings are the quality settings, or under a bitrate (kbit/s, 0 for none) the bitrate settings
+// if they passed their test. The buffer holds two seconds at that rate.
+func (e Encoder) settings(kbps int) []string {
+	if kbps <= 0 || !e.Rated {
+		return e.quality
+	}
+	out := make([]string, len(e.rated))
+	for i, a := range e.rated {
+		switch a {
+		case "{rate}":
+			a = strconv.Itoa(kbps) + "k"
+		case "{buf}":
+			a = strconv.Itoa(2*kbps) + "k"
+		}
+		out[i] = a
+	}
+	return out
 }
 
 // videoFilter scales to maxHeight (0 keeps the original size), converts HDR to SDR if tm is not nil
@@ -188,15 +250,19 @@ type Options struct {
 	// VideoTag is the tag of the copied video ("hvc1" for HEVC).
 	VideoTag string
 	Encoder  Encoder
-	// MaxHeight caps the height of the re-encoded video.
+	// MaxHeight caps the height of the re-encoded video. VideoRate caps its bitrate (kbit/s; 0 means
+	// the quality settings), with an encoder whose bitrate settings work (Encoder.Rated).
 	MaxHeight int
+	VideoRate int
 	// Segment is the segment duration. An IDR keyframe is forced at the start of each one
 	// (re-encoded video).
 	Segment time.Duration
 	// CopyAudio means the audio is copied as is; otherwise it is re-encoded to AAC.
 	CopyAudio bool
-	// Channels of the source audio stream. Re-encoded audio keeps 6 at most.
-	Channels int
+	// Channels of the source audio stream. Re-encoded audio keeps 6 at most, at 64 kbit/s each,
+	// unless AudioRate (kbit/s) sets the rate of a stereo downmix.
+	Channels  int
+	AudioRate int
 	// Burn is a subtitle burned into the re-encoded picture (last resort); nil otherwise.
 	Burn *Burn
 	// ToneMap is the HDR to SDR conversion of the re-encoded picture; nil for an SDR source.
@@ -294,7 +360,7 @@ func Args(o Options) []string {
 		case !burn:
 			args = append(args, "-vf", videoFilter(o.Encoder, o.MaxHeight, o.ToneMap))
 		}
-		args = append(args, o.Encoder.encode()...)
+		args = append(args, o.Encoder.encode(o.VideoRate)...)
 		if o.ToneMap != nil {
 			// Converted picture: tag it as BT.709 SDR, or a player would still think it is HDR.
 			args = append(args, "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709")
@@ -317,12 +383,12 @@ func Args(o Options) []string {
 				args = append(args, "-copypriorss:a", "0")
 			}
 		} else {
-			ch := min(max(o.Channels, 2), 6)
+			ch, rate := audioRate(o.Channels, o.AudioRate)
 			// The AAC encoder adds 1024 samples of priming, which would be stamped before the start of
 			// the run. The audio is shifted by that much (21 ms at 48 kHz, inaudible), the same way in
 			// every run. Media3 refuses a negative decode time (tfdt); hls.js tolerates it.
 			args = append(args, "-af", "asetpts=PTS+1024/SR/TB",
-				"-c:a", "aac", "-ac", strconv.Itoa(ch), "-b:a", strconv.Itoa(64*ch)+"k")
+				"-c:a", "aac", "-ac", strconv.Itoa(ch), "-b:a", strconv.Itoa(rate)+"k")
 		}
 	}
 	return append(args,
@@ -332,6 +398,16 @@ func Args(o Options) []string {
 }
 
 func seconds(d time.Duration) string { return strconv.FormatFloat(d.Seconds(), 'f', 6, 64) }
+
+// audioRate returns the channels and bitrate (kbit/s) of re-encoded AAC: those of the source, 6 at
+// most at 64 kbit/s each, or a stereo downmix at rate when it is set (5.1 sounds bad at low rates).
+func audioRate(channels, rate int) (int, int) {
+	if rate > 0 {
+		return 2, rate
+	}
+	ch := min(max(channels, 2), 6)
+	return ch, 64 * ch
+}
 
 // ByName returns the encoder with that name if it is one we know (forced setting).
 func ByName(name string) (Encoder, bool) {

@@ -56,8 +56,8 @@ depguard checks all of this; a violation fails the lint.
 **No user-facing sentence in the code.** An expected error is written
 `domain.NotFound("area.reason", "name", value…)`, any other text `domain.T("family.key", …)`.
 The message goes in `internal/i18n/locales/en.json` **and** `fr.json`, without plurals; durations
-as `…_seconds`, sizes as `…_bytes`. A test fails if a key is missing or unused. Logs, internal
-errors and the command line are in English.
+as `…_seconds`, sizes as `…_bytes`, bitrates as `…_kbps`. A test fails if a key is missing or
+unused. Logs, internal errors and the command line are in English.
 
 **Errors.** Expected cases (not found, invalid argument) are domain errors. Anything else is
 logged with the request ID and reaches the client as `server.internal`.

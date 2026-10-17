@@ -164,6 +164,9 @@ message Account {
   bool auto_approve_requests = 10;
   // At most this many requests in seven days; 0 for no limit. Administrators have none.
   int32 request_quota = 11;
+  // Highest bitrate of its playbacks from outside the local network, in kbit/s; 0 means only the
+  // server's limit (Settings.remote_max_bitrate). The lower of the two applies.
+  int32 remote_max_bitrate = 12;
 }
 
 // LibraryAccess says which libraries an account may browse. The others do not exist for it: lists,

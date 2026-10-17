@@ -207,6 +207,54 @@ On a NAS, three videos transcoded at once saturate the CPU and everyone stutters
 - The check happens **only when a playback opens** (`RESOURCE_EXHAUSTED`,
   `playback.transcode_limit`). A playback in progress is never cut.
 
+## Bitrate limits
+
+A file the device plays is not always one the connection carries: a 4K remux at 60 Mbit/s plays
+at home and stalls on a phone away from it. A playback can have a **bitrate limit**:
+
+- the **client's**, `StartPlaybackRequest.max_bitrate`: the quality the viewer picked, or what the
+  client measured;
+- outside the local network, the **server's** (`remote_max_bitrate` setting) and the
+  **account's** (`Account.remote_max_bitrate`), which protect the upload of the server's
+  connection.
+
+The lowest one applies. The response says which (`bitrate_limit`, `bitrate_limit_source`) so
+that a client can tell the viewer why the picture is softer. Administrators see it in the
+playbacks in progress, with the client's address and whether it is remote.
+
+**Local or remote.** The client's address is the one the server sees, or the one a trusted proxy
+gives (`server.trusted_proxies`). It is local when it is in one of the `local_networks`; when that
+setting is empty, in a private, loopback or link-local range. Behind a proxy that is not declared,
+every client looks like the proxy, hence local. An address that cannot be read counts as remote.
+Listing the networks matters with a VPN: its clients have private addresses but come over the
+Internet.
+
+**What a limit changes.** Only a file whose bitrate is above it (the container's, else the average
+over the file):
+
+- the video is re-encoded even when the device plays it as it is, and so is any video that is
+  re-encoded anyway (an H.264 copy of a HEVC source is no smaller);
+- the audio is copied if it takes at most a quarter of the limit (Matroska rarely gives the rate of
+  a stream, so it is guessed from the codec), otherwise re-encoded: as without a limit if 64 kbit/s
+  per channel fits in an eighth of it, else in stereo between 64 and 192 kbit/s;
+- the video gets nine tenths of the limit minus the audio, and the height that rate carries well in
+  H.264: 1080 lines from 5 Mbit/s, 720 from 2.5, 480 from 1, 360 below;
+- a music track above the limit is converted to AAC at nine tenths of it, 256 kbit/s at most.
+
+A file below the limit plays exactly as without one: direct, remux or transcode as decided from
+the device. The master playlist announces the limit as the bandwidth of its only variant.
+
+**Encoders.** Each encoder has quality settings and bitrate settings (`-maxrate` and a two-second
+buffer on top of the quality where the encoder can cap it, NVENC and x264; a bitrate mode for the
+others). At startup each one is tried in both: an encoder whose bitrate settings fail keeps its
+quality ones, and a limited stream is then only scaled down (`Encoder.Rated`, logged). Measured on
+a noisy picture, the encoders land 3 to 8 % above their target, which is why the video only gets
+nine tenths of the limit. The same settings cap offline downloads below the original quality.
+
+There is a single variant per playback, not an adaptive ladder: the server would have to encode
+several qualities at once for one viewer. A client that sees playback stall reopens it with a lower
+`max_bitrate`, at the current position.
+
 ## Scrubbing thumbnails
 
 When the user drags the seek bar, the client shows a picture of the target ("trickplay").

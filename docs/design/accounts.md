@@ -38,6 +38,8 @@ name), rename, change role, disable, set a password, delete.
   a list. A deleted library leaves the lists. An administrator sees everything; promoting an
   account removes its restrictions, and restricting an administrator is refused.
 - An administrator can deny offline downloads to an account.
+- An account can have its own bitrate limit outside the local network, below the server's
+  ([Bitrate limits](playback.md#bitrate-limits)).
 
 ## Parental controls
 

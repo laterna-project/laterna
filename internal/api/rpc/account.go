@@ -42,6 +42,7 @@ func (s *AccountService) CreateAccount(ctx context.Context, req *connect.Request
 		Username: m.GetUsername(), Password: m.GetPassword(), IsAdmin: m.GetIsAdmin(),
 		Libraries: libs, Parental: parentalFromMsg(m.GetParental()), DenyDownloads: m.GetDenyDownloads(),
 		DenyRequests: m.GetDenyRequests(), AutoApproveRequests: m.GetAutoApproveRequests(), RequestQuota: optInt(m.RequestQuota),
+		RemoteMaxBitrate: int(m.GetRemoteMaxBitrate()),
 	})
 	if err != nil {
 		return nil, err
@@ -64,6 +65,7 @@ func (s *AccountService) UpdateAccount(ctx context.Context, req *connect.Request
 		Username: m.Username, Password: m.Password, IsAdmin: m.IsAdmin, Disabled: m.Disabled,
 		Libraries: libs, Parental: parentalFromMsg(m.GetParental()), DenyDownloads: m.DenyDownloads,
 		DenyRequests: m.DenyRequests, AutoApproveRequests: m.AutoApproveRequests, RequestQuota: optInt(m.RequestQuota),
+		RemoteMaxBitrate: optInt(m.RemoteMaxBitrate),
 	})
 	if err != nil {
 		return nil, err

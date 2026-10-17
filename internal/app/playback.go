@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -66,6 +67,48 @@ type PlayRequest struct {
 	// Language is the device's language (Accept-Language): the subtitles' when the profile names
 	// none.
 	Language string
+	// MaxBitrate is the highest bitrate the client wants (kbit/s); 0 means no limit.
+	MaxBitrate int
+	// Client is the client's address. Outside the local network, the server's bitrate limits
+	// apply.
+	Client netip.Addr
+}
+
+// BitrateLimit is the bitrate limit of a playback: the lowest of the client's and, outside the
+// local network, the server's and the account's.
+type BitrateLimit struct {
+	// Rate is in kbit/s; 0 means no limit.
+	Rate   int
+	Source LimitSource
+}
+
+// LimitSource says where a bitrate limit comes from.
+type LimitSource string
+
+// Sources of a bitrate limit.
+const (
+	LimitNone   LimitSource = ""
+	LimitClient LimitSource = "client"
+	// LimitRemote is the server's or the account's, for a client outside the local network.
+	LimitRemote LimitSource = "remote"
+)
+
+// bitrateLimit works out the bitrate limit of a playback.
+func (a *App) bitrateLimit(account domain.Account, req PlayRequest) (BitrateLimit, bool) {
+	limit := BitrateLimit{}
+	if req.MaxBitrate > 0 {
+		limit = BitrateLimit{Rate: req.MaxBitrate, Source: LimitClient}
+	}
+	s := a.Settings()
+	remote := !domain.IsLocal(req.Client, s.LocalNetworks)
+	if remote {
+		for _, r := range []int{s.RemoteMaxBitrate, account.RemoteMaxBitrate} {
+			if r > 0 && (limit.Rate == 0 || r < limit.Rate) {
+				limit = BitrateLimit{Rate: r, Source: LimitRemote}
+			}
+		}
+	}
+	return limit, remote
 }
 
 // PlayInfo describes an open playback.
@@ -101,6 +144,10 @@ type PlayInfo struct {
 	// Renditions names the subtitles the master playlist of an HLS playback offers as WebVTT
 	// renditions (position → name, playSession.renditions); nil for a direct playback.
 	Renditions map[int]string
+	// Limit is the bitrate limit applied, and VideoRate the bitrate the re-encoded video aims at
+	// under it (kbit/s; 0 if the video is copied or no limit applies).
+	Limit     BitrateLimit
+	VideoRate int
 }
 
 // playSession is a playback in progress.
@@ -113,6 +160,7 @@ type playSession struct {
 	who     playViewer
 	file    domain.MediaFile
 	plan    playback.Plan
+	limit   BitrateLimit
 	encoder transcode.Encoder
 	// running tracks the runs in progress, including those a seek canceled and that are finishing.
 	running sync.WaitGroup
@@ -172,12 +220,15 @@ func (s *playSession) advance(position time.Duration, now time.Time) {
 	s.lastPos, s.lastAt = position, now
 }
 
-// playViewer says who is watching a playback, and what.
+// playViewer says who is watching a playback, and what, and from where: the client's address, and
+// whether it is outside the local network.
 type playViewer struct {
 	accountID                     domain.ID
 	username, profileName, device string
 	title                         string
 	startedAt                     time.Time
+	address                       string
+	remote                        bool
 }
 
 // itemTitle is the title of an item as the log shows it (an episode with its series, a track with
@@ -280,7 +331,13 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	if chosen == nil && req.ProfileSubtitle && !music && p.Profile != nil {
 		chosen = profileSubtitle(*p.Profile, req.Language, file.Info, req.Audio, subs)
 	}
-	plan := playback.Decide(file.Info, req.Device, req.Audio, chosen)
+	bitrate, remote := a.bitrateLimit(p.Account, req)
+	info := file.Info
+	if info.Bitrate == 0 && info.Duration > 0 {
+		// Not given by the container: the average over the file.
+		info.Bitrate = int64(float64(file.Size) * 8 / info.Duration.Seconds())
+	}
+	plan := playback.Decide(info, req.Device, req.Audio, chosen, bitrate.Rate)
 	var encoder transcode.Encoder
 	var toneMap *transcode.ToneMapper
 	gpu := false
@@ -315,15 +372,18 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		}
 	}
 	s := &playSession{
-		id: domain.NewID(), token: newToken(), profile: profile, item: it.ID, file: *file, plan: plan, encoder: encoder, toneMap: toneMap,
-		gpu: gpu, decoder: decoder,
+		id: domain.NewID(), token: newToken(), profile: profile, item: it.ID, file: *file, plan: plan, limit: bitrate,
+		encoder: encoder, toneMap: toneMap, gpu: gpu, decoder: decoder,
 		changed: make(chan struct{}), ready: map[int]bool{}, lastSeen: a.now(), savedAt: a.now(),
 		position: view.UserData.Position, music: music,
 		play: playOf(profile, view, file.Info.Duration, a.now()), lastPos: view.UserData.Position, lastAt: a.now(),
 		who: playViewer{
 			accountID: p.Account.ID, username: p.Account.Username, profileName: p.Profile.Name,
-			device: "unknown device", title: itemTitle(view), startedAt: a.now(),
+			device: "unknown device", title: itemTitle(view), startedAt: a.now(), remote: remote,
 		},
+	}
+	if req.Client.IsValid() {
+		s.who.address = req.Client.Unmap().String()
 	}
 	if sess, err := read.Session(ctx, p.SessionID); err == nil {
 		s.who.device = sess.Device.Name
@@ -336,7 +396,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 				channels = st.Channels
 			}
 		}
-		s.conv = a.convertAudio(*file, plan.Audio, channels, 0) //nolint:contextcheck // the conversion outlives the request: background context
+		s.conv = a.convertAudio(*file, plan.Audio, channels, plan.AudioRate) //nolint:contextcheck // the conversion outlives the request: background context
 	}
 	if s.hls() {
 		// Video copied: segments on the source keyframes. Video re-encoded: fixed segments with
@@ -373,7 +433,8 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	a.log.InfoContext(ctx, "playback started", "session", s.id, "item", it.ID, "title", it.Title,
 		"method", plan.Method, "copy_video", plan.CopyVideo, "copy_audio", plan.CopyAudio,
 		"encoder", encoder.Name, "gpu", gpu, "decoder", decoderName(decoder), "tonemap", toneMapName(toneMap, gpu), "reasons", plan.Reasons, "segments", len(s.segs),
-		"subtitles", len(subs), "subtitles_ready", subsReady, "subtitle", subtitleLog(chosen), "burn", plan.Burn)
+		"subtitles", len(subs), "subtitles_ready", subsReady, "subtitle", subtitleLog(chosen), "burn", plan.Burn,
+		"remote", remote, "bitrate_limit", bitrate.Rate, "video_rate", s.videoRate(), "max_height", plan.MaxHeight)
 	started := domain.T("activity.playback_started", "profile", s.who.profileName, "title", s.who.title, "device", s.who.device, []domain.Text{methodText(plan)})
 	if music {
 		started.Key = "activity.listening_started"
@@ -389,8 +450,17 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		Reasons: plan.Reasons, CopyVideo: plan.CopyVideo, CopyAudio: plan.CopyAudio, Encoder: encoder.Name, ToneMap: toneMapName(toneMap, gpu),
 		GPU: gpu, Decoder: decoderName(decoder),
 		Subtitles: subs, Fonts: fonts, SubtitlesReady: subsReady, Subtitle: subtitlePosition(chosen), Burned: burned,
-		Renditions: s.renditions(subs),
+		Renditions: s.renditions(subs), Limit: bitrate, VideoRate: s.videoRate(),
 	}, nil
+}
+
+// videoRate is the bitrate the re-encoded video aims at under the limit (kbit/s), 0 if it is copied,
+// not limited, or if the encoder cannot cap its bitrate (it is then only scaled down).
+func (s *playSession) videoRate() int {
+	if s.plan.CopyVideo || !s.encoder.Rated {
+		return 0
+	}
+	return s.plan.VideoRate
 }
 
 // profileSubtitle is the subtitle a playback starts with by the profile's preferences, nil for
@@ -756,11 +826,15 @@ func (a *App) runCommand(s *playSession, k int) fmp4.Command {
 	s.mu.Lock()
 	gpu, decoder := s.gpu, s.decoder
 	s.mu.Unlock()
+	height := maxTranscodeHeight
+	if s.plan.MaxHeight > 0 {
+		height = min(height, s.plan.MaxHeight)
+	}
 	cmd := fmp4.Command{Bin: a.ffmpeg, Args: transcode.Args(transcode.Options{
 		Path: s.file.Path, Start: start, Audio: s.plan.Audio,
-		CopyVideo: s.plan.CopyVideo, VideoTag: videoTag, Encoder: s.encoder, MaxHeight: maxTranscodeHeight,
-		Segment: playback.TargetSegment, CopyAudio: s.plan.CopyAudio, Channels: channels, Burn: s.burn, ToneMap: s.toneMap,
-		GPU: gpu, Decoder: decoder,
+		CopyVideo: s.plan.CopyVideo, VideoTag: videoTag, Encoder: s.encoder, MaxHeight: height, VideoRate: s.plan.VideoRate,
+		Segment: playback.TargetSegment, CopyAudio: s.plan.CopyAudio, Channels: channels, AudioRate: s.plan.AudioRate,
+		Burn: s.burn, ToneMap: s.toneMap, GPU: gpu, Decoder: decoder,
 	})}
 	if s.burn != nil && s.burn.Text != "" {
 		cmd.Dir = s.dir // the subtitle and its fonts are copied there (relative paths)

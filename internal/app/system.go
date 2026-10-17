@@ -383,6 +383,11 @@ type Playback struct {
 	Position, Duration time.Duration
 	// Transcoding means an FFmpeg run is working for this playback right now.
 	Transcoding bool
+	// Address is the client's; Remote says it is outside the local network. BitrateLimit is the
+	// limit applied (kbit/s, 0 for none).
+	Address      string
+	Remote       bool
+	BitrateLimit int
 }
 
 // Playbacks lists the playbacks in progress, oldest first.
@@ -396,6 +401,7 @@ func (a *App) Playbacks() []Playback {
 			CopyVideo: s.plan.CopyVideo, CopyAudio: s.plan.CopyAudio, Encoder: s.encoder.Name, ToneMap: toneMapName(s.toneMap, s.gpu),
 			GPU: s.gpu, Decoder: decoderName(s.decoder), StartedAt: s.who.startedAt, Position: s.position, Duration: s.file.Info.Duration,
 			Transcoding: s.run != nil && !s.run.done,
+			Address:     s.who.address, Remote: s.who.remote, BitrateLimit: s.limit.Rate,
 		}
 		s.mu.Unlock()
 		out = append(out, p)

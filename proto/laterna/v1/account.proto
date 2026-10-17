@@ -67,6 +67,9 @@ message CreateAccountRequest {
   bool auto_approve_requests = 8;
   // Requests in seven days; unset means 10, 0 means no limit.
   optional int32 request_quota = 9;
+  // Highest bitrate of its playbacks from outside the local network (kbit/s, 500 to 1,000,000); 0
+  // means only the server's limit.
+  int32 remote_max_bitrate = 10;
 }
 
 message CreateAccountResponse {
@@ -94,6 +97,8 @@ message UpdateAccountRequest {
   optional bool auto_approve_requests = 10;
   // Requests in seven days, 0 for no limit; unset leaves it unchanged.
   optional int32 request_quota = 11;
+  // 0 for only the server's limit; unset leaves it unchanged.
+  optional int32 remote_max_bitrate = 12;
 }
 
 message UpdateAccountResponse {

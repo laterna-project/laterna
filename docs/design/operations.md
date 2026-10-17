@@ -25,6 +25,8 @@ Startup configuration only holds what is needed before the database opens (see
 | Public URL | empty | Sets the passkey relying party and the OIDC redirect address |
 | Web URL | empty (the public URL) | Where the web client lives; used for device login |
 | Passkey RP ID, extra origins | empty | |
+| Bitrate limit outside the local network | 0 (none) | 500 kbit/s to 1 Gbit/s; see [Bitrate limits](playback.md#bitrate-limits) |
+| Local networks | empty (private ranges) | 32 networks or addresses at most |
 
 A setting that changes scheduling re-arms its timer at once; one that changes folder watching
 resyncs the watchers.

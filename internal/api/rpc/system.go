@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"log/slog"
+	"net/netip"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -41,7 +42,17 @@ func settingsMsg(st domain.Settings) *laternav1.Settings {
 		ScanInterval: durationpb.New(st.ScanInterval), MissingGrace: durationpb.New(st.MissingGrace),
 		Trickplay: st.Trickplay, WatchLibraries: st.WatchLibraries, DetectSegments: st.DetectSegments,
 		MaxTranscodes: clampInt32(st.MaxTranscodes), BackupKeep: clampInt32(st.BackupKeep), PublicUrl: st.PublicURL, WebUrl: st.WebURL, PasskeyRpId: st.PasskeyRPID, PasskeyOrigins: st.PasskeyOrigins,
+		RemoteMaxBitrate: clampInt32(st.RemoteMaxBitrate), LocalNetworks: prefixes(st.LocalNetworks),
 	}
+}
+
+// prefixes writes network prefixes in their canonical form.
+func prefixes(list []netip.Prefix) []string {
+	out := make([]string, len(list))
+	for i, p := range list {
+		out[i] = p.String()
+	}
+	return out
 }
 
 // GetSettings returns the settings.
@@ -67,6 +78,14 @@ func (s *SystemService) UpdateSettings(ctx context.Context, req *connect.Request
 	if m.GetPasskeyOrigins() != nil {
 		origins := m.GetPasskeyOrigins().GetValues()
 		ch.PasskeyOrigins = &origins
+	}
+	if m.RemoteMaxBitrate != nil {
+		n := int(m.GetRemoteMaxBitrate())
+		ch.RemoteMaxBitrate = &n
+	}
+	if m.GetLocalNetworks() != nil {
+		nets := m.GetLocalNetworks().GetValues()
+		ch.LocalNetworks = &nets
 	}
 	if m.GetScanInterval() != nil {
 		d := m.GetScanInterval().AsDuration()

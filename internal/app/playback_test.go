@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,6 +89,72 @@ func TestPlaybackDecisions(t *testing.T) {
 	if keys, ok, err := a.store.Read().Keyframes(ctx, files[0].File.ID, files[0].File.Fingerprint); !ok || err != nil || len(keys) != 6 {
 		t.Errorf("index at import time: %v %v %v", keys, ok, err)
 	}
+}
+
+// A bitrate limit only weighs on a file above it. The client's applies anywhere; outside the local
+// network the server's and the account's do too, and the lowest wins.
+func TestPlaybackBitrateLimit(t *testing.T) {
+	a, _, p, movies := moviesByTitle(t)
+	ctx := context.Background()
+	movie := movies["Big Test Movie"].ID // MP4, H.264 and AAC at 838 kbit/s
+	home, away := netip.MustParseAddr("192.168.1.5"), netip.MustParseAddr("203.0.113.7")
+	start := func(rate int, client netip.Addr) PlayInfo {
+		t.Helper()
+		info, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movie, Audio: -1, Device: browser, MaxBitrate: rate, Client: client})
+		mustNil(t, err)
+		return info
+	}
+	check := func(name string, info PlayInfo, method playback.Method, limit BitrateLimit) {
+		t.Helper()
+		if info.Method != method || info.Limit != limit {
+			t.Errorf("%s: %s under %+v, want %s under %+v", name, info.Method, info.Limit, method, limit)
+		}
+		mustNil(t, a.StopPlayback(ctx, p, info.SessionID, 0))
+	}
+	check("no limit", start(0, away), playback.Direct, BitrateLimit{})
+	check("client limit above the file", start(2000, home), playback.Direct, BitrateLimit{2000, LimitClient})
+
+	// Below the file: the video is re-encoded under the limit, the light audio copied.
+	info := start(600, home)
+	if info.Method != playback.Transcode || info.CopyVideo || !info.CopyAudio || info.Limit != (BitrateLimit{600, LimitClient}) ||
+		len(info.Reasons) != 1 || info.Reasons[0].Key != "reason.bitrate_above_limit" {
+		t.Fatalf("under 600 kbit/s: %+v", info)
+	}
+	caps, _ := a.encoders()
+	if best, _ := caps.Best(); best.Rated != (info.VideoRate == 412) {
+		t.Errorf("video bitrate %d with %s", info.VideoRate, best.Name)
+	}
+	if playing := a.Playbacks(); len(playing) != 1 || playing[0].Remote || playing[0].Address != "192.168.1.5" || playing[0].BitrateLimit != 600 {
+		t.Errorf("seen by an administrator: %+v", playing)
+	}
+	limited := join(t, hlsSegments(t, a, info)...)
+	decodes(t, limited)
+	if got := ffprobeCSV(t, limited, "-select_streams", "v:0", "-show_entries", "stream=codec_name,height"); strings.TrimRight(got, ",") != "h264,360" {
+		t.Errorf("limited stream: %s", got)
+	}
+	mustNil(t, a.StopPlayback(ctx, p, info.SessionID, 0))
+
+	// The server's limit outside the local network, and the account's when it is lower.
+	serverRate := 800
+	_, err := a.UpdateSettings(ctx, p, SettingsChanges{RemoteMaxBitrate: &serverRate})
+	mustNil(t, err)
+	check("at home", start(0, home), playback.Direct, BitrateLimit{})
+	check("away", start(0, away), playback.Transcode, BitrateLimit{800, LimitRemote})
+	check("away, the client asks for less", start(400, away), playback.Transcode, BitrateLimit{400, LimitClient})
+	check("unknown address", start(0, netip.Addr{}), playback.Transcode, BitrateLimit{800, LimitRemote})
+	accountRate := 600
+	_, err = a.UpdateAccount(ctx, p, p.Account.ID, AccountChanges{RemoteMaxBitrate: &accountRate})
+	mustNil(t, err)
+	p.Account.RemoteMaxBitrate = accountRate
+	check("away, account limit", start(0, away), playback.Transcode, BitrateLimit{600, LimitRemote})
+	check("away, the client asks for more", start(2000, away), playback.Transcode, BitrateLimit{600, LimitRemote})
+
+	// The local networks are the listed ones.
+	networks := []string{"203.0.113.0/24"}
+	_, err = a.UpdateSettings(ctx, p, SettingsChanges{LocalNetworks: &networks})
+	mustNil(t, err)
+	check("listed network", start(0, away), playback.Direct, BitrateLimit{})
+	check("private network not listed", start(0, home), playback.Transcode, BitrateLimit{600, LimitRemote})
 }
 
 func TestPlaybackHLS(t *testing.T) {

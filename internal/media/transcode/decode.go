@@ -56,14 +56,14 @@ func DetectDecoder(ctx context.Context, ffmpeg string, e Encoder) *Decoder {
 	sample := filepath.Join(dir, "h264.mkv")
 	args := append([]string{"-hide_banner", "-v", "error", "-nostdin"}, e.device...)
 	args = append(args, "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=1", "-vf", videoFilter(e, 0, nil))
-	if runQuiet(ctx, ffmpeg, append(append(args, e.encode()...), "-y", "file:"+sample)) != nil {
+	if runQuiet(ctx, ffmpeg, append(append(args, e.encode(0)...), "-y", "file:"+sample)) != nil {
 		return nil
 	}
 	for _, d := range decoders {
 		args := append([]string{"-hide_banner", "-v", "error", "-nostdin"}, e.device...)
 		args = append(args, d.test...)
 		args = append(args, "-i", "file:"+sample, "-vf", "hwdownload,format=nv12,"+encoderFilter(e))
-		if runQuiet(ctx, ffmpeg, append(append(args, e.encode()...), "-f", "null", "-")) == nil {
+		if runQuiet(ctx, ffmpeg, append(append(args, e.encode(0)...), "-f", "null", "-")) == nil {
 			return &d
 		}
 	}
