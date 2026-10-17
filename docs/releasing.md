@@ -104,6 +104,14 @@ the release name, the file name and the SHA-256 of each platform's archive, all 
 release bundles read it through `packaging/fetch-ffmpeg.sh`. Change the pin in its own pull
 request: the whole test suite then runs against the new build.
 
+BtbN deletes its daily builds after about two weeks. Once a pin reaches `develop` or `main`, the
+[FFmpeg mirror workflow](../.github/workflows/ffmpeg-mirror.yml) copies its archives, checked
+against their SHA-256, to the `ffmpeg-builds` pre-release of this repository
+(`packaging/mirror-ffmpeg.sh`). `fetch-ffmpeg.sh` downloads from there first and only falls back
+to BtbN for a pin that has not been copied yet, such as the one of an open pull request. Copies
+are never deleted: every release can still be rebuilt with its own FFmpeg. The workflow also runs
+every day, to retry a copy that failed; run it by hand with `gh workflow run ffmpeg-mirror.yml`.
+
 ## Updating the web client
 
 The Docker image serves a release of [Laterna Web](https://github.com/laterna-project/laterna-web),
