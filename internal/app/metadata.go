@@ -53,6 +53,12 @@ func (a *App) refreshMetadata(ctx context.Context, target string) error {
 	if err != nil {
 		return err
 	}
+	if item.Kind == domain.ItemAlbum {
+		// A .lrc may have come or gone in its folder.
+		if err := a.refreshLyrics(ctx, lib, item.ID); err != nil {
+			return err
+		}
+	}
 	switch item.Kind {
 	case domain.ItemBook:
 		return a.refreshBook(ctx, lib, item)

@@ -17,8 +17,13 @@ func (q Q) SetTrack(ctx context.Context, t domain.Track) error {
 	return translate(q.q.UpsertTrack(ctx, sqlc.UpsertTrackParams{
 		ItemID: t.ItemID, AlbumID: t.AlbumID, ArtistID: t.ArtistID, Disc: int64(t.Disc), Number: int64(t.Number),
 		Artists: t.Artists, TrackGain: nullFloat(t.TrackGain), TrackPeak: nullFloat(t.TrackPeak),
-		AlbumGain: nullFloat(t.AlbumGain), AlbumPeak: nullFloat(t.AlbumPeak),
+		AlbumGain: nullFloat(t.AlbumGain), AlbumPeak: nullFloat(t.AlbumPeak), Lyrics: string(t.Lyrics),
 	}))
+}
+
+// SetTrackLyrics changes where the lyrics of a track are.
+func (q Q) SetTrackLyrics(ctx context.Context, itemID domain.ID, src domain.LyricsSource) error {
+	return q.q.SetTrackLyrics(ctx, sqlc.SetTrackLyricsParams{Lyrics: string(src), ItemID: itemID})
 }
 
 // Track reads the track-specific part of an item.
@@ -34,7 +39,7 @@ func trackFromRow(r sqlc.Track) domain.Track {
 	return domain.Track{
 		ItemID: r.ItemID, AlbumID: r.AlbumID, ArtistID: r.ArtistID, Disc: int(r.Disc), Number: int(r.Number),
 		Artists: r.Artists, TrackGain: optFloat(r.TrackGain), TrackPeak: optFloat(r.TrackPeak),
-		AlbumGain: optFloat(r.AlbumGain), AlbumPeak: optFloat(r.AlbumPeak),
+		AlbumGain: optFloat(r.AlbumGain), AlbumPeak: optFloat(r.AlbumPeak), Lyrics: domain.LyricsSource(r.Lyrics),
 	}
 }
 

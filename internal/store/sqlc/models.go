@@ -567,6 +567,7 @@ type Track struct {
 	TrackPeak sql.NullFloat64
 	AlbumGain sql.NullFloat64
 	AlbumPeak sql.NullFloat64
+	Lyrics    string
 }
 
 type Trickplay struct {

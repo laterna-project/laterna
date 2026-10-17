@@ -38,8 +38,8 @@ server without a client.
   goes offline does not wipe a library.
 - **Households.** Accounts with profiles, PINs, per-library access and parental controls
   enforced on the server. Sign-in by password, passkey, OpenID Connect, or a code shown on a TV.
-- **More than video.** Music from tags with whole-file playback, EPUB/CBZ/PDF books with pages
-  scaled for the screen, photo libraries with EXIF and a timeline.
+- **More than video.** Music from tags with whole-file playback and synced lyrics, EPUB/CBZ/PDF
+  books with pages scaled for the screen, photo libraries with EXIF and a timeline.
 - **The extras.** Trailers and featurettes next to movies and series, intro and credits
   detection, scrubbing thumbnails, offline downloads, watch parties, play history with yearly
   statistics, recommendations computed locally, collections and playlists, themes, import of users

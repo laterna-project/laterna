@@ -62,7 +62,20 @@ Lidarr writes `artist.nfo`, `album.nfo` and the images when its Kodi metadata is
 webhook triggers a scan of the music libraries, as Sonarr and Radarr do for video
 ([Metadata](metadata.md)).
 
-Not done: lyrics, "appears on" for guest artists, radios and mixes.
+**Lyrics.** A `.lrc` file next to a track, with the same name (written by LRCGET or a tagger),
+comes first; otherwise the lyrics in its tags (`LYRICS`, `UNSYNCEDLYRICS`, ID3 `USLT`, MP4).
+
+- Where they are is noted in `tracks.lyrics` when the track is probed (`Track.has_lyrics`), and
+  again when the folder of its album changes: a `.lrc` counts as metadata for the scan, so adding
+  or removing one has the album read again.
+- The words are read when asked for (`MusicService.GetLyrics`): a `.lrc` of 1 MiB at most, in
+  UTF-8 whatever it was written in (UTF-16, Windows-1252), as for subtitles.
+- LRC gives each line one or more times (`[01:12.30]`); the header tags are skipped, except
+  `[offset:]` (a positive offset shows the lines sooner); the word times of enhanced LRC are
+  dropped. The lines come sorted by time, and the client follows the playback with them.
+- Lyrics without any time are plain: their lines are kept, one empty line between stanzas.
+
+Not done: "appears on" for guest artists, radios and mixes.
 
 ## Books
 

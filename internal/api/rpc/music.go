@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	laternav1 "github.com/laterna-project/laterna/internal/api/gen/laterna/v1"
@@ -165,4 +166,31 @@ func tracksMsg(ctx context.Context, views []domain.ItemView) []*laternav1.Track 
 		out[i] = trackMsg(ctx, v)
 	}
 	return out
+}
+
+var lyricsSources = map[domain.LyricsSource]laternav1.LyricsSource{
+	domain.LyricsNone: laternav1.LyricsSource_LYRICS_SOURCE_UNSPECIFIED,
+	domain.LyricsFile: laternav1.LyricsSource_LYRICS_SOURCE_FILE,
+	domain.LyricsTags: laternav1.LyricsSource_LYRICS_SOURCE_TAGS,
+}
+
+// GetLyrics returns the lyrics of a track.
+func (s *MusicService) GetLyrics(ctx context.Context, req *connect.Request[laternav1.GetLyricsRequest]) (*connect.Response[laternav1.GetLyricsResponse], error) {
+	id, err := parseID(req.Msg.GetTrackId(), "track_id")
+	if err != nil {
+		return nil, err
+	}
+	l, err := s.app.Lyrics(ctx, principal(ctx), id)
+	if err != nil {
+		return nil, err
+	}
+	resp := &laternav1.GetLyricsResponse{Synced: l.Synced, Source: lyricsSources[l.Source]}
+	for _, line := range l.Lines {
+		msg := &laternav1.LyricLine{Text: line.Text}
+		if l.Synced {
+			msg.Start = durationpb.New(line.Start)
+		}
+		resp.Lines = append(resp.Lines, msg)
+	}
+	return connect.NewResponse(resp), nil
 }

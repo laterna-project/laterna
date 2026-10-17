@@ -143,7 +143,7 @@ func trackMsg(ctx context.Context, v domain.ItemView) *laternav1.Track {
 	}
 	if t := v.Track; t != nil {
 		msg.AlbumId, msg.ArtistId, msg.Artists = t.AlbumID.String(), t.ArtistID.String(), artistName(ctx, t.Artists)
-		msg.Disc, msg.Number = clampInt32(t.Disc), clampInt32(t.Number)
+		msg.Disc, msg.Number, msg.HasLyrics = clampInt32(t.Disc), clampInt32(t.Number), t.Lyrics != domain.LyricsNone
 		if t.TrackGain != nil || t.TrackPeak != nil || t.AlbumGain != nil || t.AlbumPeak != nil {
 			msg.ReplayGain = &laternav1.ReplayGain{TrackGain: t.TrackGain, TrackPeak: t.TrackPeak, AlbumGain: t.AlbumGain, AlbumPeak: t.AlbumPeak}
 		}

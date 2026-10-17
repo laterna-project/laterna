@@ -21,8 +21,11 @@ var VideoExtensions = map[string]bool{
 // IsVideo reports a video file by its extension.
 func IsVideo(p string) bool { return VideoExtensions[strings.ToLower(path.Ext(p))] }
 
-// metadataExtensions covers NFO files and images next to media, and the OPF of a Calibre library.
-var metadataExtensions = map[string]bool{".nfo": true, ".opf": true, ".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+// metadataExtensions covers NFO files and images next to media, the OPF of a Calibre library and
+// the lyrics of tracks (LRC).
+var metadataExtensions = map[string]bool{
+	".nfo": true, ".opf": true, ".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".lrc": true,
+}
 
 // IsMetadata reports a local metadata file (NFO, image) by its extension.
 func IsMetadata(p string) bool { return metadataExtensions[strings.ToLower(path.Ext(p))] }

@@ -366,6 +366,8 @@ message Track {
   // Unset if the tags do not say.
   ReplayGain replay_gain = 13;
   google.protobuf.Timestamp added_at = 14;
+  // The track has lyrics (MusicService.GetLyrics).
+  bool has_lyrics = 15;
 }
 
 // Books (BookService).
