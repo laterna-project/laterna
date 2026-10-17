@@ -49,6 +49,8 @@ const (
 	// MusicServiceListArtistTracksProcedure is the fully-qualified name of the MusicService's
 	// ListArtistTracks RPC.
 	MusicServiceListArtistTracksProcedure = "/laterna.v1.MusicService/ListArtistTracks"
+	// MusicServiceGetLyricsProcedure is the fully-qualified name of the MusicService's GetLyrics RPC.
+	MusicServiceGetLyricsProcedure = "/laterna.v1.MusicService/GetLyrics"
 )
 
 // MusicServiceClient is a client for the laterna.v1.MusicService service.
@@ -68,6 +70,9 @@ type MusicServiceClient interface {
 	// ListArtistTracks returns all the present tracks of an artist, album by album (oldest first):
 	// enough to play everything, or shuffle everything.
 	ListArtistTracks(context.Context, *connect.Request[v1.ListArtistTracksRequest]) (*connect.Response[v1.ListArtistTracksResponse], error)
+	// GetLyrics returns the lyrics of a track (Track.has_lyrics): from a .lrc file next to it, timed
+	// line by line, otherwise from its tags. NOT_FOUND (music.no_lyrics) if it has none.
+	GetLyrics(context.Context, *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error)
 }
 
 // NewMusicServiceClient constructs a client for the laterna.v1.MusicService service. By default, it
@@ -130,6 +135,13 @@ func NewMusicServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getLyrics: connect.NewClient[v1.GetLyricsRequest, v1.GetLyricsResponse](
+			httpClient,
+			baseURL+MusicServiceGetLyricsProcedure,
+			connect.WithSchema(musicServiceMethods.ByName("GetLyrics")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -142,6 +154,7 @@ type musicServiceClient struct {
 	listTracks       *connect.Client[v1.ListTracksRequest, v1.ListTracksResponse]
 	getTrack         *connect.Client[v1.GetTrackRequest, v1.GetTrackResponse]
 	listArtistTracks *connect.Client[v1.ListArtistTracksRequest, v1.ListArtistTracksResponse]
+	getLyrics        *connect.Client[v1.GetLyricsRequest, v1.GetLyricsResponse]
 }
 
 // ListArtists calls laterna.v1.MusicService.ListArtists.
@@ -179,6 +192,11 @@ func (c *musicServiceClient) ListArtistTracks(ctx context.Context, req *connect.
 	return c.listArtistTracks.CallUnary(ctx, req)
 }
 
+// GetLyrics calls laterna.v1.MusicService.GetLyrics.
+func (c *musicServiceClient) GetLyrics(ctx context.Context, req *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error) {
+	return c.getLyrics.CallUnary(ctx, req)
+}
+
 // MusicServiceHandler is an implementation of the laterna.v1.MusicService service.
 type MusicServiceHandler interface {
 	// ListArtists returns a page of artists.
@@ -196,6 +214,9 @@ type MusicServiceHandler interface {
 	// ListArtistTracks returns all the present tracks of an artist, album by album (oldest first):
 	// enough to play everything, or shuffle everything.
 	ListArtistTracks(context.Context, *connect.Request[v1.ListArtistTracksRequest]) (*connect.Response[v1.ListArtistTracksResponse], error)
+	// GetLyrics returns the lyrics of a track (Track.has_lyrics): from a .lrc file next to it, timed
+	// line by line, otherwise from its tags. NOT_FOUND (music.no_lyrics) if it has none.
+	GetLyrics(context.Context, *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error)
 }
 
 // NewMusicServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -254,6 +275,13 @@ func NewMusicServiceHandler(svc MusicServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	musicServiceGetLyricsHandler := connect.NewUnaryHandler(
+		MusicServiceGetLyricsProcedure,
+		svc.GetLyrics,
+		connect.WithSchema(musicServiceMethods.ByName("GetLyrics")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/laterna.v1.MusicService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MusicServiceListArtistsProcedure:
@@ -270,6 +298,8 @@ func NewMusicServiceHandler(svc MusicServiceHandler, opts ...connect.HandlerOpti
 			musicServiceGetTrackHandler.ServeHTTP(w, r)
 		case MusicServiceListArtistTracksProcedure:
 			musicServiceListArtistTracksHandler.ServeHTTP(w, r)
+		case MusicServiceGetLyricsProcedure:
+			musicServiceGetLyricsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -305,4 +335,8 @@ func (UnimplementedMusicServiceHandler) GetTrack(context.Context, *connect.Reque
 
 func (UnimplementedMusicServiceHandler) ListArtistTracks(context.Context, *connect.Request[v1.ListArtistTracksRequest]) (*connect.Response[v1.ListArtistTracksResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.MusicService.ListArtistTracks is not implemented"))
+}
+
+func (UnimplementedMusicServiceHandler) GetLyrics(context.Context, *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.MusicService.GetLyrics is not implemented"))
 }

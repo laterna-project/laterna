@@ -248,6 +248,7 @@
   "error.media_request.unknown_quality_profile": "Unknown quality profile: {id}",
   "error.media_request.unknown_root_folder": "Unknown root folder: {path}",
   "error.metrics.token_required": "A metrics token is required",
+  "error.music.no_lyrics": "This track has no lyrics",
   "error.notification.all_or_some": "Name notifications or ask for all of them, not both",
   "error.notification.invalid_subscription": "This push subscription cannot be used",
   "error.notification.too_many": "At most {max} notifications at a time",

@@ -188,7 +188,7 @@ func cardQuery(v domain.Viewer) *query {
 				WHERE ce.season_id = i.id AND COALESCE(cu.played, 0) = 0 AND `+fmt.Sprintf(presentFileOf, "ce.item_id")+`)
 			ELSE 0 END,
 		t.album_id, t.artist_id, COALESCE(t.disc, 0), COALESCE(t.number, 0), COALESCE(t.artists, ''),
-		t.track_gain, t.track_peak, t.album_gain, t.album_peak, COALESCE(tal.title, ''), COALESCE(tar.title, ''),
+		t.track_gain, t.track_peak, t.album_gain, t.album_peak, COALESCE(t.lyrics, ''), COALESCE(tal.title, ''), COALESCE(tar.title, ''),
 		CASE i.kind
 			WHEN 'artist' THEN (SELECT COUNT(*) FROM items ca WHERE ca.parent_id = i.id AND ca.kind = 'album' AND `+fmt.Sprintf(presentTrackOf, "album_id", "ca.id")+`)
 			ELSE 0 END,
@@ -229,7 +229,7 @@ func (q Q) cards(ctx context.Context, b *query) ([]domain.ItemView, error) {
 			disc, trackNum, albumCount, trackCnt int64
 			trackGain, trackPeak                 sql.NullFloat64
 			albumGain, albumPeak                 sql.NullFloat64
-			artists                              string
+			artists, lyrics                      string
 			c                                    domain.ItemView
 		)
 		if err := rows.Scan(&r.ID, &r.LibraryID, &r.Kind, &r.ParentID, &r.GroupKey, &r.Title, &r.SortTitle,
@@ -238,7 +238,7 @@ func (q Q) cards(ctx context.Context, b *query) ([]domain.ItemView, error) {
 			&played, &playCount, &positionMs, &lastPlayed, &fav,
 			&seriesID, &seasonNum, &seasonID, &epSeason, &epNum, &epEnd, &absolute, &c.SeriesTitle,
 			&episodeCount, &unplayedCnt,
-			&albumID, &artistID, &disc, &trackNum, &artists, &trackGain, &trackPeak, &albumGain, &albumPeak,
+			&albumID, &artistID, &disc, &trackNum, &artists, &trackGain, &trackPeak, &albumGain, &albumPeak, &lyrics,
 			&c.AlbumTitle, &c.ArtistName, &albumCount, &trackCnt); err != nil {
 			return nil, err
 		}
@@ -269,7 +269,7 @@ func (q Q) cards(ctx context.Context, b *query) ([]domain.ItemView, error) {
 				c.Track = &domain.Track{
 					ItemID: c.Item.ID, AlbumID: *albumID, ArtistID: *artistID, Disc: int(disc), Number: int(trackNum),
 					Artists: artists, TrackGain: optFloat(trackGain), TrackPeak: optFloat(trackPeak),
-					AlbumGain: optFloat(albumGain), AlbumPeak: optFloat(albumPeak),
+					AlbumGain: optFloat(albumGain), AlbumPeak: optFloat(albumPeak), Lyrics: domain.LyricsSource(lyrics),
 				}
 			}
 		case domain.ItemMovie, domain.ItemArtist, domain.ItemAlbum, domain.ItemBookSeries, domain.ItemBook,

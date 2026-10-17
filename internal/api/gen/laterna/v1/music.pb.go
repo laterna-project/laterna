@@ -9,6 +9,7 @@ package laternav1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -20,6 +21,58 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+// LyricsSource says where lyrics come from.
+type LyricsSource int32
+
+const (
+	LyricsSource_LYRICS_SOURCE_UNSPECIFIED LyricsSource = 0
+	// A .lrc file next to the track, with the same name.
+	LyricsSource_LYRICS_SOURCE_FILE LyricsSource = 1
+	// The tags of the file (LYRICS, UNSYNCEDLYRICS, ID3 USLT, MP4 lyrics).
+	LyricsSource_LYRICS_SOURCE_TAGS LyricsSource = 2
+)
+
+// Enum value maps for LyricsSource.
+var (
+	LyricsSource_name = map[int32]string{
+		0: "LYRICS_SOURCE_UNSPECIFIED",
+		1: "LYRICS_SOURCE_FILE",
+		2: "LYRICS_SOURCE_TAGS",
+	}
+	LyricsSource_value = map[string]int32{
+		"LYRICS_SOURCE_UNSPECIFIED": 0,
+		"LYRICS_SOURCE_FILE":        1,
+		"LYRICS_SOURCE_TAGS":        2,
+	}
+)
+
+func (x LyricsSource) Enum() *LyricsSource {
+	p := new(LyricsSource)
+	*p = x
+	return p
+}
+
+func (x LyricsSource) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (LyricsSource) Descriptor() protoreflect.EnumDescriptor {
+	return file_laterna_v1_music_proto_enumTypes[0].Descriptor()
+}
+
+func (LyricsSource) Type() protoreflect.EnumType {
+	return &file_laterna_v1_music_proto_enumTypes[0]
+}
+
+func (x LyricsSource) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use LyricsSource.Descriptor instead.
+func (LyricsSource) EnumDescriptor() ([]byte, []int) {
+	return file_laterna_v1_music_proto_rawDescGZIP(), []int{0}
+}
 
 type ListArtistsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -767,6 +820,166 @@ func (x *GetTrackResponse) GetFiles() []*MediaFile {
 	return nil
 }
 
+type GetLyricsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TrackId       string                 `protobuf:"bytes,1,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLyricsRequest) Reset() {
+	*x = GetLyricsRequest{}
+	mi := &file_laterna_v1_music_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLyricsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLyricsRequest) ProtoMessage() {}
+
+func (x *GetLyricsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_music_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLyricsRequest.ProtoReflect.Descriptor instead.
+func (*GetLyricsRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_music_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetLyricsRequest) GetTrackId() string {
+	if x != nil {
+		return x.TrackId
+	}
+	return ""
+}
+
+type GetLyricsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Timed lines (LRC), to follow the playback; otherwise plain lines, an empty one between
+	// stanzas.
+	Synced        bool         `protobuf:"varint,1,opt,name=synced,proto3" json:"synced,omitempty"`
+	Lines         []*LyricLine `protobuf:"bytes,2,rep,name=lines,proto3" json:"lines,omitempty"`
+	Source        LyricsSource `protobuf:"varint,3,opt,name=source,proto3,enum=laterna.v1.LyricsSource" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLyricsResponse) Reset() {
+	*x = GetLyricsResponse{}
+	mi := &file_laterna_v1_music_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLyricsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLyricsResponse) ProtoMessage() {}
+
+func (x *GetLyricsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_music_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLyricsResponse.ProtoReflect.Descriptor instead.
+func (*GetLyricsResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_music_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetLyricsResponse) GetSynced() bool {
+	if x != nil {
+		return x.Synced
+	}
+	return false
+}
+
+func (x *GetLyricsResponse) GetLines() []*LyricLine {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+func (x *GetLyricsResponse) GetSource() LyricsSource {
+	if x != nil {
+		return x.Source
+	}
+	return LyricsSource_LYRICS_SOURCE_UNSPECIFIED
+}
+
+// LyricLine is a line of lyrics.
+type LyricLine struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When it is sung; unset for plain lyrics.
+	Start         *durationpb.Duration `protobuf:"bytes,1,opt,name=start,proto3" json:"start,omitempty"`
+	Text          string               `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LyricLine) Reset() {
+	*x = LyricLine{}
+	mi := &file_laterna_v1_music_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LyricLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LyricLine) ProtoMessage() {}
+
+func (x *LyricLine) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_music_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LyricLine.ProtoReflect.Descriptor instead.
+func (*LyricLine) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_music_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *LyricLine) GetStart() *durationpb.Duration {
+	if x != nil {
+		return x.Start
+	}
+	return nil
+}
+
+func (x *LyricLine) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
 type ListArtistTracksRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ArtistId      string                 `protobuf:"bytes,1,opt,name=artist_id,json=artistId,proto3" json:"artist_id,omitempty"`
@@ -776,7 +989,7 @@ type ListArtistTracksRequest struct {
 
 func (x *ListArtistTracksRequest) Reset() {
 	*x = ListArtistTracksRequest{}
-	mi := &file_laterna_v1_music_proto_msgTypes[12]
+	mi := &file_laterna_v1_music_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -788,7 +1001,7 @@ func (x *ListArtistTracksRequest) String() string {
 func (*ListArtistTracksRequest) ProtoMessage() {}
 
 func (x *ListArtistTracksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_music_proto_msgTypes[12]
+	mi := &file_laterna_v1_music_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -801,7 +1014,7 @@ func (x *ListArtistTracksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArtistTracksRequest.ProtoReflect.Descriptor instead.
 func (*ListArtistTracksRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_music_proto_rawDescGZIP(), []int{12}
+	return file_laterna_v1_music_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListArtistTracksRequest) GetArtistId() string {
@@ -820,7 +1033,7 @@ type ListArtistTracksResponse struct {
 
 func (x *ListArtistTracksResponse) Reset() {
 	*x = ListArtistTracksResponse{}
-	mi := &file_laterna_v1_music_proto_msgTypes[13]
+	mi := &file_laterna_v1_music_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -832,7 +1045,7 @@ func (x *ListArtistTracksResponse) String() string {
 func (*ListArtistTracksResponse) ProtoMessage() {}
 
 func (x *ListArtistTracksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_music_proto_msgTypes[13]
+	mi := &file_laterna_v1_music_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -845,7 +1058,7 @@ func (x *ListArtistTracksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArtistTracksResponse.ProtoReflect.Descriptor instead.
 func (*ListArtistTracksResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_music_proto_rawDescGZIP(), []int{13}
+	return file_laterna_v1_music_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListArtistTracksResponse) GetTracks() []*Track {
@@ -860,7 +1073,7 @@ var File_laterna_v1_music_proto protoreflect.FileDescriptor
 const file_laterna_v1_music_proto_rawDesc = "" +
 	"\n" +
 	"\x16laterna/v1/music.proto\x12\n" +
-	"laterna.v1\x1a\x18laterna/v1/catalog.proto\"\xda\x01\n" +
+	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x18laterna/v1/catalog.proto\"\xda\x01\n" +
 	"\x12ListArtistsRequest\x12\x1d\n" +
 	"\n" +
 	"library_id\x18\x01 \x01(\tR\tlibraryId\x12(\n" +
@@ -919,11 +1132,24 @@ const file_laterna_v1_music_proto_rawDesc = "" +
 	"\btrack_id\x18\x01 \x01(\tR\atrackId\"h\n" +
 	"\x10GetTrackResponse\x12'\n" +
 	"\x05track\x18\x01 \x01(\v2\x11.laterna.v1.TrackR\x05track\x12+\n" +
-	"\x05files\x18\x02 \x03(\v2\x15.laterna.v1.MediaFileR\x05files\"6\n" +
+	"\x05files\x18\x02 \x03(\v2\x15.laterna.v1.MediaFileR\x05files\"-\n" +
+	"\x10GetLyricsRequest\x12\x19\n" +
+	"\btrack_id\x18\x01 \x01(\tR\atrackId\"\x8a\x01\n" +
+	"\x11GetLyricsResponse\x12\x16\n" +
+	"\x06synced\x18\x01 \x01(\bR\x06synced\x12+\n" +
+	"\x05lines\x18\x02 \x03(\v2\x15.laterna.v1.LyricLineR\x05lines\x120\n" +
+	"\x06source\x18\x03 \x01(\x0e2\x18.laterna.v1.LyricsSourceR\x06source\"P\n" +
+	"\tLyricLine\x12/\n" +
+	"\x05start\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\x05start\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"6\n" +
 	"\x17ListArtistTracksRequest\x12\x1b\n" +
 	"\tartist_id\x18\x01 \x01(\tR\bartistId\"E\n" +
 	"\x18ListArtistTracksResponse\x12)\n" +
-	"\x06tracks\x18\x01 \x03(\v2\x11.laterna.v1.TrackR\x06tracks2\xd2\x04\n" +
+	"\x06tracks\x18\x01 \x03(\v2\x11.laterna.v1.TrackR\x06tracks*]\n" +
+	"\fLyricsSource\x12\x1d\n" +
+	"\x19LYRICS_SOURCE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12LYRICS_SOURCE_FILE\x10\x01\x12\x16\n" +
+	"\x12LYRICS_SOURCE_TAGS\x10\x022\xa1\x05\n" +
 	"\fMusicService\x12S\n" +
 	"\vListArtists\x12\x1e.laterna.v1.ListArtistsRequest\x1a\x1f.laterna.v1.ListArtistsResponse\"\x03\x90\x02\x01\x12M\n" +
 	"\tGetArtist\x12\x1c.laterna.v1.GetArtistRequest\x1a\x1d.laterna.v1.GetArtistResponse\"\x03\x90\x02\x01\x12P\n" +
@@ -933,7 +1159,8 @@ const file_laterna_v1_music_proto_rawDesc = "" +
 	"\n" +
 	"ListTracks\x12\x1d.laterna.v1.ListTracksRequest\x1a\x1e.laterna.v1.ListTracksResponse\"\x03\x90\x02\x01\x12J\n" +
 	"\bGetTrack\x12\x1b.laterna.v1.GetTrackRequest\x1a\x1c.laterna.v1.GetTrackResponse\"\x03\x90\x02\x01\x12b\n" +
-	"\x10ListArtistTracks\x12#.laterna.v1.ListArtistTracksRequest\x1a$.laterna.v1.ListArtistTracksResponse\"\x03\x90\x02\x01BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
+	"\x10ListArtistTracks\x12#.laterna.v1.ListArtistTracksRequest\x1a$.laterna.v1.ListArtistTracksResponse\"\x03\x90\x02\x01\x12M\n" +
+	"\tGetLyrics\x12\x1c.laterna.v1.GetLyricsRequest\x1a\x1d.laterna.v1.GetLyricsResponse\"\x03\x90\x02\x01BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
 var (
 	file_laterna_v1_music_proto_rawDescOnce sync.Once
@@ -947,63 +1174,74 @@ func file_laterna_v1_music_proto_rawDescGZIP() []byte {
 	return file_laterna_v1_music_proto_rawDescData
 }
 
-var file_laterna_v1_music_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_laterna_v1_music_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_laterna_v1_music_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_laterna_v1_music_proto_goTypes = []any{
-	(*ListArtistsRequest)(nil),       // 0: laterna.v1.ListArtistsRequest
-	(*ListArtistsResponse)(nil),      // 1: laterna.v1.ListArtistsResponse
-	(*GetArtistRequest)(nil),         // 2: laterna.v1.GetArtistRequest
-	(*GetArtistResponse)(nil),        // 3: laterna.v1.GetArtistResponse
-	(*ListAlbumsRequest)(nil),        // 4: laterna.v1.ListAlbumsRequest
-	(*ListAlbumsResponse)(nil),       // 5: laterna.v1.ListAlbumsResponse
-	(*GetAlbumRequest)(nil),          // 6: laterna.v1.GetAlbumRequest
-	(*GetAlbumResponse)(nil),         // 7: laterna.v1.GetAlbumResponse
-	(*ListTracksRequest)(nil),        // 8: laterna.v1.ListTracksRequest
-	(*ListTracksResponse)(nil),       // 9: laterna.v1.ListTracksResponse
-	(*GetTrackRequest)(nil),          // 10: laterna.v1.GetTrackRequest
-	(*GetTrackResponse)(nil),         // 11: laterna.v1.GetTrackResponse
-	(*ListArtistTracksRequest)(nil),  // 12: laterna.v1.ListArtistTracksRequest
-	(*ListArtistTracksResponse)(nil), // 13: laterna.v1.ListArtistTracksResponse
-	(ItemSort)(0),                    // 14: laterna.v1.ItemSort
-	(*ArtistSummary)(nil),            // 15: laterna.v1.ArtistSummary
-	(*Artist)(nil),                   // 16: laterna.v1.Artist
-	(*AlbumSummary)(nil),             // 17: laterna.v1.AlbumSummary
-	(*Album)(nil),                    // 18: laterna.v1.Album
-	(*Track)(nil),                    // 19: laterna.v1.Track
-	(*MediaFile)(nil),                // 20: laterna.v1.MediaFile
+	(LyricsSource)(0),                // 0: laterna.v1.LyricsSource
+	(*ListArtistsRequest)(nil),       // 1: laterna.v1.ListArtistsRequest
+	(*ListArtistsResponse)(nil),      // 2: laterna.v1.ListArtistsResponse
+	(*GetArtistRequest)(nil),         // 3: laterna.v1.GetArtistRequest
+	(*GetArtistResponse)(nil),        // 4: laterna.v1.GetArtistResponse
+	(*ListAlbumsRequest)(nil),        // 5: laterna.v1.ListAlbumsRequest
+	(*ListAlbumsResponse)(nil),       // 6: laterna.v1.ListAlbumsResponse
+	(*GetAlbumRequest)(nil),          // 7: laterna.v1.GetAlbumRequest
+	(*GetAlbumResponse)(nil),         // 8: laterna.v1.GetAlbumResponse
+	(*ListTracksRequest)(nil),        // 9: laterna.v1.ListTracksRequest
+	(*ListTracksResponse)(nil),       // 10: laterna.v1.ListTracksResponse
+	(*GetTrackRequest)(nil),          // 11: laterna.v1.GetTrackRequest
+	(*GetTrackResponse)(nil),         // 12: laterna.v1.GetTrackResponse
+	(*GetLyricsRequest)(nil),         // 13: laterna.v1.GetLyricsRequest
+	(*GetLyricsResponse)(nil),        // 14: laterna.v1.GetLyricsResponse
+	(*LyricLine)(nil),                // 15: laterna.v1.LyricLine
+	(*ListArtistTracksRequest)(nil),  // 16: laterna.v1.ListArtistTracksRequest
+	(*ListArtistTracksResponse)(nil), // 17: laterna.v1.ListArtistTracksResponse
+	(ItemSort)(0),                    // 18: laterna.v1.ItemSort
+	(*ArtistSummary)(nil),            // 19: laterna.v1.ArtistSummary
+	(*Artist)(nil),                   // 20: laterna.v1.Artist
+	(*AlbumSummary)(nil),             // 21: laterna.v1.AlbumSummary
+	(*Album)(nil),                    // 22: laterna.v1.Album
+	(*Track)(nil),                    // 23: laterna.v1.Track
+	(*MediaFile)(nil),                // 24: laterna.v1.MediaFile
+	(*durationpb.Duration)(nil),      // 25: google.protobuf.Duration
 }
 var file_laterna_v1_music_proto_depIdxs = []int32{
-	14, // 0: laterna.v1.ListArtistsRequest.sort:type_name -> laterna.v1.ItemSort
-	15, // 1: laterna.v1.ListArtistsResponse.artists:type_name -> laterna.v1.ArtistSummary
-	16, // 2: laterna.v1.GetArtistResponse.artist:type_name -> laterna.v1.Artist
-	17, // 3: laterna.v1.GetArtistResponse.albums:type_name -> laterna.v1.AlbumSummary
-	14, // 4: laterna.v1.ListAlbumsRequest.sort:type_name -> laterna.v1.ItemSort
-	17, // 5: laterna.v1.ListAlbumsResponse.albums:type_name -> laterna.v1.AlbumSummary
-	18, // 6: laterna.v1.GetAlbumResponse.album:type_name -> laterna.v1.Album
-	19, // 7: laterna.v1.GetAlbumResponse.tracks:type_name -> laterna.v1.Track
-	14, // 8: laterna.v1.ListTracksRequest.sort:type_name -> laterna.v1.ItemSort
-	19, // 9: laterna.v1.ListTracksResponse.tracks:type_name -> laterna.v1.Track
-	19, // 10: laterna.v1.GetTrackResponse.track:type_name -> laterna.v1.Track
-	20, // 11: laterna.v1.GetTrackResponse.files:type_name -> laterna.v1.MediaFile
-	19, // 12: laterna.v1.ListArtistTracksResponse.tracks:type_name -> laterna.v1.Track
-	0,  // 13: laterna.v1.MusicService.ListArtists:input_type -> laterna.v1.ListArtistsRequest
-	2,  // 14: laterna.v1.MusicService.GetArtist:input_type -> laterna.v1.GetArtistRequest
-	4,  // 15: laterna.v1.MusicService.ListAlbums:input_type -> laterna.v1.ListAlbumsRequest
-	6,  // 16: laterna.v1.MusicService.GetAlbum:input_type -> laterna.v1.GetAlbumRequest
-	8,  // 17: laterna.v1.MusicService.ListTracks:input_type -> laterna.v1.ListTracksRequest
-	10, // 18: laterna.v1.MusicService.GetTrack:input_type -> laterna.v1.GetTrackRequest
-	12, // 19: laterna.v1.MusicService.ListArtistTracks:input_type -> laterna.v1.ListArtistTracksRequest
-	1,  // 20: laterna.v1.MusicService.ListArtists:output_type -> laterna.v1.ListArtistsResponse
-	3,  // 21: laterna.v1.MusicService.GetArtist:output_type -> laterna.v1.GetArtistResponse
-	5,  // 22: laterna.v1.MusicService.ListAlbums:output_type -> laterna.v1.ListAlbumsResponse
-	7,  // 23: laterna.v1.MusicService.GetAlbum:output_type -> laterna.v1.GetAlbumResponse
-	9,  // 24: laterna.v1.MusicService.ListTracks:output_type -> laterna.v1.ListTracksResponse
-	11, // 25: laterna.v1.MusicService.GetTrack:output_type -> laterna.v1.GetTrackResponse
-	13, // 26: laterna.v1.MusicService.ListArtistTracks:output_type -> laterna.v1.ListArtistTracksResponse
-	20, // [20:27] is the sub-list for method output_type
-	13, // [13:20] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	18, // 0: laterna.v1.ListArtistsRequest.sort:type_name -> laterna.v1.ItemSort
+	19, // 1: laterna.v1.ListArtistsResponse.artists:type_name -> laterna.v1.ArtistSummary
+	20, // 2: laterna.v1.GetArtistResponse.artist:type_name -> laterna.v1.Artist
+	21, // 3: laterna.v1.GetArtistResponse.albums:type_name -> laterna.v1.AlbumSummary
+	18, // 4: laterna.v1.ListAlbumsRequest.sort:type_name -> laterna.v1.ItemSort
+	21, // 5: laterna.v1.ListAlbumsResponse.albums:type_name -> laterna.v1.AlbumSummary
+	22, // 6: laterna.v1.GetAlbumResponse.album:type_name -> laterna.v1.Album
+	23, // 7: laterna.v1.GetAlbumResponse.tracks:type_name -> laterna.v1.Track
+	18, // 8: laterna.v1.ListTracksRequest.sort:type_name -> laterna.v1.ItemSort
+	23, // 9: laterna.v1.ListTracksResponse.tracks:type_name -> laterna.v1.Track
+	23, // 10: laterna.v1.GetTrackResponse.track:type_name -> laterna.v1.Track
+	24, // 11: laterna.v1.GetTrackResponse.files:type_name -> laterna.v1.MediaFile
+	15, // 12: laterna.v1.GetLyricsResponse.lines:type_name -> laterna.v1.LyricLine
+	0,  // 13: laterna.v1.GetLyricsResponse.source:type_name -> laterna.v1.LyricsSource
+	25, // 14: laterna.v1.LyricLine.start:type_name -> google.protobuf.Duration
+	23, // 15: laterna.v1.ListArtistTracksResponse.tracks:type_name -> laterna.v1.Track
+	1,  // 16: laterna.v1.MusicService.ListArtists:input_type -> laterna.v1.ListArtistsRequest
+	3,  // 17: laterna.v1.MusicService.GetArtist:input_type -> laterna.v1.GetArtistRequest
+	5,  // 18: laterna.v1.MusicService.ListAlbums:input_type -> laterna.v1.ListAlbumsRequest
+	7,  // 19: laterna.v1.MusicService.GetAlbum:input_type -> laterna.v1.GetAlbumRequest
+	9,  // 20: laterna.v1.MusicService.ListTracks:input_type -> laterna.v1.ListTracksRequest
+	11, // 21: laterna.v1.MusicService.GetTrack:input_type -> laterna.v1.GetTrackRequest
+	16, // 22: laterna.v1.MusicService.ListArtistTracks:input_type -> laterna.v1.ListArtistTracksRequest
+	13, // 23: laterna.v1.MusicService.GetLyrics:input_type -> laterna.v1.GetLyricsRequest
+	2,  // 24: laterna.v1.MusicService.ListArtists:output_type -> laterna.v1.ListArtistsResponse
+	4,  // 25: laterna.v1.MusicService.GetArtist:output_type -> laterna.v1.GetArtistResponse
+	6,  // 26: laterna.v1.MusicService.ListAlbums:output_type -> laterna.v1.ListAlbumsResponse
+	8,  // 27: laterna.v1.MusicService.GetAlbum:output_type -> laterna.v1.GetAlbumResponse
+	10, // 28: laterna.v1.MusicService.ListTracks:output_type -> laterna.v1.ListTracksResponse
+	12, // 29: laterna.v1.MusicService.GetTrack:output_type -> laterna.v1.GetTrackResponse
+	17, // 30: laterna.v1.MusicService.ListArtistTracks:output_type -> laterna.v1.ListArtistTracksResponse
+	14, // 31: laterna.v1.MusicService.GetLyrics:output_type -> laterna.v1.GetLyricsResponse
+	24, // [24:32] is the sub-list for method output_type
+	16, // [16:24] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_music_proto_init() }
@@ -1017,13 +1255,14 @@ func file_laterna_v1_music_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_music_proto_rawDesc), len(file_laterna_v1_music_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   14,
+			NumEnums:      1,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_laterna_v1_music_proto_goTypes,
 		DependencyIndexes: file_laterna_v1_music_proto_depIdxs,
+		EnumInfos:         file_laterna_v1_music_proto_enumTypes,
 		MessageInfos:      file_laterna_v1_music_proto_msgTypes,
 	}.Build()
 	File_laterna_v1_music_proto = out.File

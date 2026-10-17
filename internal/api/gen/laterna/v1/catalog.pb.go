@@ -2307,8 +2307,10 @@ type Track struct {
 	Images   []*Image  `protobuf:"bytes,11,rep,name=images,proto3" json:"images,omitempty"`
 	UserData *UserData `protobuf:"bytes,12,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"`
 	// Unset if the tags do not say.
-	ReplayGain    *ReplayGain            `protobuf:"bytes,13,opt,name=replay_gain,json=replayGain,proto3" json:"replay_gain,omitempty"`
-	AddedAt       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	ReplayGain *ReplayGain            `protobuf:"bytes,13,opt,name=replay_gain,json=replayGain,proto3" json:"replay_gain,omitempty"`
+	AddedAt    *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	// The track has lyrics (MusicService.GetLyrics).
+	HasLyrics     bool `protobuf:"varint,15,opt,name=has_lyrics,json=hasLyrics,proto3" json:"has_lyrics,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2439,6 +2441,13 @@ func (x *Track) GetAddedAt() *timestamppb.Timestamp {
 		return x.AddedAt
 	}
 	return nil
+}
+
+func (x *Track) GetHasLyrics() bool {
+	if x != nil {
+		return x.HasLyrics
+	}
+	return false
 }
 
 // BookSeries is a book series (the volumes of a comic, a manga, a saga). Its poster
@@ -6176,7 +6185,7 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\v_track_gainB\r\n" +
 	"\v_track_peakB\r\n" +
 	"\v_album_gainB\r\n" +
-	"\v_album_peak\"\xf0\x03\n" +
+	"\v_album_peak\"\x8f\x04\n" +
 	"\x05Track\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\balbum_id\x18\x02 \x01(\tR\aalbumId\x12\x1f\n" +
@@ -6195,7 +6204,9 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\tuser_data\x18\f \x01(\v2\x14.laterna.v1.UserDataR\buserData\x127\n" +
 	"\vreplay_gain\x18\r \x01(\v2\x16.laterna.v1.ReplayGainR\n" +
 	"replayGain\x125\n" +
-	"\badded_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\"\x85\x02\n" +
+	"\badded_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12\x1d\n" +
+	"\n" +
+	"has_lyrics\x18\x0f \x01(\bR\thasLyrics\"\x85\x02\n" +
 	"\n" +
 	"BookSeries\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +

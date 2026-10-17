@@ -58,7 +58,7 @@ func (q *Queries) FirstFileOfArtist(ctx context.Context, artistID domain.ID) (Fi
 }
 
 const getTrack = `-- name: GetTrack :one
-SELECT item_id, album_id, artist_id, disc, number, artists, track_gain, track_peak, album_gain, album_peak FROM tracks WHERE item_id = ?
+SELECT item_id, album_id, artist_id, disc, number, artists, track_gain, track_peak, album_gain, album_peak, lyrics FROM tracks WHERE item_id = ?
 `
 
 func (q *Queries) GetTrack(ctx context.Context, itemID domain.ID) (Track, error) {
@@ -75,6 +75,7 @@ func (q *Queries) GetTrack(ctx context.Context, itemID domain.ID) (Track, error)
 		&i.TrackPeak,
 		&i.AlbumGain,
 		&i.AlbumPeak,
+		&i.Lyrics,
 	)
 	return i, err
 }
@@ -206,10 +207,25 @@ func (q *Queries) ListArtistTrackIDs(ctx context.Context, artistID domain.ID) ([
 	return items, nil
 }
 
+const setTrackLyrics = `-- name: SetTrackLyrics :exec
+UPDATE tracks SET lyrics = ? WHERE item_id = ?
+`
+
+type SetTrackLyricsParams struct {
+	Lyrics string
+	ItemID domain.ID
+}
+
+func (q *Queries) SetTrackLyrics(ctx context.Context, arg SetTrackLyricsParams) error {
+	_, err := q.db.ExecContext(ctx, setTrackLyrics, arg.Lyrics, arg.ItemID)
+	return err
+}
+
 const upsertTrack = `-- name: UpsertTrack :exec
 
-INSERT INTO tracks (item_id, album_id, artist_id, disc, number, artists, track_gain, track_peak, album_gain, album_peak)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tracks (item_id, album_id, artist_id, disc, number, artists, track_gain, track_peak, album_gain, album_peak,
+                    lyrics)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (item_id) DO UPDATE
 SET album_id = excluded.album_id,
     artist_id = excluded.artist_id,
@@ -219,7 +235,8 @@ SET album_id = excluded.album_id,
     track_gain = excluded.track_gain,
     track_peak = excluded.track_peak,
     album_gain = excluded.album_gain,
-    album_peak = excluded.album_peak
+    album_peak = excluded.album_peak,
+    lyrics = excluded.lyrics
 `
 
 type UpsertTrackParams struct {
@@ -233,6 +250,7 @@ type UpsertTrackParams struct {
 	TrackPeak sql.NullFloat64
 	AlbumGain sql.NullFloat64
 	AlbumPeak sql.NullFloat64
+	Lyrics    string
 }
 
 // Music: artists, albums, tracks.
@@ -248,6 +266,7 @@ func (q *Queries) UpsertTrack(ctx context.Context, arg UpsertTrackParams) error 
 		arg.TrackPeak,
 		arg.AlbumGain,
 		arg.AlbumPeak,
+		arg.Lyrics,
 	)
 	return err
 }

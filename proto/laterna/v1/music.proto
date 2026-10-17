@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package laterna.v1;
 
+import "google/protobuf/duration.proto";
 import "laterna/v1/catalog.proto";
 
 option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
@@ -41,6 +42,11 @@ service MusicService {
   // ListArtistTracks returns all the present tracks of an artist, album by album (oldest first):
   // enough to play everything, or shuffle everything.
   rpc ListArtistTracks(ListArtistTracksRequest) returns (ListArtistTracksResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetLyrics returns the lyrics of a track (Track.has_lyrics): from a .lrc file next to it, timed
+  // line by line, otherwise from its tags. NOT_FOUND (music.no_lyrics) if it has none.
+  rpc GetLyrics(GetLyricsRequest) returns (GetLyricsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -127,6 +133,34 @@ message GetTrackResponse {
   Track track = 1;
   // By version ("FLAC", "MP3"): the files of one track.
   repeated MediaFile files = 2;
+}
+
+// LyricsSource says where lyrics come from.
+enum LyricsSource {
+  LYRICS_SOURCE_UNSPECIFIED = 0;
+  // A .lrc file next to the track, with the same name.
+  LYRICS_SOURCE_FILE = 1;
+  // The tags of the file (LYRICS, UNSYNCEDLYRICS, ID3 USLT, MP4 lyrics).
+  LYRICS_SOURCE_TAGS = 2;
+}
+
+message GetLyricsRequest {
+  string track_id = 1;
+}
+
+message GetLyricsResponse {
+  // Timed lines (LRC), to follow the playback; otherwise plain lines, an empty one between
+  // stanzas.
+  bool synced = 1;
+  repeated LyricLine lines = 2;
+  LyricsSource source = 3;
+}
+
+// LyricLine is a line of lyrics.
+message LyricLine {
+  // When it is sung; unset for plain lyrics.
+  google.protobuf.Duration start = 1;
+  string text = 2;
 }
 
 message ListArtistTracksRequest {

@@ -106,7 +106,7 @@ func (a *App) placeTrack(ctx context.Context, q store.Q, lib domain.Library, f d
 	if err := q.SetTrack(ctx, domain.Track{
 		ItemID: track.ID, AlbumID: album.ID, ArtistID: artist.ID, Disc: disc, Number: number,
 		Artists: firstNonEmpty(tags.Artist, artistName), TrackGain: tags.TrackGain, TrackPeak: tags.TrackPeak,
-		AlbumGain: tags.AlbumGain, AlbumPeak: tags.AlbumPeak,
+		AlbumGain: tags.AlbumGain, AlbumPeak: tags.AlbumPeak, Lyrics: lyricsSource(f),
 	}); err != nil {
 		return nil, err
 	}

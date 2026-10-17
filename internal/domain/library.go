@@ -142,6 +142,35 @@ type Track struct {
 	// ReplayGain: gain in dB and peak (1 is full scale) for the track and for its album. Nil when
 	// the tags do not say.
 	TrackGain, TrackPeak, AlbumGain, AlbumPeak *float64
+	// Lyrics says where its lyrics are, if it has any.
+	Lyrics LyricsSource
+}
+
+// LyricsSource says where the lyrics of a track come from.
+type LyricsSource string
+
+// Sources of lyrics.
+const (
+	LyricsNone LyricsSource = ""
+	// LyricsFile is a .lrc file next to the track, with the same name. It comes first: a tool
+	// (LRCGET, a tagger) writes it on purpose.
+	LyricsFile LyricsSource = "file"
+	// LyricsTags are the lyrics in the tags of the file (LYRICS, UNSYNCEDLYRICS, ID3 USLT, MP4
+	// lyrics).
+	LyricsTags LyricsSource = "tags"
+)
+
+// Lyrics are the words of a track: timed lines when Synced (LRC), plain lines otherwise.
+type Lyrics struct {
+	Source LyricsSource
+	Synced bool
+	Lines  []LyricLine
+}
+
+// LyricLine is a line of lyrics; Start is when it is sung, zero for unsynced lyrics.
+type LyricLine struct {
+	Start time.Duration
+	Text  string
 }
 
 // PersonRole is what a person did on an item.
