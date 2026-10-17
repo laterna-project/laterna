@@ -22,7 +22,24 @@ enum Access {
   ACCESS_ADMIN = 4;
 }
 
+// ApiTokens says which API tokens may call a method (AuthService.CreateApiToken). A token acts as
+// the profile that created it, within the method's access level.
+enum ApiTokens {
+  // Default value: any token for a method without side effects (idempotency_level
+  // NO_SIDE_EFFECTS), only a full one otherwise.
+  API_TOKENS_UNSPECIFIED = 0;
+  // Any token, read-only ones too: a method that only reads although its idempotency level cannot
+  // say so (a stream).
+  API_TOKENS_READ = 1;
+  // No token: the method manages the credentials of the account (password, passkeys, sessions,
+  // tokens, device logins, accounts, single sign-on) or the profile of the session. A leaked token
+  // can neither lock its owner out nor hand out more access.
+  API_TOKENS_NONE = 2;
+}
+
 extend google.protobuf.MethodOptions {
   // Access level the method requires.
   Access access = 50001;
+  // API tokens the method accepts.
+  ApiTokens api_tokens = 50002;
 }

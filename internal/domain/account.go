@@ -108,6 +108,11 @@ type Session struct {
 	LastUsedAt time.Time
 	ExpiresAt  time.Time
 	LastIP     string
+	// APIToken marks the session of a tool rather than of a device: Device.Name is what it is for,
+	// its profile is the one that created it, and it does not expire. ReadOnly limits it to the
+	// methods that change nothing.
+	APIToken bool
+	ReadOnly bool
 }
 
 // Principal is the caller of an authenticated request.
@@ -116,6 +121,8 @@ type Principal struct {
 	Account   Account
 	// Profile is nil until the session has picked one.
 	Profile *Profile
+	// APIToken and ReadOnly are those of the session (Session.APIToken).
+	APIToken, ReadOnly bool
 }
 
 // Restricted reports a caller on a restricted profile.

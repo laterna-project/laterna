@@ -85,6 +85,64 @@ func (Access) EnumDescriptor() ([]byte, []int) {
 	return file_laterna_v1_options_proto_rawDescGZIP(), []int{0}
 }
 
+// ApiTokens says which API tokens may call a method (AuthService.CreateApiToken). A token acts as
+// the profile that created it, within the method's access level.
+type ApiTokens int32
+
+const (
+	// Default value: any token for a method without side effects (idempotency_level
+	// NO_SIDE_EFFECTS), only a full one otherwise.
+	ApiTokens_API_TOKENS_UNSPECIFIED ApiTokens = 0
+	// Any token, read-only ones too: a method that only reads although its idempotency level cannot
+	// say so (a stream).
+	ApiTokens_API_TOKENS_READ ApiTokens = 1
+	// No token: the method manages the credentials of the account (password, passkeys, sessions,
+	// tokens, device logins, accounts, single sign-on) or the profile of the session. A leaked token
+	// can neither lock its owner out nor hand out more access.
+	ApiTokens_API_TOKENS_NONE ApiTokens = 2
+)
+
+// Enum value maps for ApiTokens.
+var (
+	ApiTokens_name = map[int32]string{
+		0: "API_TOKENS_UNSPECIFIED",
+		1: "API_TOKENS_READ",
+		2: "API_TOKENS_NONE",
+	}
+	ApiTokens_value = map[string]int32{
+		"API_TOKENS_UNSPECIFIED": 0,
+		"API_TOKENS_READ":        1,
+		"API_TOKENS_NONE":        2,
+	}
+)
+
+func (x ApiTokens) Enum() *ApiTokens {
+	p := new(ApiTokens)
+	*p = x
+	return p
+}
+
+func (x ApiTokens) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ApiTokens) Descriptor() protoreflect.EnumDescriptor {
+	return file_laterna_v1_options_proto_enumTypes[1].Descriptor()
+}
+
+func (ApiTokens) Type() protoreflect.EnumType {
+	return &file_laterna_v1_options_proto_enumTypes[1]
+}
+
+func (x ApiTokens) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ApiTokens.Descriptor instead.
+func (ApiTokens) EnumDescriptor() ([]byte, []int) {
+	return file_laterna_v1_options_proto_rawDescGZIP(), []int{1}
+}
+
 var file_laterna_v1_options_proto_extTypes = []protoimpl.ExtensionInfo{
 	{
 		ExtendedType:  (*descriptorpb.MethodOptions)(nil),
@@ -92,6 +150,14 @@ var file_laterna_v1_options_proto_extTypes = []protoimpl.ExtensionInfo{
 		Field:         50001,
 		Name:          "laterna.v1.access",
 		Tag:           "varint,50001,opt,name=access,enum=laterna.v1.Access",
+		Filename:      "laterna/v1/options.proto",
+	},
+	{
+		ExtendedType:  (*descriptorpb.MethodOptions)(nil),
+		ExtensionType: (*ApiTokens)(nil),
+		Field:         50002,
+		Name:          "laterna.v1.api_tokens",
+		Tag:           "varint,50002,opt,name=api_tokens,enum=laterna.v1.ApiTokens",
 		Filename:      "laterna/v1/options.proto",
 	},
 }
@@ -102,6 +168,10 @@ var (
 	//
 	// optional laterna.v1.Access access = 50001;
 	E_Access = &file_laterna_v1_options_proto_extTypes[0]
+	// API tokens the method accepts.
+	//
+	// optional laterna.v1.ApiTokens api_tokens = 50002;
+	E_ApiTokens = &file_laterna_v1_options_proto_extTypes[1]
 )
 
 var File_laterna_v1_options_proto protoreflect.FileDescriptor
@@ -115,8 +185,14 @@ const file_laterna_v1_options_proto_rawDesc = "" +
 	"\rACCESS_PUBLIC\x10\x01\x12\x12\n" +
 	"\x0eACCESS_ACCOUNT\x10\x02\x12\x12\n" +
 	"\x0eACCESS_PROFILE\x10\x03\x12\x10\n" +
-	"\fACCESS_ADMIN\x10\x04:L\n" +
-	"\x06access\x12\x1e.google.protobuf.MethodOptions\x18ц\x03 \x01(\x0e2\x12.laterna.v1.AccessR\x06accessBJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
+	"\fACCESS_ADMIN\x10\x04*Q\n" +
+	"\tApiTokens\x12\x1a\n" +
+	"\x16API_TOKENS_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fAPI_TOKENS_READ\x10\x01\x12\x13\n" +
+	"\x0fAPI_TOKENS_NONE\x10\x02:L\n" +
+	"\x06access\x12\x1e.google.protobuf.MethodOptions\x18ц\x03 \x01(\x0e2\x12.laterna.v1.AccessR\x06access:V\n" +
+	"\n" +
+	"api_tokens\x12\x1e.google.protobuf.MethodOptions\x18҆\x03 \x01(\x0e2\x15.laterna.v1.ApiTokensR\tapiTokensBJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
 var (
 	file_laterna_v1_options_proto_rawDescOnce sync.Once
@@ -130,18 +206,21 @@ func file_laterna_v1_options_proto_rawDescGZIP() []byte {
 	return file_laterna_v1_options_proto_rawDescData
 }
 
-var file_laterna_v1_options_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_laterna_v1_options_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_laterna_v1_options_proto_goTypes = []any{
 	(Access)(0),                        // 0: laterna.v1.Access
-	(*descriptorpb.MethodOptions)(nil), // 1: google.protobuf.MethodOptions
+	(ApiTokens)(0),                     // 1: laterna.v1.ApiTokens
+	(*descriptorpb.MethodOptions)(nil), // 2: google.protobuf.MethodOptions
 }
 var file_laterna_v1_options_proto_depIdxs = []int32{
-	1, // 0: laterna.v1.access:extendee -> google.protobuf.MethodOptions
-	0, // 1: laterna.v1.access:type_name -> laterna.v1.Access
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	1, // [1:2] is the sub-list for extension type_name
-	0, // [0:1] is the sub-list for extension extendee
+	2, // 0: laterna.v1.access:extendee -> google.protobuf.MethodOptions
+	2, // 1: laterna.v1.api_tokens:extendee -> google.protobuf.MethodOptions
+	0, // 2: laterna.v1.access:type_name -> laterna.v1.Access
+	1, // 3: laterna.v1.api_tokens:type_name -> laterna.v1.ApiTokens
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	2, // [2:4] is the sub-list for extension type_name
+	0, // [0:2] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
@@ -155,9 +234,9 @@ func file_laterna_v1_options_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_options_proto_rawDesc), len(file_laterna_v1_options_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   0,
-			NumExtensions: 1,
+			NumExtensions: 2,
 			NumServices:   0,
 		},
 		GoTypes:           file_laterna_v1_options_proto_goTypes,

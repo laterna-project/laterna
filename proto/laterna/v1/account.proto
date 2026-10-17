@@ -24,15 +24,18 @@ service AccountService {
   // CreateAccount creates an account with a profile of the same name.
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse) {
     option (access) = ACCESS_ADMIN;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // UpdateAccount changes an account. A new password or disabling the account signs out all its
   // devices.
   rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse) {
     option (access) = ACCESS_ADMIN;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // DeleteAccount deletes an account, its profiles and their data (history, favorites).
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse) {
     option (access) = ACCESS_ADMIN;
+    option (api_tokens) = API_TOKENS_NONE;
   }
 }
 

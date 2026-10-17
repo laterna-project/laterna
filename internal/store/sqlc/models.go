@@ -516,6 +516,8 @@ type Session struct {
 	LastUsedAt    int64
 	ExpiresAt     int64
 	LastIp        string
+	Kind          string
+	ReadOnly      int64
 }
 
 type Setting struct {

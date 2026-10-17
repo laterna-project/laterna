@@ -1151,13 +1151,13 @@ const file_laterna_v1_profile_proto_rawDesc = "" +
 	"\x19SUBTITLE_MODE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14SUBTITLE_MODE_ALWAYS\x10\x01\x12\x18\n" +
 	"\x14SUBTITLE_MODE_FORCED\x10\x02\x12\x15\n" +
-	"\x11SUBTITLE_MODE_OFF\x10\x032\x85\x06\n" +
+	"\x11SUBTITLE_MODE_OFF\x10\x032\x95\x06\n" +
 	"\x0eProfileService\x12Z\n" +
-	"\fListProfiles\x12\x1f.laterna.v1.ListProfilesRequest\x1a .laterna.v1.ListProfilesResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12Z\n" +
-	"\rCreateProfile\x12 .laterna.v1.CreateProfileRequest\x1a!.laterna.v1.CreateProfileResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
-	"\rUpdateProfile\x12 .laterna.v1.UpdateProfileRequest\x1a!.laterna.v1.UpdateProfileResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
-	"\rDeleteProfile\x12 .laterna.v1.DeleteProfileRequest\x1a!.laterna.v1.DeleteProfileResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
-	"\rSelectProfile\x12 .laterna.v1.SelectProfileRequest\x1a!.laterna.v1.SelectProfileResponse\"\x04\x88\xb5\x18\x02\x12N\n" +
+	"\fListProfiles\x12\x1f.laterna.v1.ListProfilesRequest\x1a .laterna.v1.ListProfilesResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12^\n" +
+	"\rCreateProfile\x12 .laterna.v1.CreateProfileRequest\x1a!.laterna.v1.CreateProfileResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12^\n" +
+	"\rUpdateProfile\x12 .laterna.v1.UpdateProfileRequest\x1a!.laterna.v1.UpdateProfileResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12^\n" +
+	"\rDeleteProfile\x12 .laterna.v1.DeleteProfileRequest\x1a!.laterna.v1.DeleteProfileResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12^\n" +
+	"\rSelectProfile\x12 .laterna.v1.SelectProfileRequest\x1a!.laterna.v1.SelectProfileResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12N\n" +
 	"\vSetLanguage\x12\x1e.laterna.v1.SetLanguageRequest\x1a\x1f.laterna.v1.SetLanguageResponse\x12o\n" +
 	"\x16SetSubtitlePreferences\x12).laterna.v1.SetSubtitlePreferencesRequest\x1a*.laterna.v1.SetSubtitlePreferencesResponse\x12f\n" +
 	"\x13SetAudioPreferences\x12&.laterna.v1.SetAudioPreferencesRequest\x1a'.laterna.v1.SetAudioPreferencesResponseBJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"

@@ -37,6 +37,8 @@ var activityKinds = map[domain.ActivityKind]laternav1.ActivityKind{
 	domain.ActivityPartyStarted:    laternav1.ActivityKind_ACTIVITY_KIND_PARTY_STARTED,
 	domain.ActivityImport:          laternav1.ActivityKind_ACTIVITY_KIND_IMPORT,
 	domain.ActivityRequest:         laternav1.ActivityKind_ACTIVITY_KIND_REQUEST,
+	domain.ActivityAPITokenCreated: laternav1.ActivityKind_ACTIVITY_KIND_API_TOKEN_CREATED,
+	domain.ActivityAPITokenRevoked: laternav1.ActivityKind_ACTIVITY_KIND_API_TOKEN_REVOKED,
 }
 
 func optID(id *domain.ID) string {
@@ -85,7 +87,7 @@ func (s *ActivityService) ListDevices(ctx context.Context, _ *connect.Request[la
 				Name: se.Device.Name, Client: se.Device.Client, ClientVersion: se.Device.ClientVersion, Platform: se.Device.Platform,
 			},
 			CreatedAt: timestamppb.New(se.CreatedAt), LastUsedAt: timestamppb.New(se.LastUsedAt), LastIp: se.LastIP,
-			Current: se.ID == current,
+			Current: se.ID == current, ApiToken: se.APIToken, ReadOnly: se.ReadOnly,
 		})
 	}
 	return connect.NewResponse(resp), nil

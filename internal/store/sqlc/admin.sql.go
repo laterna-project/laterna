@@ -77,7 +77,7 @@ func (q *Queries) InsertActivity(ctx context.Context, arg InsertActivityParams) 
 }
 
 const listAllSessions = `-- name: ListAllSessions :many
-SELECT s.id, s.account_id, s.profile_id, s.token_hash, s.device_name, s.client, s.client_version, s.platform, s.created_at, s.last_used_at, s.expires_at, s.last_ip, a.username, CAST(coalesce(p.name, '') AS TEXT) AS profile_name
+SELECT s.id, s.account_id, s.profile_id, s.token_hash, s.device_name, s.client, s.client_version, s.platform, s.created_at, s.last_used_at, s.expires_at, s.last_ip, s.kind, s.read_only, a.username, CAST(coalesce(p.name, '') AS TEXT) AS profile_name
 FROM sessions s
 JOIN accounts a ON a.id = s.account_id
 LEFT JOIN profiles p ON p.id = s.profile_id
@@ -98,6 +98,8 @@ type ListAllSessionsRow struct {
 	LastUsedAt    int64
 	ExpiresAt     int64
 	LastIp        string
+	Kind          string
+	ReadOnly      int64
 	Username      string
 	ProfileName   string
 }
@@ -124,6 +126,8 @@ func (q *Queries) ListAllSessions(ctx context.Context, expiresAt int64) ([]ListA
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.LastIp,
+			&i.Kind,
+			&i.ReadOnly,
 			&i.Username,
 			&i.ProfileName,
 		); err != nil {

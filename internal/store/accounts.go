@@ -239,10 +239,15 @@ func nullString(s string) sql.NullString { return sql.NullString{String: s, Vali
 
 // CreateSession stores a session (no profile picked yet) and the hash of its token.
 func (q Q) CreateSession(ctx context.Context, s domain.Session, tokenHash string) error {
+	kind := "device"
+	if s.APIToken {
+		kind = "api"
+	}
 	return translate(q.q.InsertSession(ctx, sqlc.InsertSessionParams{
-		ID: s.ID, AccountID: s.AccountID, TokenHash: tokenHash,
+		ID: s.ID, AccountID: s.AccountID, ProfileID: s.ProfileID, TokenHash: tokenHash,
 		DeviceName: s.Device.Name, Client: s.Device.Client, ClientVersion: s.Device.ClientVersion, Platform: s.Device.Platform,
 		CreatedAt: toMillis(s.CreatedAt), LastUsedAt: toMillis(s.LastUsedAt), ExpiresAt: toMillis(s.ExpiresAt), LastIp: s.LastIP,
+		Kind: kind, ReadOnly: toInt(s.ReadOnly),
 	}))
 }
 
@@ -312,6 +317,24 @@ func sessionFromRow(r sqlc.Session) domain.Session {
 		ID: r.ID, AccountID: r.AccountID, ProfileID: r.ProfileID,
 		Device:    domain.Device{Name: r.DeviceName, Client: r.Client, ClientVersion: r.ClientVersion, Platform: r.Platform},
 		CreatedAt: fromMillis(r.CreatedAt), LastUsedAt: fromMillis(r.LastUsedAt), ExpiresAt: fromMillis(r.ExpiresAt),
-		LastIP: r.LastIp,
+		LastIP: r.LastIp, APIToken: r.Kind == "api", ReadOnly: r.ReadOnly == 1,
 	}
+}
+
+// APITokens lists the API tokens of an account, the most recently used first.
+func (q Q) APITokens(ctx context.Context, accountID domain.ID) ([]domain.Session, error) {
+	rows, err := q.q.ListApiTokens(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Session, len(rows))
+	for i, r := range rows {
+		out[i] = sessionFromRow(r)
+	}
+	return out, nil
+}
+
+// CountAPITokens counts the API tokens of an account.
+func (q Q) CountAPITokens(ctx context.Context, accountID domain.ID) (int64, error) {
+	return q.q.CountApiTokens(ctx, accountID)
 }

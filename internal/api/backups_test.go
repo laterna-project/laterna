@@ -90,6 +90,17 @@ func TestBackups(t *testing.T) {
 	if code, _ := get(manual.GetName(), ""); code != http.StatusUnauthorized {
 		t.Errorf("download without a token: %d", code)
 	}
+	// An API token: a full one for a backup script, never a read-only one (a backup holds secrets).
+	auth := laternav1connect.NewAuthServiceClient(srv.Client(), srv.URL)
+	for readOnly, want := range map[bool]int{false: http.StatusOK, true: http.StatusForbidden} {
+		created, err := auth.CreateApiToken(ctx, authed(&laternav1.CreateApiTokenRequest{Name: "Backups", ReadOnly: readOnly}, token))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if code, _ := get(manual.GetName(), created.Msg.GetToken()); code != want {
+			t.Errorf("download with an API token (read-only %v): %d", readOnly, code)
+		}
+	}
 	for _, name := range []string{"laterna.db", "..%2Flaterna.db", "laterna-manual-20260101T000000Z.db"} {
 		if code, _ := get(name, token); code != http.StatusNotFound {
 			t.Errorf("download of %s: %d", name, code)

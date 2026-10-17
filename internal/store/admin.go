@@ -135,7 +135,7 @@ func (q Q) AllSessions(ctx context.Context, now time.Time) ([]Device, error) {
 			Session: sessionFromRow(sqlc.Session{
 				ID: r.ID, AccountID: r.AccountID, ProfileID: r.ProfileID, DeviceName: r.DeviceName, Client: r.Client,
 				ClientVersion: r.ClientVersion, Platform: r.Platform, CreatedAt: r.CreatedAt, LastUsedAt: r.LastUsedAt,
-				ExpiresAt: r.ExpiresAt, LastIp: r.LastIp,
+				ExpiresAt: r.ExpiresAt, LastIp: r.LastIp, Kind: r.Kind, ReadOnly: r.ReadOnly,
 			}),
 			Username: r.Username, ProfileName: r.ProfileName,
 		}

@@ -656,12 +656,12 @@ const file_laterna_v1_account_proto_rawDesc = "" +
 	"\x14DeleteAccountRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"\x17\n" +
-	"\x15DeleteAccountResponse2\x80\x03\n" +
+	"\x15DeleteAccountResponse2\x8c\x03\n" +
 	"\x0eAccountService\x12Z\n" +
-	"\fListAccounts\x12\x1f.laterna.v1.ListAccountsRequest\x1a .laterna.v1.ListAccountsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12Z\n" +
-	"\rCreateAccount\x12 .laterna.v1.CreateAccountRequest\x1a!.laterna.v1.CreateAccountResponse\"\x04\x88\xb5\x18\x04\x12Z\n" +
-	"\rUpdateAccount\x12 .laterna.v1.UpdateAccountRequest\x1a!.laterna.v1.UpdateAccountResponse\"\x04\x88\xb5\x18\x04\x12Z\n" +
-	"\rDeleteAccount\x12 .laterna.v1.DeleteAccountRequest\x1a!.laterna.v1.DeleteAccountResponse\"\x04\x88\xb5\x18\x04BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
+	"\fListAccounts\x12\x1f.laterna.v1.ListAccountsRequest\x1a .laterna.v1.ListAccountsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12^\n" +
+	"\rCreateAccount\x12 .laterna.v1.CreateAccountRequest\x1a!.laterna.v1.CreateAccountResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02\x12^\n" +
+	"\rUpdateAccount\x12 .laterna.v1.UpdateAccountRequest\x1a!.laterna.v1.UpdateAccountResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02\x12^\n" +
+	"\rDeleteAccount\x12 .laterna.v1.DeleteAccountRequest\x1a!.laterna.v1.DeleteAccountResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
 var (
 	file_laterna_v1_account_proto_rawDescOnce sync.Once

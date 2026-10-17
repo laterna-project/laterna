@@ -50,6 +50,9 @@ const (
 	ActivityKind_ACTIVITY_KIND_IMPORT ActivityKind = 18
 	// A request created, approved, declined or available (RequestService).
 	ActivityKind_ACTIVITY_KIND_REQUEST ActivityKind = 19
+	// An API token created or revoked (AuthService.CreateApiToken).
+	ActivityKind_ACTIVITY_KIND_API_TOKEN_CREATED ActivityKind = 20
+	ActivityKind_ACTIVITY_KIND_API_TOKEN_REVOKED ActivityKind = 21
 )
 
 // Enum value maps for ActivityKind.
@@ -75,28 +78,32 @@ var (
 		17: "ACTIVITY_KIND_PARTY_STARTED",
 		18: "ACTIVITY_KIND_IMPORT",
 		19: "ACTIVITY_KIND_REQUEST",
+		20: "ACTIVITY_KIND_API_TOKEN_CREATED",
+		21: "ACTIVITY_KIND_API_TOKEN_REVOKED",
 	}
 	ActivityKind_value = map[string]int32{
-		"ACTIVITY_KIND_UNSPECIFIED":      0,
-		"ACTIVITY_KIND_LOGIN":            1,
-		"ACTIVITY_KIND_LOGIN_FAILED":     2,
-		"ACTIVITY_KIND_ACCOUNT_CREATED":  3,
-		"ACTIVITY_KIND_ACCOUNT_UPDATED":  4,
-		"ACTIVITY_KIND_ACCOUNT_DELETED":  5,
-		"ACTIVITY_KIND_SESSION_REVOKED":  6,
-		"ACTIVITY_KIND_LIBRARY_CREATED":  7,
-		"ACTIVITY_KIND_LIBRARY_UPDATED":  8,
-		"ACTIVITY_KIND_LIBRARY_DELETED":  9,
-		"ACTIVITY_KIND_LIBRARY_SCANNED":  10,
-		"ACTIVITY_KIND_PLAYBACK_STARTED": 11,
-		"ACTIVITY_KIND_PLAYBACK_STOPPED": 12,
-		"ACTIVITY_KIND_SETTINGS_UPDATED": 13,
-		"ACTIVITY_KIND_INTEGRATION":      14,
-		"ACTIVITY_KIND_WEBHOOK":          15,
-		"ACTIVITY_KIND_JOB_FAILED":       16,
-		"ACTIVITY_KIND_PARTY_STARTED":    17,
-		"ACTIVITY_KIND_IMPORT":           18,
-		"ACTIVITY_KIND_REQUEST":          19,
+		"ACTIVITY_KIND_UNSPECIFIED":       0,
+		"ACTIVITY_KIND_LOGIN":             1,
+		"ACTIVITY_KIND_LOGIN_FAILED":      2,
+		"ACTIVITY_KIND_ACCOUNT_CREATED":   3,
+		"ACTIVITY_KIND_ACCOUNT_UPDATED":   4,
+		"ACTIVITY_KIND_ACCOUNT_DELETED":   5,
+		"ACTIVITY_KIND_SESSION_REVOKED":   6,
+		"ACTIVITY_KIND_LIBRARY_CREATED":   7,
+		"ACTIVITY_KIND_LIBRARY_UPDATED":   8,
+		"ACTIVITY_KIND_LIBRARY_DELETED":   9,
+		"ACTIVITY_KIND_LIBRARY_SCANNED":   10,
+		"ACTIVITY_KIND_PLAYBACK_STARTED":  11,
+		"ACTIVITY_KIND_PLAYBACK_STOPPED":  12,
+		"ACTIVITY_KIND_SETTINGS_UPDATED":  13,
+		"ACTIVITY_KIND_INTEGRATION":       14,
+		"ACTIVITY_KIND_WEBHOOK":           15,
+		"ACTIVITY_KIND_JOB_FAILED":        16,
+		"ACTIVITY_KIND_PARTY_STARTED":     17,
+		"ACTIVITY_KIND_IMPORT":            18,
+		"ACTIVITY_KIND_REQUEST":           19,
+		"ACTIVITY_KIND_API_TOKEN_CREATED": 20,
+		"ACTIVITY_KIND_API_TOKEN_REVOKED": 21,
 	}
 )
 
@@ -377,7 +384,11 @@ type DeviceSession struct {
 	LastUsedAt  *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
 	LastIp      string                 `protobuf:"bytes,8,opt,name=last_ip,json=lastIp,proto3" json:"last_ip,omitempty"`
 	// True for the device making the call.
-	Current       bool `protobuf:"varint,9,opt,name=current,proto3" json:"current,omitempty"`
+	Current bool `protobuf:"varint,9,opt,name=current,proto3" json:"current,omitempty"`
+	// An API token (AuthService.CreateApiToken) rather than a device: device is its name, and
+	// read_only says whether it only reads.
+	ApiToken      bool `protobuf:"varint,10,opt,name=api_token,json=apiToken,proto3" json:"api_token,omitempty"`
+	ReadOnly      bool `protobuf:"varint,11,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -471,6 +482,20 @@ func (x *DeviceSession) GetLastIp() string {
 func (x *DeviceSession) GetCurrent() bool {
 	if x != nil {
 		return x.Current
+	}
+	return false
+}
+
+func (x *DeviceSession) GetApiToken() bool {
+	if x != nil {
+		return x.ApiToken
+	}
+	return false
+}
+
+func (x *DeviceSession) GetReadOnly() bool {
+	if x != nil {
+		return x.ReadOnly
 	}
 	return false
 }
@@ -1046,7 +1071,7 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"account_id\x18\x04 \x01(\tR\taccountId\"s\n" +
 	"\x14ListActivityResponse\x123\n" +
 	"\aentries\x18\x01 \x03(\v2\x19.laterna.v1.ActivityEntryR\aentries\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xe4\x02\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x9e\x03\n" +
 	"\rDeviceSession\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -1060,7 +1085,10 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\flast_used_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"lastUsedAt\x12\x17\n" +
 	"\alast_ip\x18\b \x01(\tR\x06lastIp\x12\x18\n" +
-	"\acurrent\x18\t \x01(\bR\acurrent\"\x14\n" +
+	"\acurrent\x18\t \x01(\bR\acurrent\x12\x1b\n" +
+	"\tapi_token\x18\n" +
+	" \x01(\bR\bapiToken\x12\x1b\n" +
+	"\tread_only\x18\v \x01(\bR\breadOnly\"\x14\n" +
 	"\x12ListDevicesRequest\"J\n" +
 	"\x13ListDevicesResponse\x123\n" +
 	"\adevices\x18\x01 \x03(\v2\x19.laterna.v1.DeviceSessionR\adevices\"4\n" +
@@ -1103,7 +1131,7 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x12EndPlaybackRequest\x12\x1f\n" +
 	"\vplayback_id\x18\x01 \x01(\tR\n" +
 	"playbackId\"\x15\n" +
-	"\x13EndPlaybackResponse*\x98\x05\n" +
+	"\x13EndPlaybackResponse*\xe2\x05\n" +
 	"\fActivityKind\x12\x1d\n" +
 	"\x19ACTIVITY_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ACTIVITY_KIND_LOGIN\x10\x01\x12\x1e\n" +
@@ -1125,7 +1153,9 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x18ACTIVITY_KIND_JOB_FAILED\x10\x10\x12\x1f\n" +
 	"\x1bACTIVITY_KIND_PARTY_STARTED\x10\x11\x12\x18\n" +
 	"\x14ACTIVITY_KIND_IMPORT\x10\x12\x12\x19\n" +
-	"\x15ACTIVITY_KIND_REQUEST\x10\x132\xd4\x03\n" +
+	"\x15ACTIVITY_KIND_REQUEST\x10\x13\x12#\n" +
+	"\x1fACTIVITY_KIND_API_TOKEN_CREATED\x10\x14\x12#\n" +
+	"\x1fACTIVITY_KIND_API_TOKEN_REVOKED\x10\x152\xd4\x03\n" +
 	"\x0fActivityService\x12Z\n" +
 	"\fListActivity\x12\x1f.laterna.v1.ListActivityRequest\x1a .laterna.v1.ListActivityResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +
 	"\vListDevices\x12\x1e.laterna.v1.ListDevicesRequest\x1a\x1f.laterna.v1.ListDevicesResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +

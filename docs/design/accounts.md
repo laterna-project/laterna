@@ -25,6 +25,30 @@ reachable from the Internet. It serves a household: several people often share o
 
 How each method declares its access level is described in [API](api.md).
 
+## API tokens
+
+Home Assistant, a dashboard or a script call the API with an **API token** rather than with the
+session of a device (`AuthService.CreateApiToken`, `ListApiTokens`, `RevokeApiToken`).
+
+- A token is a session of its own kind (`sessions.kind = 'api'`): same secret format, only its
+  hash kept, sent as `Authorization: Bearer`. It is named after what it is for and acts as the
+  profile that created it, within the access level of each method: a token made on an
+  administrator's unrestricted profile reaches the administration.
+- It **does not expire** and is never extended. It goes away when it is revoked, and like every
+  other session when the password changes or the account is disabled. The secret is shown once.
+- A **read-only** token only calls the methods that change nothing (`idempotency_level =
+  NO_SIDE_EFFECTS`), plus the event stream. It cannot download a database backup either: a backup
+  holds every secret of the server.
+- **No token** calls a method that manages credentials or profiles: password, passkeys,
+  sessions, tokens, device logins, accounts, single sign-on, the metrics token, choosing or
+  editing a profile. A leaked token can neither lock its owner out nor hand out more access.
+  The contract declares it per method with the `api_tokens` option (`options.proto`), next to
+  `access`: `API_TOKENS_NONE`, or `API_TOKENS_READ` for a read-only method whose idempotency level
+  cannot say so (a stream).
+- They are listed apart from the devices, with their last use and address; the administrators'
+  list of all devices shows them with an `api_token` flag. 50 tokens per account at most, never
+  from a restricted profile.
+
 ## Managed accounts
 
 Administrators manage accounts through `AccountService`: create (with a profile of the same

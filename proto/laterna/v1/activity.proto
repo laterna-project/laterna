@@ -63,6 +63,9 @@ enum ActivityKind {
   ACTIVITY_KIND_IMPORT = 18;
   // A request created, approved, declined or available (RequestService).
   ACTIVITY_KIND_REQUEST = 19;
+  // An API token created or revoked (AuthService.CreateApiToken).
+  ACTIVITY_KIND_API_TOKEN_CREATED = 20;
+  ACTIVITY_KIND_API_TOKEN_REVOKED = 21;
 }
 
 message ActivityEntry {
@@ -111,6 +114,10 @@ message DeviceSession {
   string last_ip = 8;
   // True for the device making the call.
   bool current = 9;
+  // An API token (AuthService.CreateApiToken) rather than a device: device is its name, and
+  // read_only says whether it only reads.
+  bool api_token = 10;
+  bool read_only = 11;
 }
 
 message ListDevicesRequest {}
