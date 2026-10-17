@@ -4,6 +4,7 @@ package laterna.v1;
 
 import "google/protobuf/timestamp.proto";
 import "laterna/v1/catalog.proto";
+import "laterna/v1/options.proto";
 import "laterna/v1/text.proto";
 
 option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
@@ -55,7 +56,114 @@ service NotificationService {
   rpc UnsubscribePush(UnsubscribePushRequest) returns (UnsubscribePushResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // Alerts tell a Discord channel, an ntfy topic or any web service (a JSON webhook: Home
+  // Assistant, a script) what happens on the server, for the whole household: requests, new
+  // episodes, playbacks, problems. They are entries of the activity log, written in the server's
+  // language, and are set up by administrators; a channel on the local network is fine. A message
+  // that cannot be delivered is tried again three times, then given up: the channel says why.
+  //
+  // The webhook receives a JSON object, signed when a secret is set (header
+  // "X-Laterna-Signature: sha256=<HMAC-SHA256 of the body, in hex>"):
+  //
+  //   {"server": {"id": "...", "name": "..."}, "category": "requests", "kind": "request",
+  //    "text": "<the entry, in the server's language>", "key": "activity....", "params": {...},
+  //    "warning": false, "at": "2026-10-18T20:15:00Z", "item_id": "..."}
+  //
+  // category is the AlertCategory in lower case without its prefix, kind the ActivityKind in the
+  // same form, key and params the text before it is written (Text); item_id is left out when there
+  // is none.
+
+  // ListAlertChannels lists the three channels and how their last messages went.
+  rpc ListAlertChannels(ListAlertChannelsRequest) returns (ListAlertChannelsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (access) = ACCESS_ADMIN;
+  }
+  // SetAlertChannel sets up a channel. A Discord webhook must be one of discord.com; the other two
+  // take any http or https address.
+  rpc SetAlertChannel(SetAlertChannelRequest) returns (SetAlertChannelResponse) {
+    option (access) = ACCESS_ADMIN;
+    option (api_tokens) = API_TOKENS_NONE;
+  }
+  // TestAlertChannel sends a test message to a channel set up, and waits for it to arrive:
+  // FAILED_PRECONDITION (alert.delivery_failed) if it does not.
+  rpc TestAlertChannel(TestAlertChannelRequest) returns (TestAlertChannelResponse) {
+    option (access) = ACCESS_ADMIN;
+  }
 }
+
+// AlertChannelKind is where alerts go.
+enum AlertChannelKind {
+  ALERT_CHANNEL_KIND_UNSPECIFIED = 0;
+  // A Discord webhook.
+  ALERT_CHANNEL_KIND_DISCORD = 1;
+  // An ntfy topic, on ntfy.sh or a server of one's own.
+  ALERT_CHANNEL_KIND_NTFY = 2;
+  // Any web service, which receives a JSON object.
+  ALERT_CHANNEL_KIND_WEBHOOK = 3;
+}
+
+// AlertCategory says what an alert is about.
+enum AlertCategory {
+  ALERT_CATEGORY_UNSPECIFIED = 0;
+  // A request created, approved, declined, available or failed.
+  ALERT_CATEGORY_REQUESTS = 1;
+  // Episodes that arrived, one message per series once it has been quiet for a while.
+  ALERT_CATEGORY_NEW_EPISODES = 2;
+  // A playback that starts: who watches or listens to what, on which device.
+  ALERT_CATEGORY_PLAYBACK = 3;
+  // What is worth a look: a refused sign-in, a background job that failed.
+  ALERT_CATEGORY_PROBLEMS = 4;
+}
+
+// AlertChannel is a channel, without its secrets.
+message AlertChannel {
+  AlertChannelKind kind = 1;
+  // False until it is set up, or while it is paused.
+  bool enabled = 2;
+  // Where it goes, shortened before its secret part: "discord.com/api/webhooks/1234…",
+  // "ntfy.sh/laterna", "homeassistant.local:8123/api/webhook/…"; empty if it is not set up.
+  string target = 3;
+  repeated AlertCategory categories = 4;
+  // ntfy: an access token is set. Webhook: a signing secret is set.
+  bool has_token = 5;
+  // Last message delivered; unset if none yet.
+  google.protobuf.Timestamp last_sent_at = 6;
+  // Why the last message could not be delivered (alert.delivery_failed, alert.unreachable...);
+  // unset if it was, or before the first one.
+  Text last_error = 7;
+  google.protobuf.Timestamp last_error_at = 8;
+}
+
+message ListAlertChannelsRequest {}
+
+message ListAlertChannelsResponse {
+  // Discord, ntfy and the webhook, in this order.
+  repeated AlertChannel channels = 1;
+}
+
+message SetAlertChannelRequest {
+  AlertChannelKind kind = 1;
+  bool enabled = 2;
+  // Discord: the webhook URL of the channel. ntfy: the URL of the topic ("https://ntfy.sh/laterna").
+  // Webhook: where the JSON is POSTed. Unset keeps the one set; empty removes the channel.
+  optional string url = 3;
+  // ntfy: an access token, sent as "Authorization: Bearer". Webhook: the secret that signs each
+  // body. Unset keeps the one set; empty removes it. Discord takes none.
+  optional string token = 4;
+  // At least one when the channel is enabled.
+  repeated AlertCategory categories = 5;
+}
+
+message SetAlertChannelResponse {
+  AlertChannel channel = 1;
+}
+
+message TestAlertChannelRequest {
+  AlertChannelKind kind = 1;
+}
+
+message TestAlertChannelResponse {}
 
 enum NotificationKind {
   NOTIFICATION_KIND_UNSPECIFIED = 0;

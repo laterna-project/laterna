@@ -111,3 +111,81 @@ func (s *NotificationService) UnsubscribePush(ctx context.Context, _ *connect.Re
 	}
 	return connect.NewResponse(&laternav1.UnsubscribePushResponse{}), nil
 }
+
+var alertChannelKinds = map[domain.AlertChannelKind]laternav1.AlertChannelKind{
+	domain.AlertDiscord: laternav1.AlertChannelKind_ALERT_CHANNEL_KIND_DISCORD,
+	domain.AlertNtfy:    laternav1.AlertChannelKind_ALERT_CHANNEL_KIND_NTFY,
+	domain.AlertWebhook: laternav1.AlertChannelKind_ALERT_CHANNEL_KIND_WEBHOOK,
+}
+
+var alertCategories = map[domain.AlertCategory]laternav1.AlertCategory{
+	domain.AlertRequests:    laternav1.AlertCategory_ALERT_CATEGORY_REQUESTS,
+	domain.AlertNewEpisodes: laternav1.AlertCategory_ALERT_CATEGORY_NEW_EPISODES,
+	domain.AlertPlayback:    laternav1.AlertCategory_ALERT_CATEGORY_PLAYBACK,
+	domain.AlertProblems:    laternav1.AlertCategory_ALERT_CATEGORY_PROBLEMS,
+}
+
+func alertKindFromMsg(k laternav1.AlertChannelKind) domain.AlertChannelKind {
+	for d, m := range alertChannelKinds {
+		if m == k {
+			return d
+		}
+	}
+	return ""
+}
+
+func alertChannelMsg(ctx context.Context, c domain.AlertChannel) *laternav1.AlertChannel {
+	msg := &laternav1.AlertChannel{
+		Kind: alertChannelKinds[c.Kind], Enabled: c.Enabled, Target: app.AlertTarget(c), HasToken: c.Token != "",
+	}
+	for _, cat := range c.Categories {
+		msg.Categories = append(msg.Categories, alertCategories[cat])
+	}
+	if c.LastSentAt != nil {
+		msg.LastSentAt = timestamppb.New(*c.LastSentAt)
+	}
+	if c.LastError != nil {
+		msg.LastError = textMsg(ctx, *c.LastError)
+	}
+	if c.LastErrorAt != nil {
+		msg.LastErrorAt = timestamppb.New(*c.LastErrorAt)
+	}
+	return msg
+}
+
+// ListAlertChannels lists the alert channels.
+func (s *NotificationService) ListAlertChannels(ctx context.Context, _ *connect.Request[laternav1.ListAlertChannelsRequest]) (*connect.Response[laternav1.ListAlertChannelsResponse], error) {
+	resp := &laternav1.ListAlertChannelsResponse{}
+	for _, c := range s.app.AlertChannels() {
+		resp.Channels = append(resp.Channels, alertChannelMsg(ctx, c))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// SetAlertChannel sets up an alert channel.
+func (s *NotificationService) SetAlertChannel(ctx context.Context, req *connect.Request[laternav1.SetAlertChannelRequest]) (*connect.Response[laternav1.SetAlertChannelResponse], error) {
+	m := req.Msg
+	ch := app.AlertChanges{Enabled: m.GetEnabled(), URL: m.Url, Token: m.Token}
+	for _, cat := range m.GetCategories() {
+		found := domain.AlertCategory("unknown")
+		for d, v := range alertCategories {
+			if v == cat {
+				found = d
+			}
+		}
+		ch.Categories = append(ch.Categories, found)
+	}
+	c, err := s.app.SetAlertChannel(ctx, principal(ctx), alertKindFromMsg(m.GetKind()), ch)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.SetAlertChannelResponse{Channel: alertChannelMsg(ctx, c)}), nil
+}
+
+// TestAlertChannel sends a test message to an alert channel.
+func (s *NotificationService) TestAlertChannel(ctx context.Context, req *connect.Request[laternav1.TestAlertChannelRequest]) (*connect.Response[laternav1.TestAlertChannelResponse], error) {
+	if err := s.app.TestAlertChannel(ctx, alertKindFromMsg(req.Msg.GetKind())); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.TestAlertChannelResponse{}), nil
+}

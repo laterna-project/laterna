@@ -77,6 +77,7 @@ const (
 	ActivityRequest         ActivityKind = "request"
 	ActivityAPITokenCreated ActivityKind = "api_token.created"
 	ActivityAPITokenRevoked ActivityKind = "api_token.revoked"
+	ActivityEpisodesArrived ActivityKind = "episodes.arrived"
 )
 
 // Activity is one entry of the activity log: what happened, who did it, to what.

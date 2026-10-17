@@ -1,4 +1,4 @@
--- name: InsertActivity :exec
+-- name: InsertActivity :execlastid
 INSERT INTO activity (at, kind, warning, account_id, profile_id, item_id, message) VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: DeleteActivityBefore :execrows

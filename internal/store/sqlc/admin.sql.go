@@ -49,7 +49,7 @@ func (q *Queries) GetFailedJob(ctx context.Context, id int64) (GetFailedJobRow, 
 	return i, err
 }
 
-const insertActivity = `-- name: InsertActivity :exec
+const insertActivity = `-- name: InsertActivity :execlastid
 INSERT INTO activity (at, kind, warning, account_id, profile_id, item_id, message) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
@@ -63,8 +63,8 @@ type InsertActivityParams struct {
 	Message   string
 }
 
-func (q *Queries) InsertActivity(ctx context.Context, arg InsertActivityParams) error {
-	_, err := q.db.ExecContext(ctx, insertActivity,
+func (q *Queries) InsertActivity(ctx context.Context, arg InsertActivityParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertActivity,
 		arg.At,
 		arg.Kind,
 		arg.Warning,
@@ -73,7 +73,10 @@ func (q *Queries) InsertActivity(ctx context.Context, arg InsertActivityParams) 
 		arg.ItemID,
 		arg.Message,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
 }
 
 const listAllSessions = `-- name: ListAllSessions :many

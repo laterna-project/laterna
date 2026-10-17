@@ -66,6 +66,8 @@ enum ActivityKind {
   // An API token created or revoked (AuthService.CreateApiToken).
   ACTIVITY_KIND_API_TOKEN_CREATED = 20;
   ACTIVITY_KIND_API_TOKEN_REVOKED = 21;
+  // Episodes of a series that arrived, told once the series has been quiet for a while.
+  ACTIVITY_KIND_EPISODES_ARRIVED = 22;
 }
 
 message ActivityEntry {

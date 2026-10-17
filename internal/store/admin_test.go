@@ -23,7 +23,7 @@ func TestActivityLog(t *testing.T) {
 			if i == 3 {
 				e.Warning, e.Kind = true, domain.ActivityLoginFailed
 			}
-			if err := q.AddActivity(ctx, e); err != nil {
+			if _, err := q.AddActivity(ctx, e); err != nil {
 				return err
 			}
 		}

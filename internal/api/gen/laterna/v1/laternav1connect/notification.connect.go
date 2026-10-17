@@ -51,6 +51,15 @@ const (
 	// NotificationServiceUnsubscribePushProcedure is the fully-qualified name of the
 	// NotificationService's UnsubscribePush RPC.
 	NotificationServiceUnsubscribePushProcedure = "/laterna.v1.NotificationService/UnsubscribePush"
+	// NotificationServiceListAlertChannelsProcedure is the fully-qualified name of the
+	// NotificationService's ListAlertChannels RPC.
+	NotificationServiceListAlertChannelsProcedure = "/laterna.v1.NotificationService/ListAlertChannels"
+	// NotificationServiceSetAlertChannelProcedure is the fully-qualified name of the
+	// NotificationService's SetAlertChannel RPC.
+	NotificationServiceSetAlertChannelProcedure = "/laterna.v1.NotificationService/SetAlertChannel"
+	// NotificationServiceTestAlertChannelProcedure is the fully-qualified name of the
+	// NotificationService's TestAlertChannel RPC.
+	NotificationServiceTestAlertChannelProcedure = "/laterna.v1.NotificationService/TestAlertChannel"
 )
 
 // NotificationServiceClient is a client for the laterna.v1.NotificationService service.
@@ -70,6 +79,14 @@ type NotificationServiceClient interface {
 	SubscribePush(context.Context, *connect.Request[v1.SubscribePushRequest]) (*connect.Response[v1.SubscribePushResponse], error)
 	// UnsubscribePush forgets the web push subscription of this device.
 	UnsubscribePush(context.Context, *connect.Request[v1.UnsubscribePushRequest]) (*connect.Response[v1.UnsubscribePushResponse], error)
+	// ListAlertChannels lists the three channels and how their last messages went.
+	ListAlertChannels(context.Context, *connect.Request[v1.ListAlertChannelsRequest]) (*connect.Response[v1.ListAlertChannelsResponse], error)
+	// SetAlertChannel sets up a channel. A Discord webhook must be one of discord.com; the other two
+	// take any http or https address.
+	SetAlertChannel(context.Context, *connect.Request[v1.SetAlertChannelRequest]) (*connect.Response[v1.SetAlertChannelResponse], error)
+	// TestAlertChannel sends a test message to a channel set up, and waits for it to arrive:
+	// FAILED_PRECONDITION (alert.delivery_failed) if it does not.
+	TestAlertChannel(context.Context, *connect.Request[v1.TestAlertChannelRequest]) (*connect.Response[v1.TestAlertChannelResponse], error)
 }
 
 // NewNotificationServiceClient constructs a client for the laterna.v1.NotificationService service.
@@ -125,6 +142,25 @@ func NewNotificationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listAlertChannels: connect.NewClient[v1.ListAlertChannelsRequest, v1.ListAlertChannelsResponse](
+			httpClient,
+			baseURL+NotificationServiceListAlertChannelsProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("ListAlertChannels")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		setAlertChannel: connect.NewClient[v1.SetAlertChannelRequest, v1.SetAlertChannelResponse](
+			httpClient,
+			baseURL+NotificationServiceSetAlertChannelProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("SetAlertChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		testAlertChannel: connect.NewClient[v1.TestAlertChannelRequest, v1.TestAlertChannelResponse](
+			httpClient,
+			baseURL+NotificationServiceTestAlertChannelProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("TestAlertChannel")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -136,6 +172,9 @@ type notificationServiceClient struct {
 	getPushConfig         *connect.Client[v1.GetPushConfigRequest, v1.GetPushConfigResponse]
 	subscribePush         *connect.Client[v1.SubscribePushRequest, v1.SubscribePushResponse]
 	unsubscribePush       *connect.Client[v1.UnsubscribePushRequest, v1.UnsubscribePushResponse]
+	listAlertChannels     *connect.Client[v1.ListAlertChannelsRequest, v1.ListAlertChannelsResponse]
+	setAlertChannel       *connect.Client[v1.SetAlertChannelRequest, v1.SetAlertChannelResponse]
+	testAlertChannel      *connect.Client[v1.TestAlertChannelRequest, v1.TestAlertChannelResponse]
 }
 
 // ListNotifications calls laterna.v1.NotificationService.ListNotifications.
@@ -168,6 +207,21 @@ func (c *notificationServiceClient) UnsubscribePush(ctx context.Context, req *co
 	return c.unsubscribePush.CallUnary(ctx, req)
 }
 
+// ListAlertChannels calls laterna.v1.NotificationService.ListAlertChannels.
+func (c *notificationServiceClient) ListAlertChannels(ctx context.Context, req *connect.Request[v1.ListAlertChannelsRequest]) (*connect.Response[v1.ListAlertChannelsResponse], error) {
+	return c.listAlertChannels.CallUnary(ctx, req)
+}
+
+// SetAlertChannel calls laterna.v1.NotificationService.SetAlertChannel.
+func (c *notificationServiceClient) SetAlertChannel(ctx context.Context, req *connect.Request[v1.SetAlertChannelRequest]) (*connect.Response[v1.SetAlertChannelResponse], error) {
+	return c.setAlertChannel.CallUnary(ctx, req)
+}
+
+// TestAlertChannel calls laterna.v1.NotificationService.TestAlertChannel.
+func (c *notificationServiceClient) TestAlertChannel(ctx context.Context, req *connect.Request[v1.TestAlertChannelRequest]) (*connect.Response[v1.TestAlertChannelResponse], error) {
+	return c.testAlertChannel.CallUnary(ctx, req)
+}
+
 // NotificationServiceHandler is an implementation of the laterna.v1.NotificationService service.
 type NotificationServiceHandler interface {
 	// ListNotifications lists the notifications of the profile, newest first, with how many it has
@@ -185,6 +239,14 @@ type NotificationServiceHandler interface {
 	SubscribePush(context.Context, *connect.Request[v1.SubscribePushRequest]) (*connect.Response[v1.SubscribePushResponse], error)
 	// UnsubscribePush forgets the web push subscription of this device.
 	UnsubscribePush(context.Context, *connect.Request[v1.UnsubscribePushRequest]) (*connect.Response[v1.UnsubscribePushResponse], error)
+	// ListAlertChannels lists the three channels and how their last messages went.
+	ListAlertChannels(context.Context, *connect.Request[v1.ListAlertChannelsRequest]) (*connect.Response[v1.ListAlertChannelsResponse], error)
+	// SetAlertChannel sets up a channel. A Discord webhook must be one of discord.com; the other two
+	// take any http or https address.
+	SetAlertChannel(context.Context, *connect.Request[v1.SetAlertChannelRequest]) (*connect.Response[v1.SetAlertChannelResponse], error)
+	// TestAlertChannel sends a test message to a channel set up, and waits for it to arrive:
+	// FAILED_PRECONDITION (alert.delivery_failed) if it does not.
+	TestAlertChannel(context.Context, *connect.Request[v1.TestAlertChannelRequest]) (*connect.Response[v1.TestAlertChannelResponse], error)
 }
 
 // NewNotificationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -236,6 +298,25 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	notificationServiceListAlertChannelsHandler := connect.NewUnaryHandler(
+		NotificationServiceListAlertChannelsProcedure,
+		svc.ListAlertChannels,
+		connect.WithSchema(notificationServiceMethods.ByName("ListAlertChannels")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	notificationServiceSetAlertChannelHandler := connect.NewUnaryHandler(
+		NotificationServiceSetAlertChannelProcedure,
+		svc.SetAlertChannel,
+		connect.WithSchema(notificationServiceMethods.ByName("SetAlertChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	notificationServiceTestAlertChannelHandler := connect.NewUnaryHandler(
+		NotificationServiceTestAlertChannelProcedure,
+		svc.TestAlertChannel,
+		connect.WithSchema(notificationServiceMethods.ByName("TestAlertChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/laterna.v1.NotificationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case NotificationServiceListNotificationsProcedure:
@@ -250,6 +331,12 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 			notificationServiceSubscribePushHandler.ServeHTTP(w, r)
 		case NotificationServiceUnsubscribePushProcedure:
 			notificationServiceUnsubscribePushHandler.ServeHTTP(w, r)
+		case NotificationServiceListAlertChannelsProcedure:
+			notificationServiceListAlertChannelsHandler.ServeHTTP(w, r)
+		case NotificationServiceSetAlertChannelProcedure:
+			notificationServiceSetAlertChannelHandler.ServeHTTP(w, r)
+		case NotificationServiceTestAlertChannelProcedure:
+			notificationServiceTestAlertChannelHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -281,4 +368,16 @@ func (UnimplementedNotificationServiceHandler) SubscribePush(context.Context, *c
 
 func (UnimplementedNotificationServiceHandler) UnsubscribePush(context.Context, *connect.Request[v1.UnsubscribePushRequest]) (*connect.Response[v1.UnsubscribePushResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.NotificationService.UnsubscribePush is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) ListAlertChannels(context.Context, *connect.Request[v1.ListAlertChannelsRequest]) (*connect.Response[v1.ListAlertChannelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.NotificationService.ListAlertChannels is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) SetAlertChannel(context.Context, *connect.Request[v1.SetAlertChannelRequest]) (*connect.Response[v1.SetAlertChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.NotificationService.SetAlertChannel is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) TestAlertChannel(context.Context, *connect.Request[v1.TestAlertChannelRequest]) (*connect.Response[v1.TestAlertChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.NotificationService.TestAlertChannel is not implemented"))
 }
