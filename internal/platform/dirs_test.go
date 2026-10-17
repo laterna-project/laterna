@@ -126,3 +126,14 @@ func TestInContainer(t *testing.T) {
 		}
 	}
 }
+
+func TestServiceDirs(t *testing.T) {
+	programData := filepath.Join("C:", "ProgramData")
+	root, err := serviceRoot(env(map[string]string{"ProgramData": programData}))
+	if err != nil || root != filepath.Join(programData, "Laterna") {
+		t.Errorf("root: %q %v", root, err)
+	}
+	if _, err := serviceRoot(env(nil)); err == nil {
+		t.Error("no error without ProgramData")
+	}
+}
