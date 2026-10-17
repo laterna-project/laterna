@@ -402,6 +402,7 @@ type Profile struct {
 	Language         string
 	SubtitleMode     string
 	SubtitleLanguage string
+	AudioLanguage    string
 }
 
 type ProviderID struct {
@@ -485,6 +486,16 @@ type SegmentScan struct {
 	Fingerprint string
 	Audio       int64
 	ScannedAt   int64
+}
+
+type SeriesChoice struct {
+	ProfileID        domain.ID
+	SeriesID         domain.ID
+	AudioLanguage    string
+	SubtitleChosen   int64
+	SubtitleLanguage string
+	SubtitleForced   int64
+	UpdatedAt        int64
 }
 
 type Session struct {

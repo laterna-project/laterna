@@ -62,6 +62,15 @@ func (s *ProfileService) SetSubtitlePreferences(ctx context.Context, req *connec
 	return connect.NewResponse(&laternav1.SetSubtitlePreferencesResponse{Profile: profileMsg(p)}), nil
 }
 
+// SetAudioPreferences changes the audio language playback starts with, for the picked profile.
+func (s *ProfileService) SetAudioPreferences(ctx context.Context, req *connect.Request[laternav1.SetAudioPreferencesRequest]) (*connect.Response[laternav1.SetAudioPreferencesResponse], error) {
+	p, err := s.app.SetAudioPreferences(ctx, principal(ctx), req.Msg.GetLanguage())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&laternav1.SetAudioPreferencesResponse{Profile: profileMsg(p)}), nil
+}
+
 // SetLanguage changes the language of the picked profile.
 func (s *ProfileService) SetLanguage(ctx context.Context, req *connect.Request[laternav1.SetLanguageRequest]) (*connect.Response[laternav1.SetLanguageResponse], error) {
 	p, err := s.app.SetLanguage(ctx, principal(ctx), req.Msg.GetLanguage())

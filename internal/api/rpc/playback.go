@@ -177,6 +177,11 @@ func (s *PlaybackService) ReportProgress(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.SubtitleIndex != nil {
+		if err := s.app.NoteSubtitle(principal(ctx), id, int(req.Msg.GetSubtitleIndex())); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.app.ReportProgress(principal(ctx), id, req.Msg.GetPosition().AsDuration()); err != nil {
 		return nil, err
 	}
@@ -188,6 +193,11 @@ func (s *PlaybackService) StopPlayback(ctx context.Context, req *connect.Request
 	id, err := parseID(req.Msg.GetSessionId(), "session_id")
 	if err != nil {
 		return nil, err
+	}
+	if req.Msg.SubtitleIndex != nil {
+		if err := s.app.NoteSubtitle(principal(ctx), id, int(req.Msg.GetSubtitleIndex())); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.app.StopPlayback(ctx, principal(ctx), id, req.Msg.GetPosition().AsDuration()); err != nil {
 		return nil, err

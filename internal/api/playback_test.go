@@ -398,3 +398,51 @@ func TestBitrateLimitOverHTTP(t *testing.T) {
 	}
 	stop(account)
 }
+
+// The profile's audio language picks the stream a playback starts with; the subtitle shown is
+// reported with the progress, and an unknown one is refused.
+func TestAudioPreferencesOverHTTP(t *testing.T) {
+	base, token := playbackServer(t)
+	ctx := context.Background()
+	profiles := laternav1connect.NewProfileServiceClient(http.DefaultClient, base)
+	catalog := laternav1connect.NewCatalogServiceClient(http.DefaultClient, base)
+	player := laternav1connect.NewPlaybackServiceClient(http.DefaultClient, base)
+	movies, err := catalog.ListMovies(ctx, authed(&laternav1.ListMoviesRequest{}, token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var movie string
+	for _, m := range movies.Msg.GetMovies() {
+		if m.GetTitle() == "Dual Audio" { // French and Japanese audio
+			movie = m.GetId()
+		}
+	}
+	device := &laternav1.DeviceProfile{Containers: []string{"mp4"}, Video: []*laternav1.VideoSupport{{Codec: "h264"}}, AudioCodecs: []string{"aac", "opus", "flac"}, Hls: true}
+	audioFor := func(lang string) int32 {
+		t.Helper()
+		resp, err := profiles.SetAudioPreferences(ctx, authed(&laternav1.SetAudioPreferencesRequest{Language: lang}, token))
+		if err != nil || resp.Msg.GetProfile().GetAudioLanguage() != lang {
+			t.Fatalf("audio preferences %q: %v %v", lang, resp, err)
+		}
+		started, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: movie, Device: device}, token))
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := started.Msg.GetSessionId()
+		none, unknown := int32(-1), int32(9)
+		if _, err := player.ReportProgress(ctx, authed(&laternav1.ReportProgressRequest{SessionId: id, SubtitleIndex: &none}, token)); err != nil {
+			t.Error(err)
+		}
+		if _, err := player.ReportProgress(ctx, authed(&laternav1.ReportProgressRequest{SessionId: id, SubtitleIndex: &unknown}, token)); errorCode(err) != "playback.unknown_subtitle" {
+			t.Errorf("unknown subtitle: %v", err)
+		}
+		if _, err := player.StopPlayback(ctx, authed(&laternav1.StopPlaybackRequest{SessionId: id, SubtitleIndex: &none}, token)); err != nil {
+			t.Fatal(err)
+		}
+		return started.Msg.GetAudioStreamIndex()
+	}
+	japanese, french := audioFor("ja"), audioFor("fr")
+	if japanese == french || japanese == 0 || french == 0 {
+		t.Errorf("audio streams: Japanese %d, French %d", japanese, french)
+	}
+}
