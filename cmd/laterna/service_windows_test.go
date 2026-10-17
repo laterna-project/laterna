@@ -143,7 +143,7 @@ func TestWindowsService(t *testing.T) {
 		t.Errorf("service: %+v, recovery %v", c, actions)
 	}
 	if rule, err := firewallRule(ctx); err != nil || !strings.Contains(strings.ToLower(rule), strings.ToLower(exe)) {
-		t.Errorf("firewall rule: %v\n%s", err, rule)
+		t.Errorf("firewall rule: %v\n%s\ninstall said:\n%s", err, rule, out)
 	}
 
 	// Started: it answers and writes its logs where the configuration says.
