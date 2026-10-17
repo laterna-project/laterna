@@ -51,6 +51,30 @@ func TestServiceConfig(t *testing.T) {
 	}
 }
 
+// A short name ("RUNNER~1") comes back long: the firewall resolves no other.
+func TestLongPath(t *testing.T) {
+	long := filepath.Join(t.TempDir(), "Laterna media server")
+	if err := os.Mkdir(long, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	p, err := windows.UTF16PtrFromString(long)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]uint16, windows.MAX_PATH)
+	n, err := windows.GetShortPathName(p, &buf[0], uint32(len(buf)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	short := windows.UTF16ToString(buf[:n])
+	if got := longPath(short); !strings.EqualFold(got, longPath(long)) || !strings.HasSuffix(got, "Laterna media server") {
+		t.Errorf("long path of %s: %s", short, got)
+	}
+	if got := longPath(`C:\no\such\folder`); got != `C:\no\such\folder` {
+		t.Errorf("missing path: %s", got)
+	}
+}
+
 func TestServiceCommand(t *testing.T) {
 	ctx := context.Background()
 	for _, args := range [][]string{nil, {"dance"}, {"start", "now"}} {
@@ -142,7 +166,7 @@ func TestWindowsService(t *testing.T) {
 		!strings.Contains(c.BinaryPathName, "service run -config") || len(actions) != 3 {
 		t.Errorf("service: %+v, recovery %v", c, actions)
 	}
-	if rule, err := firewallRule(ctx); err != nil || !strings.Contains(strings.ToLower(rule), strings.ToLower(exe)) {
+	if rule, err := firewallRule(ctx); err != nil || !strings.Contains(strings.ToLower(rule), strings.ToLower(longPath(exe))) {
 		t.Errorf("firewall rule: %v\n%s\ninstall said:\n%s", err, rule, out)
 	}
 

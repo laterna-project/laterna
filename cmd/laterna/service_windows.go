@@ -110,6 +110,9 @@ func installService(ctx context.Context, args []string, stdout, stderr io.Writer
 	if err != nil {
 		return err
 	}
+	// The firewall cannot resolve a short name ("C:\Users\RUNNER~1\..."): the full one, for the rule
+	// and the service alike.
+	exe = longPath(exe)
 	root, err := platform.ServiceRoot()
 	if err != nil {
 		return err
@@ -269,6 +272,21 @@ func tomlString(s string) string {
 		return "'" + s + "'"
 	}
 	return strconv.Quote(s)
+}
+
+// longPath gives the long form of a path whose folders may have a short name; the path itself if
+// Windows cannot.
+func longPath(path string) string {
+	p, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return path
+	}
+	var buf [windows.MAX_LONG_PATH]uint16
+	n, err := windows.GetLongPathName(p, &buf[0], windows.MAX_LONG_PATH)
+	if err != nil || n == 0 || int(n) > len(buf) {
+		return path
+	}
+	return windows.UTF16ToString(buf[:n])
 }
 
 func exists(path string) bool {
