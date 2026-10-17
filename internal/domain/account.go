@@ -21,8 +21,11 @@ type Account struct {
 	DenyRequests        bool
 	AutoApproveRequests bool
 	RequestQuota        int
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	// RemoteMaxBitrate caps the bitrate of its playbacks from outside the local network (kbit/s),
+	// on top of the server's limit; 0 means only the server's.
+	RemoteMaxBitrate int
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // Profile is one "Who's watching?" entry of an account. History, favorites and resume points belong
@@ -46,8 +49,11 @@ type Profile struct {
 	// empty means Language, then the device's).
 	SubtitleMode     SubtitleMode
 	SubtitleLanguage string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	// AudioLanguage is the language of the audio playback starts with, when the file has it (a BCP
+	// 47 tag; empty means the file's default stream).
+	AudioLanguage string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // SubtitleMode says when a playback starts with a subtitle in the language of the profile.
@@ -65,6 +71,19 @@ const (
 	// SubtitleOff: never a subtitle at the start.
 	SubtitleOff SubtitleMode = "off"
 )
+
+// SeriesChoice is the audio and subtitle a profile last chose in a series: its next episodes start
+// the same way, before the profile's own preferences. Languages are ISO 639-2/B codes ("jpn").
+type SeriesChoice struct {
+	// Audio is the language of the audio chosen; empty if none was.
+	Audio string
+	// SubtitleChosen says a subtitle choice was made: Subtitle is its language (empty: no
+	// subtitle), Forced whether it was a forced one.
+	SubtitleChosen bool
+	Subtitle       string
+	Forced         bool
+	UpdatedAt      time.Time
+}
 
 // Restricted reports a kid profile or one under parental control. Such a profile cannot manage
 // profiles, devices, the password or the server.

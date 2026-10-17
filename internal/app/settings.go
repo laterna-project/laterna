@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +37,8 @@ const (
 	keyWebURL         = "server.web_url"
 	keyPasskeyRPID    = "passkeys.rp_id" //nolint:gosec // name of a setting, not a secret
 	keyPasskeyOrigins = "passkeys.origins"
+	keyRemoteBitrate  = "playback.remote_max_bitrate"
+	keyLocalNetworks  = "network.local"
 )
 
 // Bounds for settings.
@@ -46,6 +50,12 @@ const (
 	maxMissingGrace  = 90 * 24 * time.Hour
 	// maxTranscodesSetting is the highest value of the concurrent transcodes setting.
 	maxTranscodesSetting = 64
+	// minBitrateLimit and maxBitrateLimit bound a bitrate limit (kbit/s), 0 aside: below 500 kbit/s
+	// nothing is watchable.
+	minBitrateLimit = 500
+	maxBitrateLimit = 1_000_000
+	// maxLocalNetworks caps the local networks setting.
+	maxLocalNetworks = 32
 )
 
 // defaultSettings is what a setting is worth when it was never changed.
@@ -99,6 +109,16 @@ func (a *App) loadSettings(ctx context.Context, defaults domain.Settings) (domai
 		get(keyWebURL, func(v string) error { s.WebURL = v; return nil }),
 		get(keyPasskeyRPID, func(v string) error { s.PasskeyRPID = v; return nil }),
 		get(keyPasskeyOrigins, func(v string) error { return json.Unmarshal([]byte(v), &s.PasskeyOrigins) }),
+		get(keyRemoteBitrate, func(v string) (err error) { s.RemoteMaxBitrate, err = strconv.Atoi(v); return err }),
+		get(keyLocalNetworks, func(v string) error {
+			var list []string
+			if err := json.Unmarshal([]byte(v), &list); err != nil {
+				return err
+			}
+			var err error
+			s.LocalNetworks, err = localNetworks(list)
+			return err
+		}),
 	} {
 		if step != nil {
 			return s, step
@@ -139,6 +159,10 @@ type SettingsChanges struct {
 	WebURL         *string
 	PasskeyRPID    *string
 	PasskeyOrigins *[]string
+	// RemoteMaxBitrate is in kbit/s, 0 for no limit. LocalNetworks are CIDR prefixes or addresses;
+	// an empty list means the private ranges.
+	RemoteMaxBitrate *int
+	LocalNetworks    *[]string
 }
 
 // UpdateSettings changes settings and applies them right away.
@@ -261,6 +285,35 @@ func (a *App) UpdateSettings(ctx context.Context, p domain.Principal, ch Setting
 		s.PasskeyOrigins, values[keyPasskeyOrigins] = origins, string(b)
 		changed = append(changed, domain.T("activity.setting.passkey_origins", "value", strings.Join(origins, ", ")))
 	}
+	if ch.RemoteMaxBitrate != nil {
+		n := *ch.RemoteMaxBitrate
+		if !validBitrateLimit(n) {
+			return s, domain.Invalid("settings.invalid_remote_max_bitrate", "min_kbps", minBitrateLimit, "max_kbps", maxBitrateLimit)
+		}
+		s.RemoteMaxBitrate, values[keyRemoteBitrate] = n, strconv.Itoa(n)
+		if n == 0 {
+			changed = append(changed, domain.T("activity.setting.remote_max_bitrate_off"))
+		} else {
+			changed = append(changed, domain.T("activity.setting.remote_max_bitrate", "value_kbps", n))
+		}
+	}
+	if ch.LocalNetworks != nil {
+		nets, err := localNetworks(*ch.LocalNetworks)
+		if err != nil {
+			return s, err
+		}
+		list := make([]string, len(nets))
+		for i, n := range nets {
+			list[i] = n.String()
+		}
+		b, _ := json.Marshal(list) // strings: cannot fail
+		s.LocalNetworks, values[keyLocalNetworks] = nets, string(b)
+		if len(list) == 0 {
+			changed = append(changed, domain.T("activity.setting.local_networks_default"))
+		} else {
+			changed = append(changed, domain.T("activity.setting.local_networks", "value", strings.Join(list, ", ")))
+		}
+	}
 	if len(values) == 0 {
 		return s, nil
 	}
@@ -353,6 +406,36 @@ func passkeyOrigins(list []string) ([]string, error) {
 			return nil, domain.Invalid("settings.invalid_passkey_origin", "origin", o)
 		}
 		out = append(out, u.Scheme+"://"+u.Host)
+	}
+	return out, nil
+}
+
+// validBitrateLimit accepts a bitrate limit (kbit/s): 0 for none, or between the bounds.
+func validBitrateLimit(n int) bool {
+	return n == 0 || (n >= minBitrateLimit && n <= maxBitrateLimit)
+}
+
+// localNetworks reads the local networks setting: CIDR prefixes ("192.168.1.0/24") or single
+// addresses, deduplicated in their canonical form; 32 at most.
+func localNetworks(list []string) ([]netip.Prefix, error) {
+	if len(list) > maxLocalNetworks {
+		return nil, domain.Invalid("settings.too_many_local_networks", "max", maxLocalNetworks)
+	}
+	out := []netip.Prefix{}
+	for _, raw := range list {
+		raw = strings.TrimSpace(raw)
+		p, err := netip.ParsePrefix(raw)
+		if addr, aerr := netip.ParseAddr(raw); err != nil && aerr == nil {
+			p, err = netip.PrefixFrom(addr, addr.BitLen()), nil
+		}
+		// An IPv4 network is written as such: client addresses are compared unmapped.
+		if err != nil || p.Addr().Is4In6() || p.Addr().Zone() != "" {
+			return nil, domain.Invalid("settings.invalid_local_network", "network", raw)
+		}
+		p = p.Masked()
+		if !slices.Contains(out, p) {
+			out = append(out, p)
+		}
 	}
 	return out, nil
 }

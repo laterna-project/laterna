@@ -1,0 +1,40 @@
+name: FFmpeg mirror
+
+# BtbN deletes its daily FFmpeg builds after about two weeks, the pinned one included. This copies
+# the builds pinned on develop and main to the ffmpeg-builds pre-release, where
+# packaging/fetch-ffmpeg.sh looks first, so that CI, the image and the release bundles still build
+# once BtbN has removed them. The daily run retries a copy that failed.
+on:
+  push:
+    branches: [develop, main]
+    paths: [packaging/ffmpeg.lock]
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ffmpeg-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Copy the pinned builds
+    if: github.repository == 'laterna-project/laterna'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # every branch, and the first commit, which carries the release tag
+      - name: Copy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          git show origin/develop:packaging/ffmpeg.lock >"$RUNNER_TEMP/develop.lock"
+          git show origin/main:packaging/ffmpeg.lock >"$RUNNER_TEMP/main.lock"
+          sh packaging/mirror-ffmpeg.sh "$RUNNER_TEMP/develop.lock" "$RUNNER_TEMP/main.lock"

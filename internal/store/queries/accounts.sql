@@ -3,14 +3,15 @@ SELECT count(*) FROM accounts;
 
 -- name: InsertAccount :exec
 INSERT INTO accounts (id, username, username_key, password_hash, is_admin, disabled, all_libraries, max_age,
-                      block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota, created_at,
-                      updated_at)
-VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                      block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota,
+                      remote_max_bitrate, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateAccount :exec
 UPDATE accounts
 SET username = ?, username_key = ?, is_admin = ?, disabled = ?, all_libraries = ?, max_age = ?, block_unrated = ?,
-    deny_downloads = ?, deny_requests = ?, auto_approve_requests = ?, request_quota = ?, updated_at = ?
+    deny_downloads = ?, deny_requests = ?, auto_approve_requests = ?, request_quota = ?, remote_max_bitrate = ?,
+    updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteAccount :exec
@@ -63,7 +64,7 @@ SELECT count(*) FROM profiles WHERE account_id = ?;
 -- name: UpdateProfile :exec
 UPDATE profiles
 SET name = ?, name_key = ?, pin_hash = ?, kid = ?, max_age = ?, block_unrated = ?, language = ?,
-    subtitle_mode = ?, subtitle_language = ?, updated_at = ?
+    subtitle_mode = ?, subtitle_language = ?, audio_language = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteProfile :exec

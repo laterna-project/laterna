@@ -235,9 +235,12 @@ type Account struct {
 	// Always the case for an administrator.
 	AutoApproveRequests bool `protobuf:"varint,10,opt,name=auto_approve_requests,json=autoApproveRequests,proto3" json:"auto_approve_requests,omitempty"`
 	// At most this many requests in seven days; 0 for no limit. Administrators have none.
-	RequestQuota  int32 `protobuf:"varint,11,opt,name=request_quota,json=requestQuota,proto3" json:"request_quota,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RequestQuota int32 `protobuf:"varint,11,opt,name=request_quota,json=requestQuota,proto3" json:"request_quota,omitempty"`
+	// Highest bitrate of its playbacks from outside the local network, in kbit/s; 0 means only the
+	// server's limit (Settings.remote_max_bitrate). The lower of the two applies.
+	RemoteMaxBitrate int32 `protobuf:"varint,12,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3" json:"remote_max_bitrate,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Account) Reset() {
@@ -343,6 +346,13 @@ func (x *Account) GetAutoApproveRequests() bool {
 func (x *Account) GetRequestQuota() int32 {
 	if x != nil {
 		return x.RequestQuota
+	}
+	return 0
+}
+
+func (x *Account) GetRemoteMaxBitrate() int32 {
+	if x != nil {
+		return x.RemoteMaxBitrate
 	}
 	return 0
 }
@@ -2544,7 +2554,7 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06client\x18\x02 \x01(\tR\x06client\x12%\n" +
 	"\x0eclient_version\x18\x03 \x01(\tR\rclientVersion\x12\x1a\n" +
-	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xbe\x03\n" +
+	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xec\x03\n" +
 	"\aAccount\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x19\n" +
@@ -2558,7 +2568,8 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\rdeny_requests\x18\t \x01(\bR\fdenyRequests\x122\n" +
 	"\x15auto_approve_requests\x18\n" +
 	" \x01(\bR\x13autoApproveRequests\x12#\n" +
-	"\rrequest_quota\x18\v \x01(\x05R\frequestQuota\"B\n" +
+	"\rrequest_quota\x18\v \x01(\x05R\frequestQuota\x12,\n" +
+	"\x12remote_max_bitrate\x18\f \x01(\x05R\x10remoteMaxBitrate\"B\n" +
 	"\rLibraryAccess\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1f\n" +
 	"\vlibrary_ids\x18\x02 \x03(\tR\n" +

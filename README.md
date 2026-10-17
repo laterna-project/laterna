@@ -38,11 +38,12 @@ server without a client.
   goes offline does not wipe a library.
 - **Households.** Accounts with profiles, PINs, per-library access and parental controls
   enforced on the server. Sign-in by password, passkey, OpenID Connect, or a code shown on a TV.
-- **More than video.** Music from tags with whole-file playback, EPUB/CBZ/PDF books with pages
-  scaled for the screen, photo libraries with EXIF and a timeline.
-- **The extras.** Intro and credits detection, scrubbing thumbnails, offline downloads, watch
-  parties, play history with yearly statistics, recommendations computed locally, collections
-  and playlists, themes, import of users and watch state from Jellyfin.
+- **More than video.** Music from tags with whole-file playback and synced lyrics, EPUB/CBZ/PDF
+  books with pages scaled for the screen, photo libraries with EXIF and a timeline.
+- **The extras.** Trailers and featurettes next to movies and series, intro and credits
+  detection, scrubbing thumbnails, offline downloads, watch parties, play history with yearly
+  statistics, recommendations computed locally, collections and playlists, themes, import of users
+  and watch state from Jellyfin.
 - **Easy to run.** No external database. Hot backups, including one before every schema
   migration. Prometheus metrics and OpenTelemetry traces. Starts in well under a second and
   idles under 60 MB.
@@ -137,7 +138,8 @@ backups = "/mnt/other-disk/laterna-backups"
 ```
 
 Behind a reverse proxy, declare it in `trusted_proxies`; otherwise every client appears to come
-from the proxy and shares the same rate limits.
+from the proxy, shares the same rate limits, and counts as local for the bitrate limit of
+playbacks from the Internet.
 
 **Backups.** The database is copied every night (7 kept by default) and before each schema
 migration. `laterna backup` takes one right now, and `laterna restore <backup>` stages a restore

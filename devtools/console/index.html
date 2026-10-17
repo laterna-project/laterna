@@ -49,6 +49,12 @@ width.</p>
 <fieldset>
   <legend>Device profile</legend>
   <div id="profile" class="row"></div>
+  <div class="row">
+    <label>Max bitrate <select id="max-bitrate">
+      <option value="0">no limit</option><option value="20000">20 Mbit/s</option><option value="8000">8 Mbit/s</option>
+      <option value="4000">4 Mbit/s</option><option value="1500">1.5 Mbit/s</option><option value="600">600 kbit/s</option>
+    </select></label>
+  </div>
 </fieldset>
 
 <fieldset>
@@ -405,11 +411,12 @@ async function stop() {
   clearInterval(state.timer);
   const sessionId = state.session.sessionId;
   const position = video.currentTime; // read before the player is emptied
+  const subtitleIndex = shownSubtitle();
   state.session = null;
   clearSubtitles();
   if (state.hls) { state.hls.destroy(); state.hls = null; }
   video.removeAttribute('src'); video.load();
-  await call('PlaybackService', 'StopPlayback', { sessionId, position: position + 's' }).catch(() => {});
+  await call('PlaybackService', 'StopPlayback', { sessionId, position: position + 's', subtitleIndex }).catch(() => {});
 }
 $('stop').onclick = stop;
 
@@ -426,7 +433,8 @@ video.addEventListener('timeupdate', () => {
 });
 window.addEventListener('pagehide', stop);
 
-// play opens a playback. opts.subtitle: subtitle to start with (burned in if needed);
+// play opens a playback. opts.subtitle: subtitle to start with (burned in if needed), otherwise
+// the one the profile's preferences and its choices in the series pick;
 // opts.start: position (the profile's resume point otherwise); opts.paused: do not start playing
 // (watch party: the group decides).
 async function play(itemId, opts = {}) {
@@ -434,11 +442,14 @@ async function play(itemId, opts = {}) {
   state.errors = [];
   state.itemId = itemId;
   try {
-    const s = await call('PlaybackService', 'StartPlayback', { itemId, device: deviceProfile(), subtitleIndex: opts.subtitle });
+    const s = await call('PlaybackService', 'StartPlayback', {
+      itemId, device: deviceProfile(), subtitleIndex: opts.subtitle, profileSubtitle: opts.subtitle == null, maxBitrate: Number($('max-bitrate').value),
+    });
     state.session = s;
     const start = opts.start ?? parseFloat(s.resumePosition ?? '0');
     const encoded = [s.videoTranscoded && `video transcoded (${s.videoEncoder}${s.gpu ? ', on the GPU' : ''})`, s.toneMapping && `HDR → SDR (${s.toneMapping})`,
-      s.audioTranscoded && 'audio transcoded'].filter(Boolean);
+      s.audioTranscoded && 'audio transcoded',
+      s.bitrateLimit && `limited to ${s.bitrateLimit} kbit/s (${(s.bitrateLimitSource ?? '').replace('BITRATE_LIMIT_SOURCE_', '').toLowerCase()}${s.videoBitrate ? `, video at ${s.videoBitrate}` : ''})`].filter(Boolean);
     $('playback').textContent = [s.method.replace('PLAYBACK_METHOD_', ''), ...encoded, `resumed at ${start.toFixed(0)} s`].join(', ');
     log('playback opened', s);
     const url = state.base + s.url;
@@ -454,6 +465,10 @@ async function play(itemId, opts = {}) {
     if (!opts.paused) video.play().catch(() => {});
     state.timer = setInterval(report, 10_000);
     listSubtitles(s);
+    if (s.subtitleIndex != null && s.burnedSubtitleIndex == null) {
+      $('subtitles').value = String(s.subtitleIndex);
+      showSubtitle(String(s.subtitleIndex));
+    }
     if (s.segments?.length) log('segments', s.segments.map((g) => `${g.kind.replace('MEDIA_SEGMENT_KIND_', '')} ${g.start} → ${g.end}`).join(', '));
   } catch (err) { log('playback refused:', err.message); $('playback').textContent = err.message; }
 }
@@ -536,8 +551,18 @@ async function showSubtitle(value) {
 }
 $('subtitles').onchange = (e) => showSubtitle(e.target.value);
 
+// shownSubtitle is the subtitle shown now (SubtitleTrack.index), -1 for none: reported with the
+// progress, so that the next episode of a series starts with the same one.
+function shownSubtitle() {
+  const v = $('subtitles').value;
+  return v === '' ? -1 : Number(v);
+}
+
 function report() {
-  if (state.session) call('PlaybackService', 'ReportProgress', { sessionId: state.session.sessionId, position: video.currentTime + 's' }).catch((e) => log(e.message));
+  if (state.session) {
+    call('PlaybackService', 'ReportProgress', { sessionId: state.session.sessionId, position: video.currentTime + 's', subtitleIndex: shownSubtitle() })
+      .catch((e) => log(e.message));
+  }
 }
 video.addEventListener('pause', report);
 for (const b of document.querySelectorAll('[data-skip]')) b.onclick = () => { video.currentTime += +b.dataset.skip; };

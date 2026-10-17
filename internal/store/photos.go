@@ -192,7 +192,7 @@ func (q Q) attachPhotos(ctx context.Context, cards []domain.ItemView) error {
 		case domain.ItemPhotoAlbum:
 			albums = append(albums, c.Item.ID)
 		case domain.ItemMovie, domain.ItemSeries, domain.ItemSeason, domain.ItemEpisode, domain.ItemArtist,
-			domain.ItemAlbum, domain.ItemTrack, domain.ItemBookSeries, domain.ItemBook:
+			domain.ItemAlbum, domain.ItemTrack, domain.ItemBookSeries, domain.ItemBook, domain.ItemExtra:
 			continue
 		}
 		index[c.Item.ID] = i

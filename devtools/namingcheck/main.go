@@ -37,6 +37,9 @@ func main() {
 	doubtful := 0
 	for _, root := range movies {
 		doubtful += check(ctx, root, *all, func(rel string) (string, string) {
+			if x, ok := naming.ParseExtra(rel); ok {
+				return extraLine(x), ""
+			}
 			m := naming.ParseMovie(rel)
 			out := fmt.Sprintf("%s (%d)", m.Title, m.Year)
 			if m.Version != "" {
@@ -60,6 +63,9 @@ func main() {
 		groups := map[string]int{}
 		doubtful += check(ctx, root, *all, func(rel string) (string, string) {
 			e, ok := naming.ParseEpisode(rel)
+			if x, extra := naming.ParseExtra(rel); extra && (!ok || x.OwnerName == "") {
+				return extraLine(x), ""
+			}
 			if !ok {
 				return "?", "episode not recognized"
 			}
@@ -92,6 +98,15 @@ func main() {
 		}
 	}
 	fmt.Printf("\n%d doubtful cases\n", doubtful)
+}
+
+// extraLine describes an extra: its kind, its title and the folder of its owner.
+func extraLine(x naming.Extra) string {
+	out := fmt.Sprintf("extra %s: %s, of %s", x.Kind, x.Title, x.Owner)
+	if x.OwnerName != "" {
+		out += " (" + x.OwnerName + ")"
+	}
+	return out
 }
 
 // check walks root and prints the result of parse for each file (or only the doubtful ones). It

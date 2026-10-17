@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"net/netip"
+	"time"
+)
 
 // Settings are the server settings that can change at runtime. They live in the database.
 type Settings struct {
@@ -40,6 +43,12 @@ type Settings struct {
 	// PasskeyOrigins are origins allowed besides PublicURL: a web client hosted elsewhere, an
 	// Android app ("android:apk-key-hash:...").
 	PasskeyOrigins []string
+	// RemoteMaxBitrate caps the bitrate of a playback from outside the local network (kbit/s); 0
+	// means no limit.
+	RemoteMaxBitrate int
+	// LocalNetworks are the networks counted as local; empty means the private, loopback and
+	// link-local ranges (IsLocal).
+	LocalNetworks []netip.Prefix
 }
 
 // ActivityKind is the kind of an activity log entry.

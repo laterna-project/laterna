@@ -26,13 +26,21 @@ import (
 // mediaOf returns the files a library indexes: audio for music, books and photos for their
 // libraries, video otherwise.
 func mediaOf(kind domain.LibraryKind) func(rel string) bool {
+	// Folders of extras only hold extras of movies and series: elsewhere they stay out. A suffix
+	// ("-short") means nothing outside a movie library.
+	not := func(is func(string) bool) func(string) bool {
+		return func(rel string) bool {
+			x, extra := naming.ParseExtra(rel)
+			return is(rel) && (!extra || x.OwnerName != "")
+		}
+	}
 	switch kind {
 	case domain.LibraryMusic:
-		return naming.IsAudio
+		return not(naming.IsAudio)
 	case domain.LibraryBooks:
-		return naming.IsBook
+		return not(naming.IsBook)
 	case domain.LibraryPhotos:
-		return naming.IsPhoto
+		return not(naming.IsPhoto)
 	case domain.LibraryMovies, domain.LibraryShows:
 	}
 	return naming.IsVideo
@@ -98,7 +106,7 @@ func (a *App) placeTrack(ctx context.Context, q store.Q, lib domain.Library, f d
 	if err := q.SetTrack(ctx, domain.Track{
 		ItemID: track.ID, AlbumID: album.ID, ArtistID: artist.ID, Disc: disc, Number: number,
 		Artists: firstNonEmpty(tags.Artist, artistName), TrackGain: tags.TrackGain, TrackPeak: tags.TrackPeak,
-		AlbumGain: tags.AlbumGain, AlbumPeak: tags.AlbumPeak,
+		AlbumGain: tags.AlbumGain, AlbumPeak: tags.AlbumPeak, Lyrics: lyricsSource(f),
 	}); err != nil {
 		return nil, err
 	}
@@ -185,7 +193,7 @@ func (a *App) musicSources(ctx context.Context, lib domain.Library, item domain.
 		return src, true, nil
 
 	case domain.ItemMovie, domain.ItemSeries, domain.ItemSeason, domain.ItemEpisode, domain.ItemTrack,
-		domain.ItemBookSeries, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto:
+		domain.ItemBookSeries, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 	}
 	return localSources{}, false, nil
 }

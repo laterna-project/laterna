@@ -117,7 +117,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id domain.ID) error {
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, username, username_key, password_hash, is_admin, disabled, created_at, updated_at, all_libraries, max_age, block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota FROM accounts WHERE id = ?
+SELECT id, username, username_key, password_hash, is_admin, disabled, created_at, updated_at, all_libraries, max_age, block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota, remote_max_bitrate FROM accounts WHERE id = ?
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id domain.ID) (Account, error) {
@@ -139,12 +139,13 @@ func (q *Queries) GetAccount(ctx context.Context, id domain.ID) (Account, error)
 		&i.DenyRequests,
 		&i.AutoApproveRequests,
 		&i.RequestQuota,
+		&i.RemoteMaxBitrate,
 	)
 	return i, err
 }
 
 const getAccountByUsername = `-- name: GetAccountByUsername :one
-SELECT id, username, username_key, password_hash, is_admin, disabled, created_at, updated_at, all_libraries, max_age, block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota FROM accounts WHERE username_key = ?
+SELECT id, username, username_key, password_hash, is_admin, disabled, created_at, updated_at, all_libraries, max_age, block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota, remote_max_bitrate FROM accounts WHERE username_key = ?
 `
 
 func (q *Queries) GetAccountByUsername(ctx context.Context, usernameKey string) (Account, error) {
@@ -166,12 +167,13 @@ func (q *Queries) GetAccountByUsername(ctx context.Context, usernameKey string) 
 		&i.DenyRequests,
 		&i.AutoApproveRequests,
 		&i.RequestQuota,
+		&i.RemoteMaxBitrate,
 	)
 	return i, err
 }
 
 const getProfile = `-- name: GetProfile :one
-SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language FROM profiles WHERE id = ?
+SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language, audio_language FROM profiles WHERE id = ?
 `
 
 func (q *Queries) GetProfile(ctx context.Context, id domain.ID) (Profile, error) {
@@ -193,6 +195,7 @@ func (q *Queries) GetProfile(ctx context.Context, id domain.ID) (Profile, error)
 		&i.Language,
 		&i.SubtitleMode,
 		&i.SubtitleLanguage,
+		&i.AudioLanguage,
 	)
 	return i, err
 }
@@ -247,9 +250,9 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 
 const insertAccount = `-- name: InsertAccount :exec
 INSERT INTO accounts (id, username, username_key, password_hash, is_admin, disabled, all_libraries, max_age,
-                      block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota, created_at,
-                      updated_at)
-VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      block_unrated, deny_downloads, deny_requests, auto_approve_requests, request_quota,
+                      remote_max_bitrate, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAccountParams struct {
@@ -265,6 +268,7 @@ type InsertAccountParams struct {
 	DenyRequests        int64
 	AutoApproveRequests int64
 	RequestQuota        int64
+	RemoteMaxBitrate    int64
 	CreatedAt           int64
 	UpdatedAt           int64
 }
@@ -283,6 +287,7 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) er
 		arg.DenyRequests,
 		arg.AutoApproveRequests,
 		arg.RequestQuota,
+		arg.RemoteMaxBitrate,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -404,7 +409,7 @@ func (q *Queries) ListAccountLibraries(ctx context.Context, accountID domain.ID)
 }
 
 const listAccountSummaries = `-- name: ListAccountSummaries :many
-SELECT a.id, a.username, a.username_key, a.password_hash, a.is_admin, a.disabled, a.created_at, a.updated_at, a.all_libraries, a.max_age, a.block_unrated, a.deny_downloads, a.deny_requests, a.auto_approve_requests, a.request_quota,
+SELECT a.id, a.username, a.username_key, a.password_hash, a.is_admin, a.disabled, a.created_at, a.updated_at, a.all_libraries, a.max_age, a.block_unrated, a.deny_downloads, a.deny_requests, a.auto_approve_requests, a.request_quota, a.remote_max_bitrate,
        (SELECT count(*) FROM profiles p WHERE p.account_id = a.id) AS profile_count,
        CAST(coalesce((SELECT max(s.last_used_at) FROM sessions s WHERE s.account_id = a.id), 0) AS INTEGER) AS last_active
 FROM accounts a
@@ -427,6 +432,7 @@ type ListAccountSummariesRow struct {
 	DenyRequests        int64
 	AutoApproveRequests int64
 	RequestQuota        int64
+	RemoteMaxBitrate    int64
 	ProfileCount        int64
 	LastActive          int64
 }
@@ -456,6 +462,7 @@ func (q *Queries) ListAccountSummaries(ctx context.Context) ([]ListAccountSummar
 			&i.DenyRequests,
 			&i.AutoApproveRequests,
 			&i.RequestQuota,
+			&i.RemoteMaxBitrate,
 			&i.ProfileCount,
 			&i.LastActive,
 		); err != nil {
@@ -500,7 +507,7 @@ func (q *Queries) ListAllAccountLibraries(ctx context.Context) ([]AccountLibrary
 }
 
 const listProfiles = `-- name: ListProfiles :many
-SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language FROM profiles WHERE account_id = ? ORDER BY created_at, id
+SELECT id, account_id, name, name_key, pin_hash, kid, created_at, updated_at, max_age, block_unrated, theme_id, theme_mode, language, subtitle_mode, subtitle_language, audio_language FROM profiles WHERE account_id = ? ORDER BY created_at, id
 `
 
 func (q *Queries) ListProfiles(ctx context.Context, accountID domain.ID) ([]Profile, error) {
@@ -528,6 +535,7 @@ func (q *Queries) ListProfiles(ctx context.Context, accountID domain.ID) ([]Prof
 			&i.Language,
 			&i.SubtitleMode,
 			&i.SubtitleLanguage,
+			&i.AudioLanguage,
 		); err != nil {
 			return nil, err
 		}
@@ -625,7 +633,8 @@ func (q *Queries) TouchSession(ctx context.Context, arg TouchSessionParams) erro
 const updateAccount = `-- name: UpdateAccount :exec
 UPDATE accounts
 SET username = ?, username_key = ?, is_admin = ?, disabled = ?, all_libraries = ?, max_age = ?, block_unrated = ?,
-    deny_downloads = ?, deny_requests = ?, auto_approve_requests = ?, request_quota = ?, updated_at = ?
+    deny_downloads = ?, deny_requests = ?, auto_approve_requests = ?, request_quota = ?, remote_max_bitrate = ?,
+    updated_at = ?
 WHERE id = ?
 `
 
@@ -641,6 +650,7 @@ type UpdateAccountParams struct {
 	DenyRequests        int64
 	AutoApproveRequests int64
 	RequestQuota        int64
+	RemoteMaxBitrate    int64
 	UpdatedAt           int64
 	ID                  domain.ID
 }
@@ -658,6 +668,7 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) er
 		arg.DenyRequests,
 		arg.AutoApproveRequests,
 		arg.RequestQuota,
+		arg.RemoteMaxBitrate,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -682,7 +693,7 @@ func (q *Queries) UpdateAccountPassword(ctx context.Context, arg UpdateAccountPa
 const updateProfile = `-- name: UpdateProfile :exec
 UPDATE profiles
 SET name = ?, name_key = ?, pin_hash = ?, kid = ?, max_age = ?, block_unrated = ?, language = ?,
-    subtitle_mode = ?, subtitle_language = ?, updated_at = ?
+    subtitle_mode = ?, subtitle_language = ?, audio_language = ?, updated_at = ?
 WHERE id = ?
 `
 
@@ -696,6 +707,7 @@ type UpdateProfileParams struct {
 	Language         string
 	SubtitleMode     string
 	SubtitleLanguage string
+	AudioLanguage    string
 	UpdatedAt        int64
 	ID               domain.ID
 }
@@ -711,6 +723,7 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) er
 		arg.Language,
 		arg.SubtitleMode,
 		arg.SubtitleLanguage,
+		arg.AudioLanguage,
 		arg.UpdatedAt,
 		arg.ID,
 	)

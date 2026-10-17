@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,8 +25,9 @@ import (
 // playbackServer starts a full server whose fixture movies (and the movie with subtitles) are
 // scanned and indexed, with their subtitles extracted. It returns its address and an administrator
 // token. The cap on concurrent transcodes is set as strict as it gets (one, as on a four-core
-// machine without a hardware encoder), so that tests behave the same on every machine.
-func playbackServer(t *testing.T) (string, string) {
+// machine without a hardware encoder), so that tests behave the same on every machine. Requests
+// from the proxies given are read with their X-Forwarded-For.
+func playbackServer(t *testing.T, proxies ...netip.Prefix) (string, string) {
 	t.Helper()
 	testfixtures.Library(t)
 	ffmpeg, ffprobe, _ := testfixtures.FFmpeg()
@@ -42,7 +44,7 @@ func playbackServer(t *testing.T) (string, string) {
 	if err := a.Start(runCtx); err != nil {
 		t.Fatal(err)
 	}
-	srv := httptest.NewServer(NewHandler(a, Options{}))
+	srv := httptest.NewServer(NewHandler(a, Options{TrustedProxies: proxies}))
 	t.Cleanup(func() { srv.Close(); cancel(); a.Wait(); _ = st.Close() })
 	login, err := a.Setup(ctx, "admin", "a-strong-password", domain.Device{Name: "Test", Client: "Test", ClientVersion: "1", Platform: "Go"}, "")
 	if err != nil {
@@ -291,5 +293,156 @@ func TestPlaybackOverHTTP(t *testing.T) {
 	if err != nil || sound.Msg.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_HLS_TRANSCODE ||
 		sound.Msg.GetVideoTranscoded() || !sound.Msg.GetAudioTranscoded() || sound.Msg.GetVideoEncoder() != "" {
 		t.Errorf("audio only re-encoded: %v %v", sound, err)
+	}
+}
+
+// Outside the local network a playback gets the server's bitrate limit, then the account's; the
+// address is the one a trusted proxy gives.
+func TestBitrateLimitOverHTTP(t *testing.T) {
+	base, token := playbackServer(t, netip.MustParsePrefix("127.0.0.1/32"))
+	ctx := context.Background()
+	system := laternav1connect.NewSystemServiceClient(http.DefaultClient, base)
+	accounts := laternav1connect.NewAccountServiceClient(http.DefaultClient, base)
+	activity := laternav1connect.NewActivityServiceClient(http.DefaultClient, base)
+	catalog := laternav1connect.NewCatalogServiceClient(http.DefaultClient, base)
+	player := laternav1connect.NewPlaybackServiceClient(http.DefaultClient, base)
+
+	rate := int32(800)
+	settings, err := system.UpdateSettings(ctx, authed(&laternav1.UpdateSettingsRequest{
+		RemoteMaxBitrate: &rate, LocalNetworks: &laternav1.StringList{Values: []string{"192.168.1.9/24"}},
+	}, token))
+	if err != nil || settings.Msg.GetSettings().GetRemoteMaxBitrate() != 800 || strings.Join(settings.Msg.GetSettings().GetLocalNetworks(), " ") != "192.168.1.0/24" {
+		t.Fatalf("settings: %v %v", settings, err)
+	}
+	low := int32(100)
+	if _, err := system.UpdateSettings(ctx, authed(&laternav1.UpdateSettingsRequest{RemoteMaxBitrate: &low}, token)); errorCode(err) != "settings.invalid_remote_max_bitrate" {
+		t.Errorf("limit too low: %v", err)
+	}
+	movies, err := catalog.ListMovies(ctx, authed(&laternav1.ListMoviesRequest{}, token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var movie string
+	for _, m := range movies.Msg.GetMovies() {
+		if m.GetTitle() == "Big Test Movie" { // H.264 and AAC in MP4, 838 kbit/s
+			movie = m.GetId()
+		}
+	}
+	device := &laternav1.DeviceProfile{Containers: []string{"mp4"}, Video: []*laternav1.VideoSupport{{Codec: "h264"}}, AudioCodecs: []string{"aac"}, Hls: true}
+	start := func(from string, maxRate int32) *laternav1.StartPlaybackResponse {
+		t.Helper()
+		req := authed(&laternav1.StartPlaybackRequest{ItemId: movie, Device: device, MaxBitrate: maxRate}, token)
+		req.Header().Set("X-Forwarded-For", from)
+		resp, err := player.StartPlayback(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp.Msg
+	}
+	stop := func(p *laternav1.StartPlaybackResponse) {
+		t.Helper()
+		if _, err := player.StopPlayback(ctx, authed(&laternav1.StopPlaybackRequest{SessionId: p.GetSessionId()}, token)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	home := start("192.168.1.5", 0)
+	if home.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_DIRECT || home.GetBitrateLimit() != 0 ||
+		home.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_UNSPECIFIED {
+		t.Errorf("at home: %v", home)
+	}
+	stop(home)
+
+	away := start("203.0.113.7", 0)
+	if away.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_HLS_TRANSCODE || !away.GetVideoTranscoded() || away.GetBitrateLimit() != 800 ||
+		away.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_REMOTE ||
+		len(away.GetReasonTexts()) != 1 || away.GetReasonTexts()[0].GetKey() != "reason.bitrate_above_limit" {
+		t.Errorf("away: %v", away)
+	}
+	playing, err := activity.ListPlaybacks(ctx, authed(&laternav1.ListPlaybacksRequest{}, token))
+	if err != nil || len(playing.Msg.GetPlaybacks()) != 1 || !playing.Msg.GetPlaybacks()[0].GetRemote() ||
+		playing.Msg.GetPlaybacks()[0].GetAddress() != "203.0.113.7" || playing.Msg.GetPlaybacks()[0].GetBitrateLimit() != 800 {
+		t.Errorf("playbacks: %v %v", playing, err)
+	}
+	resp, err := http.Get(base + away.GetMasterUrl())
+	if err != nil {
+		t.Fatal(err)
+	}
+	master, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if !strings.Contains(string(master), "BANDWIDTH=800000") {
+		t.Errorf("master playlist:\n%s", master)
+	}
+	stop(away)
+
+	client := start("192.168.1.5", 600)
+	if client.GetBitrateLimit() != 600 || client.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_CLIENT {
+		t.Errorf("client limit: %v", client)
+	}
+	stop(client)
+
+	list, err := accounts.ListAccounts(ctx, authed(&laternav1.ListAccountsRequest{}, token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	accountRate := int32(600)
+	updated, err := accounts.UpdateAccount(ctx, authed(&laternav1.UpdateAccountRequest{
+		AccountId: list.Msg.GetAccounts()[0].GetAccount().GetId(), RemoteMaxBitrate: &accountRate,
+	}, token))
+	if err != nil || updated.Msg.GetAccount().GetRemoteMaxBitrate() != 600 {
+		t.Fatalf("account: %v %v", updated, err)
+	}
+	account := start("203.0.113.7", 0)
+	if account.GetBitrateLimit() != 600 || account.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_REMOTE {
+		t.Errorf("account limit: %v", account)
+	}
+	stop(account)
+}
+
+// The profile's audio language picks the stream a playback starts with; the subtitle shown is
+// reported with the progress, and an unknown one is refused.
+func TestAudioPreferencesOverHTTP(t *testing.T) {
+	base, token := playbackServer(t)
+	ctx := context.Background()
+	profiles := laternav1connect.NewProfileServiceClient(http.DefaultClient, base)
+	catalog := laternav1connect.NewCatalogServiceClient(http.DefaultClient, base)
+	player := laternav1connect.NewPlaybackServiceClient(http.DefaultClient, base)
+	movies, err := catalog.ListMovies(ctx, authed(&laternav1.ListMoviesRequest{}, token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var movie string
+	for _, m := range movies.Msg.GetMovies() {
+		if m.GetTitle() == "Dual Audio" { // French and Japanese audio
+			movie = m.GetId()
+		}
+	}
+	device := &laternav1.DeviceProfile{Containers: []string{"mp4"}, Video: []*laternav1.VideoSupport{{Codec: "h264"}}, AudioCodecs: []string{"aac", "opus", "flac"}, Hls: true}
+	audioFor := func(lang string) int32 {
+		t.Helper()
+		resp, err := profiles.SetAudioPreferences(ctx, authed(&laternav1.SetAudioPreferencesRequest{Language: lang}, token))
+		if err != nil || resp.Msg.GetProfile().GetAudioLanguage() != lang {
+			t.Fatalf("audio preferences %q: %v %v", lang, resp, err)
+		}
+		started, err := player.StartPlayback(ctx, authed(&laternav1.StartPlaybackRequest{ItemId: movie, Device: device}, token))
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := started.Msg.GetSessionId()
+		none, unknown := int32(-1), int32(9)
+		if _, err := player.ReportProgress(ctx, authed(&laternav1.ReportProgressRequest{SessionId: id, SubtitleIndex: &none}, token)); err != nil {
+			t.Error(err)
+		}
+		if _, err := player.ReportProgress(ctx, authed(&laternav1.ReportProgressRequest{SessionId: id, SubtitleIndex: &unknown}, token)); errorCode(err) != "playback.unknown_subtitle" {
+			t.Errorf("unknown subtitle: %v", err)
+		}
+		if _, err := player.StopPlayback(ctx, authed(&laternav1.StopPlaybackRequest{SessionId: id, SubtitleIndex: &none}, token)); err != nil {
+			t.Fatal(err)
+		}
+		return started.Msg.GetAudioStreamIndex()
+	}
+	japanese, french := audioFor("ja"), audioFor("fr")
+	if japanese == french || japanese == 0 || french == 0 {
+		t.Errorf("audio streams: Japanese %d, French %d", japanese, french)
 	}
 }

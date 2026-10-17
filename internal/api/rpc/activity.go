@@ -112,7 +112,7 @@ func (s *ActivityService) ListPlaybacks(context.Context, *connect.Request[latern
 			ProfileName: p.ProfileName, Device: p.Device, ItemId: p.ItemID.String(), Title: p.Title, Method: p.Method,
 			CopyVideo: p.CopyVideo, CopyAudio: p.CopyAudio, Encoder: p.Encoder, ToneMap: p.ToneMap, Gpu: p.GPU, Decoder: p.Decoder,
 			StartedAt: timestamppb.New(p.StartedAt), Position: durationpb.New(p.Position), Duration: durationpb.New(p.Duration),
-			Transcoding: p.Transcoding,
+			Transcoding: p.Transcoding, Remote: p.Remote, BitrateLimit: clampInt32(p.BitrateLimit), Address: p.Address,
 		})
 	}
 	return connect.NewResponse(resp), nil

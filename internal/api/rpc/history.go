@@ -112,7 +112,7 @@ func historyEntryMsg(ctx context.Context, p domain.Play, view *domain.ItemView) 
 		case domain.ItemTrack:
 			msg.Item = &laternav1.HistoryEntry_Track{Track: trackMsg(ctx, *view)}
 		case domain.ItemSeries, domain.ItemSeason, domain.ItemArtist, domain.ItemAlbum, domain.ItemBookSeries, domain.ItemBook,
-			domain.ItemPhotoAlbum, domain.ItemPhoto:
+			domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 		}
 	}
 	return msg

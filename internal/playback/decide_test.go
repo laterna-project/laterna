@@ -58,7 +58,7 @@ func TestDecide(t *testing.T) {
 		{"no H.264: nothing to transcode to", file("mkv", hevc10, aac), DeviceProfile{Video: []VideoSupport{{Codec: "vp9"}}, AudioCodecs: []string{"aac"}, HLS: true}, -1, Unplayable, 1},
 	}
 	for _, tt := range tests {
-		p := Decide(tt.info, tt.dev, tt.audio, nil)
+		p := Decide(tt.info, tt.dev, tt.audio, nil, 0)
 		if p.Method != tt.method || p.Audio != tt.track || p.Video != 0 {
 			t.Errorf("%s: %+v, want %s with audio stream %d", tt.name, p, tt.method, tt.track)
 		}
@@ -66,7 +66,7 @@ func TestDecide(t *testing.T) {
 			t.Errorf("%s: no reason given", tt.name)
 		}
 	}
-	p := Decide(file("mkv", hevc10, eac3), chrome, -1, nil)
+	p := Decide(file("mkv", hevc10, eac3), chrome, -1, nil, 0)
 	if got := fmt.Sprint(p.Reasons); got != "[reason.video_unsupported (bit_depth=10, codec=hevc, dynamic_range=sdr) reason.audio_unsupported (codec=eac3) reason.container_unsupported (container=mkv)]" {
 		t.Errorf("reasons: %v", p.Reasons)
 	}
@@ -87,7 +87,7 @@ func TestDecideCopiesWhatItCan(t *testing.T) {
 		{"HDR on the HDR TV: nothing to re-encode", file("mkv", hevcHDR, eac3), DeviceProfile{Video: tv.Video, AudioCodecs: tv.AudioCodecs, HLS: true}, true, true, false},
 	}
 	for _, c := range cases {
-		p := Decide(c.info, c.dev, -1, nil)
+		p := Decide(c.info, c.dev, -1, nil, 0)
 		if p.CopyVideo != c.copyVideo || p.CopyAudio != c.copyAudio || p.ToneMap != c.toneMap {
 			t.Errorf("%s: %+v", c.name, p)
 		}
@@ -115,7 +115,7 @@ func TestDecideAudio(t *testing.T) {
 		{"neither picture nor sound", file("flac", cover), web, Unplayable},
 	}
 	for _, tt := range tests {
-		p := Decide(tt.info, tt.dev, -1, nil)
+		p := Decide(tt.info, tt.dev, -1, nil, 0)
 		if p.Method != tt.method || p.Video != -1 || p.Burn || p.ToneMap {
 			t.Errorf("%s: %+v, want %s", tt.name, p, tt.method)
 		}
@@ -149,13 +149,82 @@ func TestDecideSubtitles(t *testing.T) {
 		{"no subtitle format at all: text burned in", chrome, &ass, Transcode, true},
 	}
 	for _, c := range cases {
-		p := Decide(mp4, c.dev, -1, c.sub)
+		p := Decide(mp4, c.dev, -1, c.sub, 0)
 		if p.Method != c.method || p.Burn != c.burn || (c.burn && p.CopyVideo) {
 			t.Errorf("%s: %+v", c.name, p)
 		}
 	}
 	// HDR plus burn-in: the re-encoded picture needs tone mapping.
-	if p := Decide(file("mkv", hevcHDR, aac), DeviceProfile{Video: tv.Video, AudioCodecs: tv.AudioCodecs, HLS: true}, -1, &pgs); !p.Burn || !p.ToneMap {
+	if p := Decide(file("mkv", hevcHDR, aac), DeviceProfile{Video: tv.Video, AudioCodecs: tv.AudioCodecs, HLS: true}, -1, &pgs, 0); !p.Burn || !p.ToneMap {
 		t.Errorf("HDR with burn-in: %+v", p)
+	}
+}
+
+// A bitrate limit only changes the playback of a file above it: its video is re-encoded under the
+// limit, scaled down to what the rate carries, and audio too heavy for it is re-encoded to stereo.
+func TestDecideBitrateLimit(t *testing.T) {
+	heavy := func(container string, kbps int64, streams ...domain.Stream) domain.MediaInfo {
+		info := file(container, streams...)
+		info.Bitrate = kbps * 1000
+		return info
+	}
+	surround := domain.Stream{Kind: domain.StreamAudio, Codec: "eac3", Channels: 6}
+	stereo := domain.Stream{Kind: domain.StreamAudio, Codec: "aac", Channels: 2, Bitrate: 160_000}
+	cases := []struct {
+		name                 string
+		info                 domain.MediaInfo
+		dev                  DeviceProfile
+		limit                int
+		method               Method
+		copyVideo, copyAudio bool
+		videoRate, audioRate int
+		maxHeight            int
+	}{
+		{"below the limit: direct as without one", heavy("mp4", 3000, h264, stereo), chrome, 4000, Direct, true, true, 0, 0, 0},
+		{"below the limit: remux as without one", heavy("mkv", 3000, h264, stereo), chrome, 4000, Remux, true, true, 0, 0, 0},
+		{"above it: video re-encoded, light audio copied", heavy("mp4", 12000, h264, stereo), chrome, 4000, Transcode, false, true, 3440, 0, 720},
+		{"5.1 E-AC-3 that fits: copied", heavy("mkv", 20000, hevcHDR, surround), tv, 4000, Transcode, false, true, 2960, 0, 720},
+		{"5.1 E-AC-3 too heavy for the limit: stereo AAC", heavy("mkv", 20000, hevcHDR, surround), tv, 2000, Transcode, false, false, 1675, 125, 480},
+		{"generous limit: 1080p, 5.1 kept", heavy("mkv", 40000, hevcHDR, surround), tv, 20000, Transcode, false, true, 17360, 0, 1080},
+		{"tight limit: 360p, the least audio", heavy("mp4", 8000, h264, stereo), chrome, 500, Transcode, false, false, 386, 64, 360},
+		{"unknown bitrate: nothing to limit", file("mp4", h264, stereo), chrome, 500, Direct, true, true, 0, 0, 0},
+		{"video re-encoded anyway: under the limit too", heavy("mkv", 2000, hevc10, stereo), chrome, 3000, Transcode, false, true, 2540, 0, 720},
+	}
+	for _, c := range cases {
+		p := Decide(c.info, c.dev, -1, nil, c.limit)
+		if p.Method != c.method || p.CopyVideo != c.copyVideo || p.CopyAudio != c.copyAudio ||
+			p.VideoRate != c.videoRate || p.AudioRate != c.audioRate || p.MaxHeight != c.maxHeight {
+			t.Errorf("%s: %+v", c.name, p)
+		}
+	}
+	p := Decide(heavy("mp4", 12000, h264, stereo), chrome, -1, nil, 4000)
+	if got := fmt.Sprint(p.Reasons); got != "[reason.bitrate_above_limit (bitrate_kbps=12000, limit_kbps=4000)]" {
+		t.Errorf("reasons: %v", got)
+	}
+	if !Decide(heavy("mkv", 20000, hevcHDR, surround), chrome, -1, nil, 4000).ToneMap {
+		t.Error("HDR re-encoded under a limit without tone mapping")
+	}
+}
+
+// Music above the limit is converted under it, unless the device only plays it as it is.
+func TestDecideAudioBitrateLimit(t *testing.T) {
+	flac := file("flac", domain.Stream{Kind: domain.StreamAudio, Codec: "flac", Channels: 2})
+	flac.Bitrate = 1_000_000
+	web := DeviceProfile{Containers: []string{"mp4", "flac"}, AudioCodecs: []string{"aac", "flac"}}
+	if p := Decide(flac, web, -1, nil, 0); p.Method != Direct {
+		t.Errorf("no limit: %+v", p)
+	}
+	if p := Decide(flac, web, -1, nil, 2000); p.Method != Direct {
+		t.Errorf("below the limit: %+v", p)
+	}
+	if p := Decide(flac, web, -1, nil, 500); p.Method != Convert || p.AudioRate != 256 || len(p.Reasons) != 1 {
+		t.Errorf("above the limit: %+v", p)
+	}
+	if p := Decide(flac, web, -1, nil, 100); p.Method != Convert || p.AudioRate != 90 {
+		t.Errorf("far above the limit: %+v", p)
+	}
+	flacOnly := DeviceProfile{Containers: []string{"flac"}, AudioCodecs: []string{"flac"}}
+	if p := Decide(flac, flacOnly, -1, nil, 500); p.Method != Direct || p.Reasons != nil {
+		t.Errorf("nothing else plays: %+v", p)
 	}
 }

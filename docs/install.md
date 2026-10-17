@@ -269,7 +269,8 @@ proxy); its README explains how. The device login page that TVs point to is `/de
 ## Behind a reverse proxy
 
 Laterna speaks plain HTTP; terminate TLS in a reverse proxy (Caddy, Traefik, nginx) and declare
-it, so the server sees real client addresses:
+it, so the server sees real client addresses. Rate limits and the bitrate limit of playbacks from
+outside the local network depend on them:
 
 ```toml
 [server]

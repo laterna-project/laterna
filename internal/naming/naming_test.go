@@ -8,11 +8,12 @@ import (
 func TestIgnored(t *testing.T) {
 	tests := map[string]bool{
 		"Big Movie (2020)/Big Movie (2020).mkv":             false,
-		"Big Movie (2020)/Extras/Making of.mkv":             true,
-		"Big Movie (2020)/featurettes/Interview.mkv":        true,
+		"Big Movie (2020)/Extras/Making of.mkv":             false, // an extra (ParseExtra)
+		"Big Movie (2020)/featurettes/Interview.mkv":        false,
 		"Big Movie (2020)/big-movie-sample.mkv":             true,
 		"Big Movie (2020)/sample.mkv":                       true,
-		"Big Movie (2020)/Big Movie-trailer.mp4":            true,
+		"Big Movie (2020)/Sample/x.mkv":                     true,
+		"Big Movie (2020)/Big Movie-trailer.mp4":            false,
 		".cache/x.mkv":                                      true,
 		"@eaDir/x.mkv/SYNOVIDEO_VIDEO_SCREENSHOT.jpg":       true,
 		"Scenes From a Marriage (1973)/Scenes.mkv":          false,

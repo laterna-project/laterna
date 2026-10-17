@@ -163,10 +163,12 @@ func renderList(lang Lang, list []domain.Text) string {
 }
 
 // Param formats in a template: {retry_after_seconds:duration} ("15 min"), {max_bytes:bytes} ("8
-// MiB"), {position_seconds:clock} ("1:23:45"), {value:onoff} ("on").
+// MiB"), {limit_kbps:bitrate} ("4 Mbit/s"), {position_seconds:clock} ("1:23:45"), {value:onoff}
+// ("on").
 const (
 	formatDuration = "duration"
 	formatBytes    = "bytes"
+	formatBitrate  = "bitrate"
 	formatClock    = "clock"
 	formatOnOff    = "onoff"
 )
@@ -216,6 +218,13 @@ func formatParam(lang Lang, format, value string) string {
 			return unit("kib")
 		}
 		return unit("byte")
+	case formatBitrate:
+		// In Mbit/s when it is round or large enough, so that no decimal separator is needed.
+		if n >= 10000 || (n >= 1000 && n%1000 == 0) {
+			n = (n + 500) / 1000
+			return unit("mbps")
+		}
+		return unit("kbps")
 	case formatClock:
 		if n >= 3600 {
 			return fmt.Sprintf("%d:%02d:%02d", n/3600, n/60%60, n%60)

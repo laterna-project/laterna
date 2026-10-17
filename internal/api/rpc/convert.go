@@ -21,6 +21,7 @@ func accountMsg(a domain.Account) *laternav1.Account {
 		Id: a.ID.String(), Username: a.Username, IsAdmin: a.IsAdmin, CreatedAt: timestamppb.New(a.CreatedAt),
 		Disabled: a.Disabled, Libraries: libs, Parental: parentalMsg(a.Parental), DenyDownloads: a.DenyDownloads,
 		DenyRequests: a.DenyRequests, AutoApproveRequests: a.AutoApproveRequests, RequestQuota: clampInt32(a.RequestQuota),
+		RemoteMaxBitrate: clampInt32(a.RemoteMaxBitrate),
 	}
 }
 
@@ -28,7 +29,7 @@ func profileMsg(p domain.Profile) *laternav1.Profile {
 	return &laternav1.Profile{
 		Id: p.ID.String(), Name: p.Name, HasPin: p.HasPIN, Kid: p.Kid, CreatedAt: timestamppb.New(p.CreatedAt),
 		Parental: parentalMsg(p.Parental), Language: p.Language,
-		SubtitleMode: subtitleModes[p.SubtitleMode], SubtitleLanguage: p.SubtitleLanguage,
+		SubtitleMode: subtitleModes[p.SubtitleMode], SubtitleLanguage: p.SubtitleLanguage, AudioLanguage: p.AudioLanguage,
 	}
 }
 

@@ -26,6 +26,7 @@ type Account struct {
 	DenyRequests        int64
 	AutoApproveRequests int64
 	RequestQuota        int64
+	RemoteMaxBitrate    int64
 }
 
 type AccountLibrary struct {
@@ -113,6 +114,11 @@ type Episode struct {
 	Number       int64
 	NumberEnd    int64
 	Absolute     int64
+}
+
+type Extra struct {
+	ItemID domain.ID
+	Kind   string
 }
 
 type FileFont struct {
@@ -401,6 +407,7 @@ type Profile struct {
 	Language         string
 	SubtitleMode     string
 	SubtitleLanguage string
+	AudioLanguage    string
 }
 
 type ProviderID struct {
@@ -486,6 +493,16 @@ type SegmentScan struct {
 	ScannedAt   int64
 }
 
+type SeriesChoice struct {
+	ProfileID        domain.ID
+	SeriesID         domain.ID
+	AudioLanguage    string
+	SubtitleChosen   int64
+	SubtitleLanguage string
+	SubtitleForced   int64
+	UpdatedAt        int64
+}
+
 type Session struct {
 	ID            domain.ID
 	AccountID     domain.ID
@@ -550,6 +567,7 @@ type Track struct {
 	TrackPeak sql.NullFloat64
 	AlbumGain sql.NullFloat64
 	AlbumPeak sql.NullFloat64
+	Lyrics    string
 }
 
 type Trickplay struct {

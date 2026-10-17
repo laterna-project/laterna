@@ -569,15 +569,18 @@ func (a *App) MasterPlaylist(ctx context.Context, id domain.ID, token string) (s
 			})
 		}
 	}
-	return playback.MasterPlaylist("main.m3u8", bandwidth(s.file), list), nil
+	return playback.MasterPlaylist("main.m3u8", s.bandwidth(), list), nil
 }
 
-// bandwidth is the bit rate the master playlist announces for a file: its average, at least
-// 1 Mbit/s. Its only variant is played whatever it says.
-func bandwidth(f domain.MediaFile) int64 {
+// bandwidth is the bit rate the master playlist announces: the file's average, at least 1 Mbit/s,
+// or the limit of a video re-encoded under one. Its only variant is played whatever it says.
+func (s *playSession) bandwidth() int64 {
 	const least = 1_000_000
-	if sec := f.Info.Duration.Seconds(); sec > 0 {
-		return max(int64(float64(f.Size)*8/sec), least)
+	if !s.plan.CopyVideo && s.limit.Rate > 0 {
+		return int64(s.limit.Rate) * 1000
+	}
+	if sec := s.file.Info.Duration.Seconds(); sec > 0 {
+		return max(int64(float64(s.file.Size)*8/sec), least)
 	}
 	return least
 }

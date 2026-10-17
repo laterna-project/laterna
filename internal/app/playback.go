@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -66,6 +67,48 @@ type PlayRequest struct {
 	// Language is the device's language (Accept-Language): the subtitles' when the profile names
 	// none.
 	Language string
+	// MaxBitrate is the highest bitrate the client wants (kbit/s); 0 means no limit.
+	MaxBitrate int
+	// Client is the client's address. Outside the local network, the server's bitrate limits
+	// apply.
+	Client netip.Addr
+}
+
+// BitrateLimit is the bitrate limit of a playback: the lowest of the client's and, outside the
+// local network, the server's and the account's.
+type BitrateLimit struct {
+	// Rate is in kbit/s; 0 means no limit.
+	Rate   int
+	Source LimitSource
+}
+
+// LimitSource says where a bitrate limit comes from.
+type LimitSource string
+
+// Sources of a bitrate limit.
+const (
+	LimitNone   LimitSource = ""
+	LimitClient LimitSource = "client"
+	// LimitRemote is the server's or the account's, for a client outside the local network.
+	LimitRemote LimitSource = "remote"
+)
+
+// bitrateLimit works out the bitrate limit of a playback.
+func (a *App) bitrateLimit(account domain.Account, req PlayRequest) (BitrateLimit, bool) {
+	limit := BitrateLimit{}
+	if req.MaxBitrate > 0 {
+		limit = BitrateLimit{Rate: req.MaxBitrate, Source: LimitClient}
+	}
+	s := a.Settings()
+	remote := !domain.IsLocal(req.Client, s.LocalNetworks)
+	if remote {
+		for _, r := range []int{s.RemoteMaxBitrate, account.RemoteMaxBitrate} {
+			if r > 0 && (limit.Rate == 0 || r < limit.Rate) {
+				limit = BitrateLimit{Rate: r, Source: LimitRemote}
+			}
+		}
+	}
+	return limit, remote
 }
 
 // PlayInfo describes an open playback.
@@ -101,6 +144,10 @@ type PlayInfo struct {
 	// Renditions names the subtitles the master playlist of an HLS playback offers as WebVTT
 	// renditions (position → name, playSession.renditions); nil for a direct playback.
 	Renditions map[int]string
+	// Limit is the bitrate limit applied, and VideoRate the bitrate the re-encoded video aims at
+	// under it (kbit/s; 0 if the video is copied or no limit applies).
+	Limit     BitrateLimit
+	VideoRate int
 }
 
 // playSession is a playback in progress.
@@ -113,6 +160,7 @@ type playSession struct {
 	who     playViewer
 	file    domain.MediaFile
 	plan    playback.Plan
+	limit   BitrateLimit
 	encoder transcode.Encoder
 	// running tracks the runs in progress, including those a seek canceled and that are finishing.
 	running sync.WaitGroup
@@ -130,6 +178,15 @@ type playSession struct {
 	// track (never a resume point).
 	conv  *conversion
 	music bool
+	// extra marks an extra: no resume point, no progress, no play in the history.
+	extra bool
+	// series is the series of an episode, nil otherwise, and subs the subtitles of the file. choice
+	// is what the viewer chose during the playback (the audio language when audioChosen, the
+	// subtitle when choice.SubtitleChosen; s.mu), kept for the series when it ends.
+	series      *domain.ID
+	subs        []domain.Subtitle
+	choice      domain.SeriesChoice
+	audioChosen bool
 
 	mu       sync.Mutex
 	changed  chan struct{} // closed (then replaced) on every change: wakes up waiters
@@ -172,12 +229,15 @@ func (s *playSession) advance(position time.Duration, now time.Time) {
 	s.lastPos, s.lastAt = position, now
 }
 
-// playViewer says who is watching a playback, and what.
+// playViewer says who is watching a playback, and what, and from where: the client's address, and
+// whether it is outside the local network.
 type playViewer struct {
 	accountID                     domain.ID
 	username, profileName, device string
 	title                         string
 	startedAt                     time.Time
+	address                       string
+	remote                        bool
 }
 
 // itemTitle is the title of an item as the log shows it (an episode with its series, a track with
@@ -240,7 +300,8 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	read := a.store.Read()
 	view, err := read.View(ctx, v, req.ItemID)
 	it := view.Item
-	if store.IsNotFound(err) || (err == nil && it.Kind != domain.ItemMovie && it.Kind != domain.ItemEpisode && it.Kind != domain.ItemTrack) {
+	if store.IsNotFound(err) || (err == nil && it.Kind != domain.ItemMovie && it.Kind != domain.ItemEpisode && it.Kind != domain.ItemTrack &&
+		it.Kind != domain.ItemExtra) {
 		return PlayInfo{}, domain.NotFound("catalog.item_not_found")
 	}
 	if err != nil {
@@ -261,7 +322,11 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	if file == nil {
 		return PlayInfo{}, domain.NotFound("playback.no_readable_file")
 	}
-	music := it.Kind == domain.ItemTrack
+	music, extra := it.Kind == domain.ItemTrack, it.Kind == domain.ItemExtra
+	if extra {
+		// An extra starts from the beginning, and leaves neither a position nor a play behind.
+		view.UserData = domain.UserData{}
+	}
 	var subs []domain.Subtitle
 	var fonts []domain.Font
 	subsReady := true
@@ -269,6 +334,19 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		if subs, fonts, subsReady, err = a.subtitlesOf(ctx, *file); err != nil {
 			return PlayInfo{}, err
 		}
+	}
+	// An episode starts as the viewer last chose in its series, before the profile's preferences.
+	var series *domain.ID
+	var choice domain.SeriesChoice
+	if view.Episode != nil {
+		series = &view.Episode.SeriesID
+		if choice, err = read.SeriesChoice(ctx, profile, *series); err != nil {
+			return PlayInfo{}, err
+		}
+	}
+	audio := req.Audio
+	if audio < 0 && !music && p.Profile != nil {
+		audio = preferredAudio(file.Info, choice.Audio, p.Profile.AudioLanguage)
 	}
 	var chosen *domain.Subtitle
 	if req.Subtitle != nil {
@@ -278,9 +356,15 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		chosen = &subs[*req.Subtitle]
 	}
 	if chosen == nil && req.ProfileSubtitle && !music && p.Profile != nil {
-		chosen = profileSubtitle(*p.Profile, req.Language, file.Info, req.Audio, subs)
+		chosen = profileSubtitle(*p.Profile, choice, req.Language, file.Info, audio, subs)
 	}
-	plan := playback.Decide(file.Info, req.Device, req.Audio, chosen)
+	bitrate, remote := a.bitrateLimit(p.Account, req)
+	info := file.Info
+	if info.Bitrate == 0 && info.Duration > 0 {
+		// Not given by the container: the average over the file.
+		info.Bitrate = int64(float64(file.Size) * 8 / info.Duration.Seconds())
+	}
+	plan := playback.Decide(info, req.Device, audio, chosen, bitrate.Rate)
 	var encoder transcode.Encoder
 	var toneMap *transcode.ToneMapper
 	gpu := false
@@ -315,15 +399,28 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		}
 	}
 	s := &playSession{
-		id: domain.NewID(), token: newToken(), profile: profile, item: it.ID, file: *file, plan: plan, encoder: encoder, toneMap: toneMap,
-		gpu: gpu, decoder: decoder,
+		id: domain.NewID(), token: newToken(), profile: profile, item: it.ID, file: *file, plan: plan, limit: bitrate,
+		encoder: encoder, toneMap: toneMap, gpu: gpu, decoder: decoder,
 		changed: make(chan struct{}), ready: map[int]bool{}, lastSeen: a.now(), savedAt: a.now(),
-		position: view.UserData.Position, music: music,
+		position: view.UserData.Position, music: music, extra: extra,
 		play: playOf(profile, view, file.Info.Duration, a.now()), lastPos: view.UserData.Position, lastAt: a.now(),
 		who: playViewer{
 			accountID: p.Account.ID, username: p.Account.Username, profileName: p.Profile.Name,
-			device: "unknown device", title: itemTitle(view), startedAt: a.now(),
+			device: "unknown device", title: itemTitle(view), startedAt: a.now(), remote: remote,
 		},
+	}
+	if req.Client.IsValid() {
+		s.who.address = req.Client.Unmap().String()
+	}
+	s.series, s.subs = series, subs
+	if series != nil && req.Audio >= 0 {
+		// A stream named by the request is the viewer's choice: its language goes to the series.
+		if st := playback.AudioStream(file.Info, req.Audio); st != nil && naming.Language(st.Language) != "" {
+			s.choice.Audio, s.audioChosen = naming.Language(st.Language), true
+		}
+	}
+	if req.Subtitle != nil {
+		_ = s.noteSubtitle(*req.Subtitle) // checked above
 	}
 	if sess, err := read.Session(ctx, p.SessionID); err == nil {
 		s.who.device = sess.Device.Name
@@ -336,7 +433,7 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 				channels = st.Channels
 			}
 		}
-		s.conv = a.convertAudio(*file, plan.Audio, channels, 0) //nolint:contextcheck // the conversion outlives the request: background context
+		s.conv = a.convertAudio(*file, plan.Audio, channels, plan.AudioRate) //nolint:contextcheck // the conversion outlives the request: background context
 	}
 	if s.hls() {
 		// Video copied: segments on the source keyframes. Video re-encoded: fixed segments with
@@ -373,7 +470,8 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 	a.log.InfoContext(ctx, "playback started", "session", s.id, "item", it.ID, "title", it.Title,
 		"method", plan.Method, "copy_video", plan.CopyVideo, "copy_audio", plan.CopyAudio,
 		"encoder", encoder.Name, "gpu", gpu, "decoder", decoderName(decoder), "tonemap", toneMapName(toneMap, gpu), "reasons", plan.Reasons, "segments", len(s.segs),
-		"subtitles", len(subs), "subtitles_ready", subsReady, "subtitle", subtitleLog(chosen), "burn", plan.Burn)
+		"subtitles", len(subs), "subtitles_ready", subsReady, "subtitle", subtitleLog(chosen), "burn", plan.Burn,
+		"remote", remote, "bitrate_limit", bitrate.Rate, "video_rate", s.videoRate(), "max_height", plan.MaxHeight)
 	started := domain.T("activity.playback_started", "profile", s.who.profileName, "title", s.who.title, "device", s.who.device, []domain.Text{methodText(plan)})
 	if music {
 		started.Key = "activity.listening_started"
@@ -389,15 +487,39 @@ func (a *App) StartPlayback(ctx context.Context, p domain.Principal, req PlayReq
 		Reasons: plan.Reasons, CopyVideo: plan.CopyVideo, CopyAudio: plan.CopyAudio, Encoder: encoder.Name, ToneMap: toneMapName(toneMap, gpu),
 		GPU: gpu, Decoder: decoderName(decoder),
 		Subtitles: subs, Fonts: fonts, SubtitlesReady: subsReady, Subtitle: subtitlePosition(chosen), Burned: burned,
-		Renditions: s.renditions(subs),
+		Renditions: s.renditions(subs), Limit: bitrate, VideoRate: s.videoRate(),
 	}, nil
 }
 
+// videoRate is the bitrate the re-encoded video aims at under the limit (kbit/s), 0 if it is copied,
+// not limited, or if the encoder cannot cap its bitrate (it is then only scaled down).
+func (s *playSession) videoRate() int {
+	if s.plan.CopyVideo || !s.encoder.Rated {
+		return 0
+	}
+	return s.plan.VideoRate
+}
+
 // profileSubtitle is the subtitle a playback starts with by the profile's preferences, nil for
-// none (playback.PickSubtitle). Its language is the one the profile names for subtitles, then the
-// profile's, then the device's. Every language is brought to its ISO 639-2/B code: the file says
-// "fra" or "fre", the profile "fr" or "fr-CA".
-func profileSubtitle(profile domain.Profile, device string, info domain.MediaInfo, audio int, subs []domain.Subtitle) *domain.Subtitle {
+// none. In an episode, the choice last made in its series comes first: none, or one like it
+// (playback.PickSameSubtitle). Otherwise playback.PickSubtitle, in the language the profile names
+// for subtitles, then the profile's, then the device's. Every language is brought to its ISO
+// 639-2/B code: the file says "fra" or "fre", the profile "fr" or "fr-CA".
+func profileSubtitle(profile domain.Profile, choice domain.SeriesChoice, device string, info domain.MediaInfo, audio int, subs []domain.Subtitle) *domain.Subtitle {
+	candidates := make([]domain.Subtitle, len(subs))
+	for i, s := range subs {
+		s.Language = naming.Language(s.Language)
+		candidates[i] = s
+	}
+	if choice.SubtitleChosen {
+		if choice.Subtitle == "" {
+			return nil
+		}
+		if pos, ok := playback.PickSameSubtitle(candidates, choice.Subtitle, choice.Forced); ok && pos < len(subs) {
+			return &subs[pos]
+		}
+		// None in that language in this episode: the profile's preferences decide.
+	}
 	lang := ""
 	for _, tag := range []string{profile.SubtitleLanguage, profile.Language, device} {
 		if lang = naming.Language(tag); lang != "" {
@@ -408,16 +530,91 @@ func profileSubtitle(profile domain.Profile, device string, info domain.MediaInf
 	if s := playback.AudioStream(info, audio); s != nil {
 		audioLang = naming.Language(s.Language)
 	}
-	candidates := make([]domain.Subtitle, len(subs))
-	for i, s := range subs {
-		s.Language = naming.Language(s.Language)
-		candidates[i] = s
-	}
 	pos, ok := playback.PickSubtitle(candidates, profile.SubtitleMode, lang, audioLang)
 	if !ok || pos >= len(subs) {
 		return nil
 	}
 	return &subs[pos]
+}
+
+// preferredAudio is the audio stream a playback starts with when the request names none: one in
+// the first of langs the file has (the language last chosen in the series, then the profile's),
+// otherwise -1, the file's default.
+func preferredAudio(info domain.MediaInfo, langs ...string) int {
+	streams := make([]domain.Stream, 0, len(info.Streams))
+	for _, s := range info.Streams {
+		if s.Kind == domain.StreamAudio {
+			s.Language = naming.Language(s.Language)
+			streams = append(streams, s)
+		}
+	}
+	for _, l := range langs {
+		if i, ok := playback.PickAudio(streams, naming.Language(l)); ok {
+			return i
+		}
+	}
+	return -1
+}
+
+// noteSubtitle notes the subtitle shown now (a position in the file's list, -1 for none). In an
+// episode it becomes the choice of its series when the playback ends. A subtitle whose language is
+// unknown cannot be found again in another episode, and is not kept.
+func (s *playSession) noteSubtitle(position int) error {
+	if position < -1 || position >= len(s.subs) {
+		return domain.Invalid("playback.unknown_subtitle", "index", position)
+	}
+	if s.series == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if position == -1 {
+		s.choice.SubtitleChosen, s.choice.Subtitle, s.choice.Forced = true, "", false
+		return nil
+	}
+	sub := s.subs[position]
+	if lang := naming.Language(sub.Language); lang != "" {
+		s.choice.SubtitleChosen, s.choice.Subtitle, s.choice.Forced = true, lang, sub.Forced
+	}
+	return nil
+}
+
+// NoteSubtitle notes the subtitle a playback of the caller's profile shows now (position in the
+// file's list, -1 for none): in an episode, the choice of its series for the next ones.
+func (a *App) NoteSubtitle(p domain.Principal, id domain.ID, position int) error {
+	s, err := a.ownSession(p, id)
+	if err != nil {
+		return err
+	}
+	return s.noteSubtitle(position)
+}
+
+// saveChoice keeps what the viewer chose in an episode for its series: the audio language named by
+// the request, the last subtitle shown. What was not chosen stays as it was.
+func (a *App) saveChoice(ctx context.Context, s *playSession) {
+	s.mu.Lock()
+	choice, audio := s.choice, s.audioChosen
+	s.mu.Unlock()
+	if s.series == nil || (!audio && !choice.SubtitleChosen) {
+		return
+	}
+	err := a.store.Write(ctx, func(q store.Q) error {
+		kept, err := q.SeriesChoice(ctx, s.profile, *s.series)
+		if err != nil {
+			return err
+		}
+		if audio {
+			kept.Audio = choice.Audio
+		}
+		if choice.SubtitleChosen {
+			kept.SubtitleChosen, kept.Subtitle, kept.Forced = true, choice.Subtitle, choice.Forced
+		}
+		kept.UpdatedAt = a.now()
+		return q.SetSeriesChoice(ctx, s.profile, *s.series, kept)
+	})
+	if err != nil {
+		a.log.WarnContext(ctx, "playback: choice of the series not saved", "session", s.id, "err", err)
+	}
 }
 
 func subtitlePosition(s *domain.Subtitle) *int {
@@ -756,11 +953,15 @@ func (a *App) runCommand(s *playSession, k int) fmp4.Command {
 	s.mu.Lock()
 	gpu, decoder := s.gpu, s.decoder
 	s.mu.Unlock()
+	height := maxTranscodeHeight
+	if s.plan.MaxHeight > 0 {
+		height = min(height, s.plan.MaxHeight)
+	}
 	cmd := fmp4.Command{Bin: a.ffmpeg, Args: transcode.Args(transcode.Options{
 		Path: s.file.Path, Start: start, Audio: s.plan.Audio,
-		CopyVideo: s.plan.CopyVideo, VideoTag: videoTag, Encoder: s.encoder, MaxHeight: maxTranscodeHeight,
-		Segment: playback.TargetSegment, CopyAudio: s.plan.CopyAudio, Channels: channels, Burn: s.burn, ToneMap: s.toneMap,
-		GPU: gpu, Decoder: decoder,
+		CopyVideo: s.plan.CopyVideo, VideoTag: videoTag, Encoder: s.encoder, MaxHeight: height, VideoRate: s.plan.VideoRate,
+		Segment: playback.TargetSegment, CopyAudio: s.plan.CopyAudio, Channels: channels, AudioRate: s.plan.AudioRate,
+		Burn: s.burn, ToneMap: s.toneMap, GPU: gpu, Decoder: decoder,
 	})}
 	if s.burn != nil && s.burn.Text != "" {
 		cmd.Dir = s.dir // the subtitle and its fonts are copied there (relative paths)
@@ -899,7 +1100,7 @@ func (a *App) StopPlayback(ctx context.Context, p domain.Principal, id domain.ID
 // per session.
 func (a *App) saveSessionProgress(ctx context.Context, s *playSession) {
 	s.mu.Lock()
-	if !s.dirty || s.finished {
+	if !s.dirty || s.finished || s.extra {
 		s.mu.Unlock()
 		return
 	}
@@ -928,10 +1129,11 @@ func (a *App) saveSessionProgress(ctx context.Context, s *playSession) {
 // closeSession ends a session: position saved, run stopped, segments deleted.
 func (a *App) closeSession(ctx context.Context, s *playSession) {
 	a.saveSessionProgress(ctx, s)
+	a.saveChoice(ctx, s)
 	s.mu.Lock()
 	position, finished := s.position, s.finished
 	// Two closes may cross (stop requested, watchdog): only one play is recorded.
-	play, record := s.play, !s.recorded
+	play, record := s.play, !s.recorded && !s.extra
 	s.recorded = true
 	play.Watched, play.Position, play.Completed = s.watched, position, finished
 	s.mu.Unlock()

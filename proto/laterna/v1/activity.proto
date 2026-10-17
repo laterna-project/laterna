@@ -154,6 +154,12 @@ message ActivePlayback {
   // Hardware decoder of the re-encoded video when it is not on the graphics card's chain (gpu);
   // empty if it is decoded on the CPU.
   string decoder = 19;
+  // The client is outside the local network (Settings.local_networks).
+  bool remote = 20;
+  // Bitrate limit applied (kbit/s, StartPlaybackResponse.bitrate_limit); 0 means none.
+  int32 bitrate_limit = 21;
+  // Client address, as seen by the server or given by a trusted proxy.
+  string address = 22;
 }
 
 message ListPlaybacksRequest {}

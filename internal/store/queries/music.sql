@@ -1,8 +1,9 @@
 -- Music: artists, albums, tracks.
 
 -- name: UpsertTrack :exec
-INSERT INTO tracks (item_id, album_id, artist_id, disc, number, artists, track_gain, track_peak, album_gain, album_peak)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tracks (item_id, album_id, artist_id, disc, number, artists, track_gain, track_peak, album_gain, album_peak,
+                    lyrics)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (item_id) DO UPDATE
 SET album_id = excluded.album_id,
     artist_id = excluded.artist_id,
@@ -12,7 +13,11 @@ SET album_id = excluded.album_id,
     track_gain = excluded.track_gain,
     track_peak = excluded.track_peak,
     album_gain = excluded.album_gain,
-    album_peak = excluded.album_peak;
+    album_peak = excluded.album_peak,
+    lyrics = excluded.lyrics;
+
+-- name: SetTrackLyrics :exec
+UPDATE tracks SET lyrics = ? WHERE item_id = ?;
 
 -- name: GetTrack :one
 SELECT * FROM tracks WHERE item_id = ?;

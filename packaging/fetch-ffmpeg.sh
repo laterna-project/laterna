@@ -1,6 +1,6 @@
 #!/bin/sh
-# Downloads the pinned FFmpeg build (packaging/ffmpeg.lock), checks its SHA-256 and puts ffmpeg
-# and ffprobe in a folder.
+# Downloads the pinned FFmpeg build (packaging/ffmpeg.lock), from the mirror first and from BtbN
+# if it is not there yet, checks its SHA-256 and puts ffmpeg and ffprobe in a folder.
 #
 #   packaging/fetch-ffmpeg.sh <linux|windows> <amd64|arm64> <destination>
 set -eu
@@ -29,12 +29,16 @@ case "$os/$arch" in
 esac
 
 name="${FFMPEG_NAME}-${target}-${FFMPEG_VARIANT}"
-url="https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_RELEASE}/${name}.${ext}"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 echo "fetching $name.$ext"
-curl -fsSL --retry 3 -o "$tmp/ffmpeg.$ext" "$url"
+# A pin that was just moved is only copied to the mirror once it reaches develop.
+if ! curl -fsL --retry 3 -o "$tmp/ffmpeg.$ext" "$FFMPEG_MIRROR/${FFMPEG_RELEASE}_${name}.${ext}"; then
+  echo "not in the mirror, fetching it from BtbN"
+  curl -fsSL --retry 3 -o "$tmp/ffmpeg.$ext" \
+    "https://github.com/BtbN/FFmpeg-Builds/releases/download/${FFMPEG_RELEASE}/${name}.${ext}"
+fi
 if command -v sha256sum >/dev/null 2>&1; then
   actual=$(cd "$tmp" && sha256sum "ffmpeg.$ext" | cut -d' ' -f1)
 else

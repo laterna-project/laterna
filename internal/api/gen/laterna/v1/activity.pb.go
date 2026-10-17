@@ -664,7 +664,13 @@ type ActivePlayback struct {
 	Transcoding bool `protobuf:"varint,18,opt,name=transcoding,proto3" json:"transcoding,omitempty"`
 	// Hardware decoder of the re-encoded video when it is not on the graphics card's chain (gpu);
 	// empty if it is decoded on the CPU.
-	Decoder       string `protobuf:"bytes,19,opt,name=decoder,proto3" json:"decoder,omitempty"`
+	Decoder string `protobuf:"bytes,19,opt,name=decoder,proto3" json:"decoder,omitempty"`
+	// The client is outside the local network (Settings.local_networks).
+	Remote bool `protobuf:"varint,20,opt,name=remote,proto3" json:"remote,omitempty"`
+	// Bitrate limit applied (kbit/s, StartPlaybackResponse.bitrate_limit); 0 means none.
+	BitrateLimit int32 `protobuf:"varint,21,opt,name=bitrate_limit,json=bitrateLimit,proto3" json:"bitrate_limit,omitempty"`
+	// Client address, as seen by the server or given by a trusted proxy.
+	Address       string `protobuf:"bytes,22,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -828,6 +834,27 @@ func (x *ActivePlayback) GetTranscoding() bool {
 func (x *ActivePlayback) GetDecoder() string {
 	if x != nil {
 		return x.Decoder
+	}
+	return ""
+}
+
+func (x *ActivePlayback) GetRemote() bool {
+	if x != nil {
+		return x.Remote
+	}
+	return false
+}
+
+func (x *ActivePlayback) GetBitrateLimit() int32 {
+	if x != nil {
+		return x.BitrateLimit
+	}
+	return 0
+}
+
+func (x *ActivePlayback) GetAddress() string {
+	if x != nil {
+		return x.Address
 	}
 	return ""
 }
@@ -1040,7 +1067,7 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x13RevokeDeviceRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\x16\n" +
-	"\x14RevokeDeviceResponse\"\xe6\x04\n" +
+	"\x14RevokeDeviceResponse\"\xbd\x05\n" +
 	"\x0eActivePlayback\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1066,7 +1093,10 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\bposition\x18\x10 \x01(\v2\x19.google.protobuf.DurationR\bposition\x125\n" +
 	"\bduration\x18\x11 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12 \n" +
 	"\vtranscoding\x18\x12 \x01(\bR\vtranscoding\x12\x18\n" +
-	"\adecoder\x18\x13 \x01(\tR\adecoder\"\x16\n" +
+	"\adecoder\x18\x13 \x01(\tR\adecoder\x12\x16\n" +
+	"\x06remote\x18\x14 \x01(\bR\x06remote\x12#\n" +
+	"\rbitrate_limit\x18\x15 \x01(\x05R\fbitrateLimit\x12\x18\n" +
+	"\aaddress\x18\x16 \x01(\tR\aaddress\"\x16\n" +
 	"\x14ListPlaybacksRequest\"Q\n" +
 	"\x15ListPlaybacksResponse\x128\n" +
 	"\tplaybacks\x18\x01 \x03(\v2\x1a.laterna.v1.ActivePlaybackR\tplaybacks\"5\n" +

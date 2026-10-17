@@ -54,7 +54,30 @@ const (
 	// Photos: the album (a folder, inside its parent album) and the photo.
 	ItemPhotoAlbum ItemKind = "photo_album"
 	ItemPhoto      ItemKind = "photo"
+	// An extra of a movie or a series (trailer, featurette...): its parent is that movie or series.
+	ItemExtra ItemKind = "extra"
 )
+
+// ExtraKind is the kind of an extra.
+type ExtraKind string
+
+// Extra kinds, as media servers and tinyMediaManager name their folders and suffixes.
+const (
+	ExtraTrailer         ExtraKind = "trailer"
+	ExtraFeaturette      ExtraKind = "featurette"
+	ExtraBehindTheScenes ExtraKind = "behind_the_scenes"
+	ExtraDeletedScene    ExtraKind = "deleted_scene"
+	ExtraInterview       ExtraKind = "interview"
+	ExtraScene           ExtraKind = "scene"
+	ExtraShort           ExtraKind = "short"
+	ExtraOther           ExtraKind = "other"
+)
+
+// Extra is what is specific to an extra: its kind. Its movie or series is the item's parent.
+type Extra struct {
+	ItemID ID
+	Kind   ExtraKind
+}
 
 // Music reports one of the music kinds.
 func (k ItemKind) Music() bool { return k == ItemArtist || k == ItemAlbum || k == ItemTrack }
@@ -119,6 +142,35 @@ type Track struct {
 	// ReplayGain: gain in dB and peak (1 is full scale) for the track and for its album. Nil when
 	// the tags do not say.
 	TrackGain, TrackPeak, AlbumGain, AlbumPeak *float64
+	// Lyrics says where its lyrics are, if it has any.
+	Lyrics LyricsSource
+}
+
+// LyricsSource says where the lyrics of a track come from.
+type LyricsSource string
+
+// Sources of lyrics.
+const (
+	LyricsNone LyricsSource = ""
+	// LyricsFile is a .lrc file next to the track, with the same name. It comes first: a tool
+	// (LRCGET, a tagger) writes it on purpose.
+	LyricsFile LyricsSource = "file"
+	// LyricsTags are the lyrics in the tags of the file (LYRICS, UNSYNCEDLYRICS, ID3 USLT, MP4
+	// lyrics).
+	LyricsTags LyricsSource = "tags"
+)
+
+// Lyrics are the words of a track: timed lines when Synced (LRC), plain lines otherwise.
+type Lyrics struct {
+	Source LyricsSource
+	Synced bool
+	Lines  []LyricLine
+}
+
+// LyricLine is a line of lyrics; Start is when it is sung, zero for unsynced lyrics.
+type LyricLine struct {
+	Start time.Duration
+	Text  string
 }
 
 // PersonRole is what a person did on an item.

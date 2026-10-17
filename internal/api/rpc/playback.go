@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"net/netip"
 	"strconv"
 	"strings"
 
@@ -24,6 +25,12 @@ var playbackMethods = map[playback.Method]laternav1.PlaybackMethod{
 	playback.Remux:     laternav1.PlaybackMethod_PLAYBACK_METHOD_HLS_REMUX,
 	playback.Transcode: laternav1.PlaybackMethod_PLAYBACK_METHOD_HLS_TRANSCODE,
 	playback.Convert:   laternav1.PlaybackMethod_PLAYBACK_METHOD_CONVERTED,
+}
+
+var limitSources = map[app.LimitSource]laternav1.BitrateLimitSource{
+	app.LimitNone:   laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_UNSPECIFIED,
+	app.LimitClient: laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_CLIENT,
+	app.LimitRemote: laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_REMOTE,
 }
 
 // deviceProfileFromMsg converts what the device says it can play.
@@ -89,9 +96,11 @@ func (s *PlaybackService) StartPlayback(ctx context.Context, req *connect.Reques
 		n := int(m.GetSubtitleIndex())
 		subtitle = &n
 	}
+	client, _ := netip.ParseAddr(clientIP(ctx, req.Peer())) // unreadable: remote
 	info, err := s.app.StartPlayback(ctx, principal(ctx), app.PlayRequest{
 		ItemID: item, FileID: file, Audio: audio, Device: profile, Subtitle: subtitle,
 		ProfileSubtitle: m.GetProfileSubtitle(), Language: firstLanguage(req.Header().Get("Accept-Language")),
+		MaxBitrate: max(int(m.GetMaxBitrate()), 0), Client: client,
 	})
 	if err != nil {
 		return nil, err
@@ -102,6 +111,7 @@ func (s *PlaybackService) StartPlayback(ctx context.Context, req *connect.Reques
 		Reasons: renderAll(ctx, info.Reasons), ReasonTexts: textsMsg(ctx, info.Reasons), VideoTranscoded: !info.CopyVideo, AudioTranscoded: !info.CopyAudio, VideoEncoder: info.Encoder,
 		SubtitlesReady: info.SubtitlesReady, Subtitles: subtitleTracks(info), Fonts: fonts(info.Fonts),
 		ToneMapping: info.ToneMap, Gpu: info.GPU, Decoder: info.Decoder, Segments: mediaSegments(info.File.Segments),
+		BitrateLimit: clampInt32(info.Limit.Rate), BitrateLimitSource: limitSources[info.Limit.Source], VideoBitrate: clampInt32(info.VideoRate),
 	}
 	if info.Subtitle != nil {
 		n := clampInt32(*info.Subtitle)
@@ -167,6 +177,11 @@ func (s *PlaybackService) ReportProgress(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.SubtitleIndex != nil {
+		if err := s.app.NoteSubtitle(principal(ctx), id, int(req.Msg.GetSubtitleIndex())); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.app.ReportProgress(principal(ctx), id, req.Msg.GetPosition().AsDuration()); err != nil {
 		return nil, err
 	}
@@ -178,6 +193,11 @@ func (s *PlaybackService) StopPlayback(ctx context.Context, req *connect.Request
 	id, err := parseID(req.Msg.GetSessionId(), "session_id")
 	if err != nil {
 		return nil, err
+	}
+	if req.Msg.SubtitleIndex != nil {
+		if err := s.app.NoteSubtitle(principal(ctx), id, int(req.Msg.GetSubtitleIndex())); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.app.StopPlayback(ctx, principal(ctx), id, req.Msg.GetPosition().AsDuration()); err != nil {
 		return nil, err

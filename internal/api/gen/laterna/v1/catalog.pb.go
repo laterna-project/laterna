@@ -481,6 +481,73 @@ func (ItemSort) EnumDescriptor() ([]byte, []int) {
 	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{7}
 }
 
+// ExtraKind is the kind of an extra, as given by its folder ("Trailers/") or its suffix
+// ("-trailer").
+type ExtraKind int32
+
+const (
+	// Any other extra: a folder of extras or bonus, a clip.
+	ExtraKind_EXTRA_KIND_UNSPECIFIED       ExtraKind = 0
+	ExtraKind_EXTRA_KIND_TRAILER           ExtraKind = 1
+	ExtraKind_EXTRA_KIND_FEATURETTE        ExtraKind = 2
+	ExtraKind_EXTRA_KIND_BEHIND_THE_SCENES ExtraKind = 3
+	ExtraKind_EXTRA_KIND_DELETED_SCENE     ExtraKind = 4
+	ExtraKind_EXTRA_KIND_INTERVIEW         ExtraKind = 5
+	ExtraKind_EXTRA_KIND_SCENE             ExtraKind = 6
+	ExtraKind_EXTRA_KIND_SHORT             ExtraKind = 7
+)
+
+// Enum value maps for ExtraKind.
+var (
+	ExtraKind_name = map[int32]string{
+		0: "EXTRA_KIND_UNSPECIFIED",
+		1: "EXTRA_KIND_TRAILER",
+		2: "EXTRA_KIND_FEATURETTE",
+		3: "EXTRA_KIND_BEHIND_THE_SCENES",
+		4: "EXTRA_KIND_DELETED_SCENE",
+		5: "EXTRA_KIND_INTERVIEW",
+		6: "EXTRA_KIND_SCENE",
+		7: "EXTRA_KIND_SHORT",
+	}
+	ExtraKind_value = map[string]int32{
+		"EXTRA_KIND_UNSPECIFIED":       0,
+		"EXTRA_KIND_TRAILER":           1,
+		"EXTRA_KIND_FEATURETTE":        2,
+		"EXTRA_KIND_BEHIND_THE_SCENES": 3,
+		"EXTRA_KIND_DELETED_SCENE":     4,
+		"EXTRA_KIND_INTERVIEW":         5,
+		"EXTRA_KIND_SCENE":             6,
+		"EXTRA_KIND_SHORT":             7,
+	}
+)
+
+func (x ExtraKind) Enum() *ExtraKind {
+	p := new(ExtraKind)
+	*p = x
+	return p
+}
+
+func (x ExtraKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ExtraKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_laterna_v1_catalog_proto_enumTypes[8].Descriptor()
+}
+
+func (ExtraKind) Type() protoreflect.EnumType {
+	return &file_laterna_v1_catalog_proto_enumTypes[8]
+}
+
+func (x ExtraKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ExtraKind.Descriptor instead.
+func (ExtraKind) EnumDescriptor() ([]byte, []int) {
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{8}
+}
+
 // UserData is what the profile did with an item.
 type UserData struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -783,7 +850,11 @@ type Movie struct {
 	UserData    *UserData              `protobuf:"bytes,17,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"`
 	AddedAt     *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
 	// Collections the movie belongs to.
-	Collections   []*CollectionRef `protobuf:"bytes,19,rep,name=collections,proto3" json:"collections,omitempty"`
+	Collections []*CollectionRef `protobuf:"bytes,19,rep,name=collections,proto3" json:"collections,omitempty"`
+	// Extras of the movie (CatalogService.ListExtras), and the first trailer among them; empty if it
+	// has none, for a "Trailer" button.
+	ExtraCount    int32  `protobuf:"varint,20,opt,name=extra_count,json=extraCount,proto3" json:"extra_count,omitempty"`
+	TrailerId     string `protobuf:"bytes,21,opt,name=trailer_id,json=trailerId,proto3" json:"trailer_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -951,6 +1022,20 @@ func (x *Movie) GetCollections() []*CollectionRef {
 	return nil
 }
 
+func (x *Movie) GetExtraCount() int32 {
+	if x != nil {
+		return x.ExtraCount
+	}
+	return 0
+}
+
+func (x *Movie) GetTrailerId() string {
+	if x != nil {
+		return x.TrailerId
+	}
+	return ""
+}
+
 // SeriesSummary is a series as a list shows it.
 type SeriesSummary struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
@@ -1101,7 +1186,10 @@ type Series struct {
 	UserData      *UserData              `protobuf:"bytes,18,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"`
 	AddedAt       *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
 	// Collections the series belongs to.
-	Collections   []*CollectionRef `protobuf:"bytes,20,rep,name=collections,proto3" json:"collections,omitempty"`
+	Collections []*CollectionRef `protobuf:"bytes,20,rep,name=collections,proto3" json:"collections,omitempty"`
+	// See Movie.extra_count and Movie.trailer_id.
+	ExtraCount    int32  `protobuf:"varint,21,opt,name=extra_count,json=extraCount,proto3" json:"extra_count,omitempty"`
+	TrailerId     string `protobuf:"bytes,22,opt,name=trailer_id,json=trailerId,proto3" json:"trailer_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1274,6 +1362,20 @@ func (x *Series) GetCollections() []*CollectionRef {
 		return x.Collections
 	}
 	return nil
+}
+
+func (x *Series) GetExtraCount() int32 {
+	if x != nil {
+		return x.ExtraCount
+	}
+	return 0
+}
+
+func (x *Series) GetTrailerId() string {
+	if x != nil {
+		return x.TrailerId
+	}
+	return ""
 }
 
 type Season struct {
@@ -2205,8 +2307,10 @@ type Track struct {
 	Images   []*Image  `protobuf:"bytes,11,rep,name=images,proto3" json:"images,omitempty"`
 	UserData *UserData `protobuf:"bytes,12,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"`
 	// Unset if the tags do not say.
-	ReplayGain    *ReplayGain            `protobuf:"bytes,13,opt,name=replay_gain,json=replayGain,proto3" json:"replay_gain,omitempty"`
-	AddedAt       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	ReplayGain *ReplayGain            `protobuf:"bytes,13,opt,name=replay_gain,json=replayGain,proto3" json:"replay_gain,omitempty"`
+	AddedAt    *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	// The track has lyrics (MusicService.GetLyrics).
+	HasLyrics     bool `protobuf:"varint,15,opt,name=has_lyrics,json=hasLyrics,proto3" json:"has_lyrics,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2337,6 +2441,13 @@ func (x *Track) GetAddedAt() *timestamppb.Timestamp {
 		return x.AddedAt
 	}
 	return nil
+}
+
+func (x *Track) GetHasLyrics() bool {
+	if x != nil {
+		return x.HasLyrics
+	}
+	return false
 }
 
 // BookSeries is a book series (the volumes of a comic, a manga, a saga). Its poster
@@ -4766,6 +4877,191 @@ func (x *ListEpisodesResponse) GetEpisodes() []*Episode {
 	return nil
 }
 
+// Extra is an extra of a movie or a series. Its title is the name of its file ("Making of",
+// "Movie (2020)-trailer"): the kind says what it is. A frame of its video stands in for an image of
+// its own.
+type Extra struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Its movie or series.
+	OwnerId       string                 `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Kind          ExtraKind              `protobuf:"varint,4,opt,name=kind,proto3,enum=laterna.v1.ExtraKind" json:"kind,omitempty"`
+	Runtime       *durationpb.Duration   `protobuf:"bytes,5,opt,name=runtime,proto3" json:"runtime,omitempty"`
+	Images        []*Image               `protobuf:"bytes,6,rep,name=images,proto3" json:"images,omitempty"`
+	AddedAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Extra) Reset() {
+	*x = Extra{}
+	mi := &file_laterna_v1_catalog_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Extra) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Extra) ProtoMessage() {}
+
+func (x *Extra) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_catalog_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Extra.ProtoReflect.Descriptor instead.
+func (*Extra) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *Extra) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Extra) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *Extra) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Extra) GetKind() ExtraKind {
+	if x != nil {
+		return x.Kind
+	}
+	return ExtraKind_EXTRA_KIND_UNSPECIFIED
+}
+
+func (x *Extra) GetRuntime() *durationpb.Duration {
+	if x != nil {
+		return x.Runtime
+	}
+	return nil
+}
+
+func (x *Extra) GetImages() []*Image {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
+func (x *Extra) GetAddedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AddedAt
+	}
+	return nil
+}
+
+type ListExtrasRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A movie or a series.
+	ItemId        string `protobuf:"bytes,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListExtrasRequest) Reset() {
+	*x = ListExtrasRequest{}
+	mi := &file_laterna_v1_catalog_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExtrasRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExtrasRequest) ProtoMessage() {}
+
+func (x *ListExtrasRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_catalog_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExtrasRequest.ProtoReflect.Descriptor instead.
+func (*ListExtrasRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ListExtrasRequest) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+type ListExtrasResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Extras        []*Extra               `protobuf:"bytes,1,rep,name=extras,proto3" json:"extras,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListExtrasResponse) Reset() {
+	*x = ListExtrasResponse{}
+	mi := &file_laterna_v1_catalog_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExtrasResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExtrasResponse) ProtoMessage() {}
+
+func (x *ListExtrasResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_catalog_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExtrasResponse.ProtoReflect.Descriptor instead.
+func (*ListExtrasResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *ListExtrasResponse) GetExtras() []*Extra {
+	if x != nil {
+		return x.Extras
+	}
+	return nil
+}
+
 type GetEpisodeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	EpisodeId     string                 `protobuf:"bytes,1,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
@@ -4775,7 +5071,7 @@ type GetEpisodeRequest struct {
 
 func (x *GetEpisodeRequest) Reset() {
 	*x = GetEpisodeRequest{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[43]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4787,7 +5083,7 @@ func (x *GetEpisodeRequest) String() string {
 func (*GetEpisodeRequest) ProtoMessage() {}
 
 func (x *GetEpisodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[43]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4800,7 +5096,7 @@ func (x *GetEpisodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEpisodeRequest.ProtoReflect.Descriptor instead.
 func (*GetEpisodeRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{43}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *GetEpisodeRequest) GetEpisodeId() string {
@@ -4822,7 +5118,7 @@ type GetEpisodeResponse struct {
 
 func (x *GetEpisodeResponse) Reset() {
 	*x = GetEpisodeResponse{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[44]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4834,7 +5130,7 @@ func (x *GetEpisodeResponse) String() string {
 func (*GetEpisodeResponse) ProtoMessage() {}
 
 func (x *GetEpisodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[44]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4847,7 +5143,7 @@ func (x *GetEpisodeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEpisodeResponse.ProtoReflect.Descriptor instead.
 func (*GetEpisodeResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{44}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *GetEpisodeResponse) GetEpisode() *Episode {
@@ -4881,7 +5177,7 @@ type ListGenresRequest struct {
 
 func (x *ListGenresRequest) Reset() {
 	*x = ListGenresRequest{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[45]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4893,7 +5189,7 @@ func (x *ListGenresRequest) String() string {
 func (*ListGenresRequest) ProtoMessage() {}
 
 func (x *ListGenresRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[45]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4906,7 +5202,7 @@ func (x *ListGenresRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGenresRequest.ProtoReflect.Descriptor instead.
 func (*ListGenresRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{45}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ListGenresRequest) GetLibraryId() string {
@@ -4927,7 +5223,7 @@ type Genre struct {
 
 func (x *Genre) Reset() {
 	*x = Genre{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[46]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4939,7 +5235,7 @@ func (x *Genre) String() string {
 func (*Genre) ProtoMessage() {}
 
 func (x *Genre) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[46]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4952,7 +5248,7 @@ func (x *Genre) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Genre.ProtoReflect.Descriptor instead.
 func (*Genre) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{46}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *Genre) GetName() string {
@@ -4978,7 +5274,7 @@ type ListGenresResponse struct {
 
 func (x *ListGenresResponse) Reset() {
 	*x = ListGenresResponse{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[47]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4990,7 +5286,7 @@ func (x *ListGenresResponse) String() string {
 func (*ListGenresResponse) ProtoMessage() {}
 
 func (x *ListGenresResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[47]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5003,7 +5299,7 @@ func (x *ListGenresResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGenresResponse.ProtoReflect.Descriptor instead.
 func (*ListGenresResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{47}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *ListGenresResponse) GetGenres() []*Genre {
@@ -5024,7 +5320,7 @@ type SearchRequest struct {
 
 func (x *SearchRequest) Reset() {
 	*x = SearchRequest{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[48]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5036,7 +5332,7 @@ func (x *SearchRequest) String() string {
 func (*SearchRequest) ProtoMessage() {}
 
 func (x *SearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[48]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5049,7 +5345,7 @@ func (x *SearchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchRequest.ProtoReflect.Descriptor instead.
 func (*SearchRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{48}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *SearchRequest) GetQuery() string {
@@ -5086,7 +5382,7 @@ type SearchResult struct {
 
 func (x *SearchResult) Reset() {
 	*x = SearchResult{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[49]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5098,7 +5394,7 @@ func (x *SearchResult) String() string {
 func (*SearchResult) ProtoMessage() {}
 
 func (x *SearchResult) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[49]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5111,7 +5407,7 @@ func (x *SearchResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchResult.ProtoReflect.Descriptor instead.
 func (*SearchResult) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{49}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SearchResult) GetItem() isSearchResult_Item {
@@ -5270,7 +5566,7 @@ type SearchResponse struct {
 
 func (x *SearchResponse) Reset() {
 	*x = SearchResponse{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[50]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5282,7 +5578,7 @@ func (x *SearchResponse) String() string {
 func (*SearchResponse) ProtoMessage() {}
 
 func (x *SearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[50]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5295,7 +5591,7 @@ func (x *SearchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchResponse.ProtoReflect.Descriptor instead.
 func (*SearchResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{50}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *SearchResponse) GetResults() []*SearchResult {
@@ -5316,7 +5612,7 @@ type ListSimilarRequest struct {
 
 func (x *ListSimilarRequest) Reset() {
 	*x = ListSimilarRequest{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[51]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5328,7 +5624,7 @@ func (x *ListSimilarRequest) String() string {
 func (*ListSimilarRequest) ProtoMessage() {}
 
 func (x *ListSimilarRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[51]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5341,7 +5637,7 @@ func (x *ListSimilarRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSimilarRequest.ProtoReflect.Descriptor instead.
 func (*ListSimilarRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{51}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ListSimilarRequest) GetItemId() string {
@@ -5367,7 +5663,7 @@ type ListSimilarResponse struct {
 
 func (x *ListSimilarResponse) Reset() {
 	*x = ListSimilarResponse{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[52]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5379,7 +5675,7 @@ func (x *ListSimilarResponse) String() string {
 func (*ListSimilarResponse) ProtoMessage() {}
 
 func (x *ListSimilarResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[52]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5392,7 +5688,7 @@ func (x *ListSimilarResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSimilarResponse.ProtoReflect.Descriptor instead.
 func (*ListSimilarResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{52}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ListSimilarResponse) GetItems() []*SimilarItem {
@@ -5415,7 +5711,7 @@ type SimilarItem struct {
 
 func (x *SimilarItem) Reset() {
 	*x = SimilarItem{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[53]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5427,7 +5723,7 @@ func (x *SimilarItem) String() string {
 func (*SimilarItem) ProtoMessage() {}
 
 func (x *SimilarItem) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[53]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5440,7 +5736,7 @@ func (x *SimilarItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimilarItem.ProtoReflect.Descriptor instead.
 func (*SimilarItem) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{53}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *SimilarItem) GetItem() isSimilarItem_Item {
@@ -5496,7 +5792,7 @@ type SetPlayedRequest struct {
 
 func (x *SetPlayedRequest) Reset() {
 	*x = SetPlayedRequest{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[54]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5508,7 +5804,7 @@ func (x *SetPlayedRequest) String() string {
 func (*SetPlayedRequest) ProtoMessage() {}
 
 func (x *SetPlayedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[54]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5521,7 +5817,7 @@ func (x *SetPlayedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPlayedRequest.ProtoReflect.Descriptor instead.
 func (*SetPlayedRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{54}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *SetPlayedRequest) GetItemId() string {
@@ -5546,7 +5842,7 @@ type SetPlayedResponse struct {
 
 func (x *SetPlayedResponse) Reset() {
 	*x = SetPlayedResponse{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[55]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5558,7 +5854,7 @@ func (x *SetPlayedResponse) String() string {
 func (*SetPlayedResponse) ProtoMessage() {}
 
 func (x *SetPlayedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[55]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5571,7 +5867,7 @@ func (x *SetPlayedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPlayedResponse.ProtoReflect.Descriptor instead.
 func (*SetPlayedResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{55}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{58}
 }
 
 type SetFavoriteRequest struct {
@@ -5584,7 +5880,7 @@ type SetFavoriteRequest struct {
 
 func (x *SetFavoriteRequest) Reset() {
 	*x = SetFavoriteRequest{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[56]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5596,7 +5892,7 @@ func (x *SetFavoriteRequest) String() string {
 func (*SetFavoriteRequest) ProtoMessage() {}
 
 func (x *SetFavoriteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[56]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5609,7 +5905,7 @@ func (x *SetFavoriteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetFavoriteRequest.ProtoReflect.Descriptor instead.
 func (*SetFavoriteRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{56}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *SetFavoriteRequest) GetItemId() string {
@@ -5634,7 +5930,7 @@ type SetFavoriteResponse struct {
 
 func (x *SetFavoriteResponse) Reset() {
 	*x = SetFavoriteResponse{}
-	mi := &file_laterna_v1_catalog_proto_msgTypes[57]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5646,7 +5942,7 @@ func (x *SetFavoriteResponse) String() string {
 func (*SetFavoriteResponse) ProtoMessage() {}
 
 func (x *SetFavoriteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_catalog_proto_msgTypes[57]
+	mi := &file_laterna_v1_catalog_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5659,7 +5955,7 @@ func (x *SetFavoriteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetFavoriteResponse.ProtoReflect.Descriptor instead.
 func (*SetFavoriteResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{57}
+	return file_laterna_v1_catalog_proto_rawDescGZIP(), []int{60}
 }
 
 var File_laterna_v1_catalog_proto protoreflect.FileDescriptor
@@ -5693,7 +5989,7 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\x06images\x18\b \x03(\v2\x11.laterna.v1.ImageR\x06images\x121\n" +
 	"\tuser_data\x18\t \x01(\v2\x14.laterna.v1.UserDataR\buserData\x125\n" +
 	"\badded_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\"\xa4\x06\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\"\xe4\x06\n" +
 	"\x05Movie\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -5715,7 +6011,11 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\x06images\x18\x10 \x03(\v2\x11.laterna.v1.ImageR\x06images\x121\n" +
 	"\tuser_data\x18\x11 \x01(\v2\x14.laterna.v1.UserDataR\buserData\x125\n" +
 	"\badded_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12;\n" +
-	"\vcollections\x18\x13 \x03(\v2\x19.laterna.v1.CollectionRefR\vcollections\x1a>\n" +
+	"\vcollections\x18\x13 \x03(\v2\x19.laterna.v1.CollectionRefR\vcollections\x12\x1f\n" +
+	"\vextra_count\x18\x14 \x01(\x05R\n" +
+	"extraCount\x12\x1d\n" +
+	"\n" +
+	"trailer_id\x18\x15 \x01(\tR\ttrailerId\x1a>\n" +
 	"\x10ProviderIdsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9d\x03\n" +
@@ -5732,7 +6032,7 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\x0eunplayed_count\x18\t \x01(\x05R\runplayedCount\x121\n" +
 	"\tuser_data\x18\n" +
 	" \x01(\v2\x14.laterna.v1.UserDataR\buserData\x125\n" +
-	"\badded_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\"\xbd\x06\n" +
+	"\badded_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\"\xfd\x06\n" +
 	"\x06Series\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -5755,7 +6055,11 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\x0eunplayed_count\x18\x11 \x01(\x05R\runplayedCount\x121\n" +
 	"\tuser_data\x18\x12 \x01(\v2\x14.laterna.v1.UserDataR\buserData\x125\n" +
 	"\badded_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12;\n" +
-	"\vcollections\x18\x14 \x03(\v2\x19.laterna.v1.CollectionRefR\vcollections\x1a>\n" +
+	"\vcollections\x18\x14 \x03(\v2\x19.laterna.v1.CollectionRefR\vcollections\x12\x1f\n" +
+	"\vextra_count\x18\x15 \x01(\x05R\n" +
+	"extraCount\x12\x1d\n" +
+	"\n" +
+	"trailer_id\x18\x16 \x01(\tR\ttrailerId\x1a>\n" +
 	"\x10ProviderIdsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xda\x02\n" +
@@ -5881,7 +6185,7 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\v_track_gainB\r\n" +
 	"\v_track_peakB\r\n" +
 	"\v_album_gainB\r\n" +
-	"\v_album_peak\"\xf0\x03\n" +
+	"\v_album_peak\"\x8f\x04\n" +
 	"\x05Track\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\balbum_id\x18\x02 \x01(\tR\aalbumId\x12\x1f\n" +
@@ -5900,7 +6204,9 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\tuser_data\x18\f \x01(\v2\x14.laterna.v1.UserDataR\buserData\x127\n" +
 	"\vreplay_gain\x18\r \x01(\v2\x16.laterna.v1.ReplayGainR\n" +
 	"replayGain\x125\n" +
-	"\badded_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\"\x85\x02\n" +
+	"\badded_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12\x1d\n" +
+	"\n" +
+	"has_lyrics\x18\x0f \x01(\bR\thasLyrics\"\x85\x02\n" +
 	"\n" +
 	"BookSeries\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
@@ -6122,7 +6428,19 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\tseries_id\x18\x01 \x01(\tR\bseriesId\x12\x1b\n" +
 	"\tseason_id\x18\x02 \x01(\tR\bseasonId\"G\n" +
 	"\x14ListEpisodesResponse\x12/\n" +
-	"\bepisodes\x18\x01 \x03(\v2\x13.laterna.v1.EpisodeR\bepisodes\"2\n" +
+	"\bepisodes\x18\x01 \x03(\v2\x13.laterna.v1.EpisodeR\bepisodes\"\x8a\x02\n" +
+	"\x05Extra\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x12)\n" +
+	"\x04kind\x18\x04 \x01(\x0e2\x15.laterna.v1.ExtraKindR\x04kind\x123\n" +
+	"\aruntime\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\aruntime\x12)\n" +
+	"\x06images\x18\x06 \x03(\v2\x11.laterna.v1.ImageR\x06images\x125\n" +
+	"\badded_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\",\n" +
+	"\x11ListExtrasRequest\x12\x17\n" +
+	"\aitem_id\x18\x01 \x01(\tR\x06itemId\"?\n" +
+	"\x12ListExtrasResponse\x12)\n" +
+	"\x06extras\x18\x01 \x03(\v2\x11.laterna.v1.ExtraR\x06extras\"2\n" +
 	"\x11GetEpisodeRequest\x12\x1d\n" +
 	"\n" +
 	"episode_id\x18\x01 \x01(\tR\tepisodeId\"\x9e\x01\n" +
@@ -6223,7 +6541,16 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\x0fITEM_SORT_TITLE\x10\x01\x12\x13\n" +
 	"\x0fITEM_SORT_ADDED\x10\x02\x12\x16\n" +
 	"\x12ITEM_SORT_RELEASED\x10\x03\x12\x14\n" +
-	"\x10ITEM_SORT_RATING\x10\x042\xfa\a\n" +
+	"\x10ITEM_SORT_RATING\x10\x04*\xe0\x01\n" +
+	"\tExtraKind\x12\x1a\n" +
+	"\x16EXTRA_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12EXTRA_KIND_TRAILER\x10\x01\x12\x19\n" +
+	"\x15EXTRA_KIND_FEATURETTE\x10\x02\x12 \n" +
+	"\x1cEXTRA_KIND_BEHIND_THE_SCENES\x10\x03\x12\x1c\n" +
+	"\x18EXTRA_KIND_DELETED_SCENE\x10\x04\x12\x18\n" +
+	"\x14EXTRA_KIND_INTERVIEW\x10\x05\x12\x14\n" +
+	"\x10EXTRA_KIND_SCENE\x10\x06\x12\x14\n" +
+	"\x10EXTRA_KIND_SHORT\x10\a2\xcc\b\n" +
 	"\x0eCatalogService\x12n\n" +
 	"\x14ListCatalogLibraries\x12'.laterna.v1.ListCatalogLibrariesRequest\x1a(.laterna.v1.ListCatalogLibrariesResponse\"\x03\x90\x02\x01\x12P\n" +
 	"\n" +
@@ -6235,6 +6562,8 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\fListEpisodes\x12\x1f.laterna.v1.ListEpisodesRequest\x1a .laterna.v1.ListEpisodesResponse\"\x03\x90\x02\x01\x12P\n" +
 	"\n" +
 	"GetEpisode\x12\x1d.laterna.v1.GetEpisodeRequest\x1a\x1e.laterna.v1.GetEpisodeResponse\"\x03\x90\x02\x01\x12P\n" +
+	"\n" +
+	"ListExtras\x12\x1d.laterna.v1.ListExtrasRequest\x1a\x1e.laterna.v1.ListExtrasResponse\"\x03\x90\x02\x01\x12P\n" +
 	"\n" +
 	"ListGenres\x12\x1d.laterna.v1.ListGenresRequest\x1a\x1e.laterna.v1.ListGenresResponse\"\x03\x90\x02\x01\x12D\n" +
 	"\x06Search\x12\x19.laterna.v1.SearchRequest\x1a\x1a.laterna.v1.SearchResponse\"\x03\x90\x02\x01\x12S\n" +
@@ -6254,8 +6583,8 @@ func file_laterna_v1_catalog_proto_rawDescGZIP() []byte {
 	return file_laterna_v1_catalog_proto_rawDescData
 }
 
-var file_laterna_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_laterna_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 62)
+var file_laterna_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
+var file_laterna_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
 var file_laterna_v1_catalog_proto_goTypes = []any{
 	(ImageKind)(0),                       // 0: laterna.v1.ImageKind
 	(BookFormat)(0),                      // 1: laterna.v1.BookFormat
@@ -6265,232 +6594,243 @@ var file_laterna_v1_catalog_proto_goTypes = []any{
 	(DynamicRange)(0),                    // 5: laterna.v1.DynamicRange
 	(MediaSegmentKind)(0),                // 6: laterna.v1.MediaSegmentKind
 	(ItemSort)(0),                        // 7: laterna.v1.ItemSort
-	(*UserData)(nil),                     // 8: laterna.v1.UserData
-	(*Image)(nil),                        // 9: laterna.v1.Image
-	(*MovieSummary)(nil),                 // 10: laterna.v1.MovieSummary
-	(*Movie)(nil),                        // 11: laterna.v1.Movie
-	(*SeriesSummary)(nil),                // 12: laterna.v1.SeriesSummary
-	(*Series)(nil),                       // 13: laterna.v1.Series
-	(*Season)(nil),                       // 14: laterna.v1.Season
-	(*Episode)(nil),                      // 15: laterna.v1.Episode
-	(*ArtistSummary)(nil),                // 16: laterna.v1.ArtistSummary
-	(*Artist)(nil),                       // 17: laterna.v1.Artist
-	(*AlbumSummary)(nil),                 // 18: laterna.v1.AlbumSummary
-	(*Album)(nil),                        // 19: laterna.v1.Album
-	(*ReplayGain)(nil),                   // 20: laterna.v1.ReplayGain
-	(*Track)(nil),                        // 21: laterna.v1.Track
-	(*BookSeries)(nil),                   // 22: laterna.v1.BookSeries
-	(*ReadingProgress)(nil),              // 23: laterna.v1.ReadingProgress
-	(*BookSummary)(nil),                  // 24: laterna.v1.BookSummary
-	(*Book)(nil),                         // 25: laterna.v1.Book
-	(*BookFile)(nil),                     // 26: laterna.v1.BookFile
-	(*PhotoAlbum)(nil),                   // 27: laterna.v1.PhotoAlbum
-	(*PhotoSummary)(nil),                 // 28: laterna.v1.PhotoSummary
-	(*GeoPoint)(nil),                     // 29: laterna.v1.GeoPoint
-	(*Photo)(nil),                        // 30: laterna.v1.Photo
-	(*CollectionRef)(nil),                // 31: laterna.v1.CollectionRef
-	(*Credit)(nil),                       // 32: laterna.v1.Credit
-	(*MediaFile)(nil),                    // 33: laterna.v1.MediaFile
-	(*Trickplay)(nil),                    // 34: laterna.v1.Trickplay
-	(*MediaStream)(nil),                  // 35: laterna.v1.MediaStream
-	(*Chapter)(nil),                      // 36: laterna.v1.Chapter
-	(*MediaSegment)(nil),                 // 37: laterna.v1.MediaSegment
-	(*CatalogLibrary)(nil),               // 38: laterna.v1.CatalogLibrary
-	(*ListCatalogLibrariesRequest)(nil),  // 39: laterna.v1.ListCatalogLibrariesRequest
-	(*ListCatalogLibrariesResponse)(nil), // 40: laterna.v1.ListCatalogLibrariesResponse
-	(*ListMoviesRequest)(nil),            // 41: laterna.v1.ListMoviesRequest
-	(*ListMoviesResponse)(nil),           // 42: laterna.v1.ListMoviesResponse
-	(*GetMovieRequest)(nil),              // 43: laterna.v1.GetMovieRequest
-	(*GetMovieResponse)(nil),             // 44: laterna.v1.GetMovieResponse
-	(*ListSeriesRequest)(nil),            // 45: laterna.v1.ListSeriesRequest
-	(*ListSeriesResponse)(nil),           // 46: laterna.v1.ListSeriesResponse
-	(*GetSeriesRequest)(nil),             // 47: laterna.v1.GetSeriesRequest
-	(*GetSeriesResponse)(nil),            // 48: laterna.v1.GetSeriesResponse
-	(*ListEpisodesRequest)(nil),          // 49: laterna.v1.ListEpisodesRequest
-	(*ListEpisodesResponse)(nil),         // 50: laterna.v1.ListEpisodesResponse
-	(*GetEpisodeRequest)(nil),            // 51: laterna.v1.GetEpisodeRequest
-	(*GetEpisodeResponse)(nil),           // 52: laterna.v1.GetEpisodeResponse
-	(*ListGenresRequest)(nil),            // 53: laterna.v1.ListGenresRequest
-	(*Genre)(nil),                        // 54: laterna.v1.Genre
-	(*ListGenresResponse)(nil),           // 55: laterna.v1.ListGenresResponse
-	(*SearchRequest)(nil),                // 56: laterna.v1.SearchRequest
-	(*SearchResult)(nil),                 // 57: laterna.v1.SearchResult
-	(*SearchResponse)(nil),               // 58: laterna.v1.SearchResponse
-	(*ListSimilarRequest)(nil),           // 59: laterna.v1.ListSimilarRequest
-	(*ListSimilarResponse)(nil),          // 60: laterna.v1.ListSimilarResponse
-	(*SimilarItem)(nil),                  // 61: laterna.v1.SimilarItem
-	(*SetPlayedRequest)(nil),             // 62: laterna.v1.SetPlayedRequest
-	(*SetPlayedResponse)(nil),            // 63: laterna.v1.SetPlayedResponse
-	(*SetFavoriteRequest)(nil),           // 64: laterna.v1.SetFavoriteRequest
-	(*SetFavoriteResponse)(nil),          // 65: laterna.v1.SetFavoriteResponse
-	nil,                                  // 66: laterna.v1.Movie.ProviderIdsEntry
-	nil,                                  // 67: laterna.v1.Series.ProviderIdsEntry
-	nil,                                  // 68: laterna.v1.Artist.ProviderIdsEntry
-	nil,                                  // 69: laterna.v1.Album.ProviderIdsEntry
-	(*durationpb.Duration)(nil),          // 70: google.protobuf.Duration
-	(*timestamppb.Timestamp)(nil),        // 71: google.protobuf.Timestamp
-	(*Text)(nil),                         // 72: laterna.v1.Text
-	(LibraryKind)(0),                     // 73: laterna.v1.LibraryKind
-	(*ItemCounts)(nil),                   // 74: laterna.v1.ItemCounts
+	(ExtraKind)(0),                       // 8: laterna.v1.ExtraKind
+	(*UserData)(nil),                     // 9: laterna.v1.UserData
+	(*Image)(nil),                        // 10: laterna.v1.Image
+	(*MovieSummary)(nil),                 // 11: laterna.v1.MovieSummary
+	(*Movie)(nil),                        // 12: laterna.v1.Movie
+	(*SeriesSummary)(nil),                // 13: laterna.v1.SeriesSummary
+	(*Series)(nil),                       // 14: laterna.v1.Series
+	(*Season)(nil),                       // 15: laterna.v1.Season
+	(*Episode)(nil),                      // 16: laterna.v1.Episode
+	(*ArtistSummary)(nil),                // 17: laterna.v1.ArtistSummary
+	(*Artist)(nil),                       // 18: laterna.v1.Artist
+	(*AlbumSummary)(nil),                 // 19: laterna.v1.AlbumSummary
+	(*Album)(nil),                        // 20: laterna.v1.Album
+	(*ReplayGain)(nil),                   // 21: laterna.v1.ReplayGain
+	(*Track)(nil),                        // 22: laterna.v1.Track
+	(*BookSeries)(nil),                   // 23: laterna.v1.BookSeries
+	(*ReadingProgress)(nil),              // 24: laterna.v1.ReadingProgress
+	(*BookSummary)(nil),                  // 25: laterna.v1.BookSummary
+	(*Book)(nil),                         // 26: laterna.v1.Book
+	(*BookFile)(nil),                     // 27: laterna.v1.BookFile
+	(*PhotoAlbum)(nil),                   // 28: laterna.v1.PhotoAlbum
+	(*PhotoSummary)(nil),                 // 29: laterna.v1.PhotoSummary
+	(*GeoPoint)(nil),                     // 30: laterna.v1.GeoPoint
+	(*Photo)(nil),                        // 31: laterna.v1.Photo
+	(*CollectionRef)(nil),                // 32: laterna.v1.CollectionRef
+	(*Credit)(nil),                       // 33: laterna.v1.Credit
+	(*MediaFile)(nil),                    // 34: laterna.v1.MediaFile
+	(*Trickplay)(nil),                    // 35: laterna.v1.Trickplay
+	(*MediaStream)(nil),                  // 36: laterna.v1.MediaStream
+	(*Chapter)(nil),                      // 37: laterna.v1.Chapter
+	(*MediaSegment)(nil),                 // 38: laterna.v1.MediaSegment
+	(*CatalogLibrary)(nil),               // 39: laterna.v1.CatalogLibrary
+	(*ListCatalogLibrariesRequest)(nil),  // 40: laterna.v1.ListCatalogLibrariesRequest
+	(*ListCatalogLibrariesResponse)(nil), // 41: laterna.v1.ListCatalogLibrariesResponse
+	(*ListMoviesRequest)(nil),            // 42: laterna.v1.ListMoviesRequest
+	(*ListMoviesResponse)(nil),           // 43: laterna.v1.ListMoviesResponse
+	(*GetMovieRequest)(nil),              // 44: laterna.v1.GetMovieRequest
+	(*GetMovieResponse)(nil),             // 45: laterna.v1.GetMovieResponse
+	(*ListSeriesRequest)(nil),            // 46: laterna.v1.ListSeriesRequest
+	(*ListSeriesResponse)(nil),           // 47: laterna.v1.ListSeriesResponse
+	(*GetSeriesRequest)(nil),             // 48: laterna.v1.GetSeriesRequest
+	(*GetSeriesResponse)(nil),            // 49: laterna.v1.GetSeriesResponse
+	(*ListEpisodesRequest)(nil),          // 50: laterna.v1.ListEpisodesRequest
+	(*ListEpisodesResponse)(nil),         // 51: laterna.v1.ListEpisodesResponse
+	(*Extra)(nil),                        // 52: laterna.v1.Extra
+	(*ListExtrasRequest)(nil),            // 53: laterna.v1.ListExtrasRequest
+	(*ListExtrasResponse)(nil),           // 54: laterna.v1.ListExtrasResponse
+	(*GetEpisodeRequest)(nil),            // 55: laterna.v1.GetEpisodeRequest
+	(*GetEpisodeResponse)(nil),           // 56: laterna.v1.GetEpisodeResponse
+	(*ListGenresRequest)(nil),            // 57: laterna.v1.ListGenresRequest
+	(*Genre)(nil),                        // 58: laterna.v1.Genre
+	(*ListGenresResponse)(nil),           // 59: laterna.v1.ListGenresResponse
+	(*SearchRequest)(nil),                // 60: laterna.v1.SearchRequest
+	(*SearchResult)(nil),                 // 61: laterna.v1.SearchResult
+	(*SearchResponse)(nil),               // 62: laterna.v1.SearchResponse
+	(*ListSimilarRequest)(nil),           // 63: laterna.v1.ListSimilarRequest
+	(*ListSimilarResponse)(nil),          // 64: laterna.v1.ListSimilarResponse
+	(*SimilarItem)(nil),                  // 65: laterna.v1.SimilarItem
+	(*SetPlayedRequest)(nil),             // 66: laterna.v1.SetPlayedRequest
+	(*SetPlayedResponse)(nil),            // 67: laterna.v1.SetPlayedResponse
+	(*SetFavoriteRequest)(nil),           // 68: laterna.v1.SetFavoriteRequest
+	(*SetFavoriteResponse)(nil),          // 69: laterna.v1.SetFavoriteResponse
+	nil,                                  // 70: laterna.v1.Movie.ProviderIdsEntry
+	nil,                                  // 71: laterna.v1.Series.ProviderIdsEntry
+	nil,                                  // 72: laterna.v1.Artist.ProviderIdsEntry
+	nil,                                  // 73: laterna.v1.Album.ProviderIdsEntry
+	(*durationpb.Duration)(nil),          // 74: google.protobuf.Duration
+	(*timestamppb.Timestamp)(nil),        // 75: google.protobuf.Timestamp
+	(*Text)(nil),                         // 76: laterna.v1.Text
+	(LibraryKind)(0),                     // 77: laterna.v1.LibraryKind
+	(*ItemCounts)(nil),                   // 78: laterna.v1.ItemCounts
 }
 var file_laterna_v1_catalog_proto_depIdxs = []int32{
-	70,  // 0: laterna.v1.UserData.position:type_name -> google.protobuf.Duration
-	71,  // 1: laterna.v1.UserData.last_played_at:type_name -> google.protobuf.Timestamp
+	74,  // 0: laterna.v1.UserData.position:type_name -> google.protobuf.Duration
+	75,  // 1: laterna.v1.UserData.last_played_at:type_name -> google.protobuf.Timestamp
 	0,   // 2: laterna.v1.Image.kind:type_name -> laterna.v1.ImageKind
-	70,  // 3: laterna.v1.MovieSummary.runtime:type_name -> google.protobuf.Duration
-	9,   // 4: laterna.v1.MovieSummary.images:type_name -> laterna.v1.Image
-	8,   // 5: laterna.v1.MovieSummary.user_data:type_name -> laterna.v1.UserData
-	71,  // 6: laterna.v1.MovieSummary.added_at:type_name -> google.protobuf.Timestamp
-	70,  // 7: laterna.v1.Movie.runtime:type_name -> google.protobuf.Duration
-	32,  // 8: laterna.v1.Movie.credits:type_name -> laterna.v1.Credit
-	66,  // 9: laterna.v1.Movie.provider_ids:type_name -> laterna.v1.Movie.ProviderIdsEntry
-	9,   // 10: laterna.v1.Movie.images:type_name -> laterna.v1.Image
-	8,   // 11: laterna.v1.Movie.user_data:type_name -> laterna.v1.UserData
-	71,  // 12: laterna.v1.Movie.added_at:type_name -> google.protobuf.Timestamp
-	31,  // 13: laterna.v1.Movie.collections:type_name -> laterna.v1.CollectionRef
-	9,   // 14: laterna.v1.SeriesSummary.images:type_name -> laterna.v1.Image
-	8,   // 15: laterna.v1.SeriesSummary.user_data:type_name -> laterna.v1.UserData
-	71,  // 16: laterna.v1.SeriesSummary.added_at:type_name -> google.protobuf.Timestamp
-	32,  // 17: laterna.v1.Series.credits:type_name -> laterna.v1.Credit
-	67,  // 18: laterna.v1.Series.provider_ids:type_name -> laterna.v1.Series.ProviderIdsEntry
-	9,   // 19: laterna.v1.Series.images:type_name -> laterna.v1.Image
-	8,   // 20: laterna.v1.Series.user_data:type_name -> laterna.v1.UserData
-	71,  // 21: laterna.v1.Series.added_at:type_name -> google.protobuf.Timestamp
-	31,  // 22: laterna.v1.Series.collections:type_name -> laterna.v1.CollectionRef
-	9,   // 23: laterna.v1.Season.images:type_name -> laterna.v1.Image
-	8,   // 24: laterna.v1.Season.user_data:type_name -> laterna.v1.UserData
-	72,  // 25: laterna.v1.Season.title_text:type_name -> laterna.v1.Text
-	70,  // 26: laterna.v1.Episode.runtime:type_name -> google.protobuf.Duration
-	9,   // 27: laterna.v1.Episode.images:type_name -> laterna.v1.Image
-	8,   // 28: laterna.v1.Episode.user_data:type_name -> laterna.v1.UserData
-	71,  // 29: laterna.v1.Episode.added_at:type_name -> google.protobuf.Timestamp
-	72,  // 30: laterna.v1.Episode.title_text:type_name -> laterna.v1.Text
-	9,   // 31: laterna.v1.ArtistSummary.images:type_name -> laterna.v1.Image
-	8,   // 32: laterna.v1.ArtistSummary.user_data:type_name -> laterna.v1.UserData
-	71,  // 33: laterna.v1.ArtistSummary.added_at:type_name -> google.protobuf.Timestamp
-	72,  // 34: laterna.v1.ArtistSummary.name_text:type_name -> laterna.v1.Text
-	68,  // 35: laterna.v1.Artist.provider_ids:type_name -> laterna.v1.Artist.ProviderIdsEntry
-	9,   // 36: laterna.v1.Artist.images:type_name -> laterna.v1.Image
-	8,   // 37: laterna.v1.Artist.user_data:type_name -> laterna.v1.UserData
-	71,  // 38: laterna.v1.Artist.added_at:type_name -> google.protobuf.Timestamp
-	72,  // 39: laterna.v1.Artist.name_text:type_name -> laterna.v1.Text
-	9,   // 40: laterna.v1.AlbumSummary.images:type_name -> laterna.v1.Image
-	70,  // 41: laterna.v1.AlbumSummary.runtime:type_name -> google.protobuf.Duration
-	8,   // 42: laterna.v1.AlbumSummary.user_data:type_name -> laterna.v1.UserData
-	71,  // 43: laterna.v1.AlbumSummary.added_at:type_name -> google.protobuf.Timestamp
-	72,  // 44: laterna.v1.AlbumSummary.title_text:type_name -> laterna.v1.Text
-	69,  // 45: laterna.v1.Album.provider_ids:type_name -> laterna.v1.Album.ProviderIdsEntry
-	9,   // 46: laterna.v1.Album.images:type_name -> laterna.v1.Image
-	70,  // 47: laterna.v1.Album.runtime:type_name -> google.protobuf.Duration
-	8,   // 48: laterna.v1.Album.user_data:type_name -> laterna.v1.UserData
-	71,  // 49: laterna.v1.Album.added_at:type_name -> google.protobuf.Timestamp
-	72,  // 50: laterna.v1.Album.title_text:type_name -> laterna.v1.Text
-	70,  // 51: laterna.v1.Track.runtime:type_name -> google.protobuf.Duration
-	9,   // 52: laterna.v1.Track.images:type_name -> laterna.v1.Image
-	8,   // 53: laterna.v1.Track.user_data:type_name -> laterna.v1.UserData
-	20,  // 54: laterna.v1.Track.replay_gain:type_name -> laterna.v1.ReplayGain
-	71,  // 55: laterna.v1.Track.added_at:type_name -> google.protobuf.Timestamp
-	9,   // 56: laterna.v1.BookSeries.images:type_name -> laterna.v1.Image
-	8,   // 57: laterna.v1.BookSeries.user_data:type_name -> laterna.v1.UserData
-	71,  // 58: laterna.v1.BookSeries.added_at:type_name -> google.protobuf.Timestamp
-	71,  // 59: laterna.v1.ReadingProgress.updated_at:type_name -> google.protobuf.Timestamp
-	9,   // 60: laterna.v1.BookSummary.images:type_name -> laterna.v1.Image
-	8,   // 61: laterna.v1.BookSummary.user_data:type_name -> laterna.v1.UserData
-	23,  // 62: laterna.v1.BookSummary.progress:type_name -> laterna.v1.ReadingProgress
-	71,  // 63: laterna.v1.BookSummary.added_at:type_name -> google.protobuf.Timestamp
-	72,  // 64: laterna.v1.BookSummary.title_text:type_name -> laterna.v1.Text
-	32,  // 65: laterna.v1.Book.credits:type_name -> laterna.v1.Credit
-	9,   // 66: laterna.v1.Book.images:type_name -> laterna.v1.Image
-	8,   // 67: laterna.v1.Book.user_data:type_name -> laterna.v1.UserData
-	23,  // 68: laterna.v1.Book.progress:type_name -> laterna.v1.ReadingProgress
-	71,  // 69: laterna.v1.Book.added_at:type_name -> google.protobuf.Timestamp
-	72,  // 70: laterna.v1.Book.title_text:type_name -> laterna.v1.Text
+	74,  // 3: laterna.v1.MovieSummary.runtime:type_name -> google.protobuf.Duration
+	10,  // 4: laterna.v1.MovieSummary.images:type_name -> laterna.v1.Image
+	9,   // 5: laterna.v1.MovieSummary.user_data:type_name -> laterna.v1.UserData
+	75,  // 6: laterna.v1.MovieSummary.added_at:type_name -> google.protobuf.Timestamp
+	74,  // 7: laterna.v1.Movie.runtime:type_name -> google.protobuf.Duration
+	33,  // 8: laterna.v1.Movie.credits:type_name -> laterna.v1.Credit
+	70,  // 9: laterna.v1.Movie.provider_ids:type_name -> laterna.v1.Movie.ProviderIdsEntry
+	10,  // 10: laterna.v1.Movie.images:type_name -> laterna.v1.Image
+	9,   // 11: laterna.v1.Movie.user_data:type_name -> laterna.v1.UserData
+	75,  // 12: laterna.v1.Movie.added_at:type_name -> google.protobuf.Timestamp
+	32,  // 13: laterna.v1.Movie.collections:type_name -> laterna.v1.CollectionRef
+	10,  // 14: laterna.v1.SeriesSummary.images:type_name -> laterna.v1.Image
+	9,   // 15: laterna.v1.SeriesSummary.user_data:type_name -> laterna.v1.UserData
+	75,  // 16: laterna.v1.SeriesSummary.added_at:type_name -> google.protobuf.Timestamp
+	33,  // 17: laterna.v1.Series.credits:type_name -> laterna.v1.Credit
+	71,  // 18: laterna.v1.Series.provider_ids:type_name -> laterna.v1.Series.ProviderIdsEntry
+	10,  // 19: laterna.v1.Series.images:type_name -> laterna.v1.Image
+	9,   // 20: laterna.v1.Series.user_data:type_name -> laterna.v1.UserData
+	75,  // 21: laterna.v1.Series.added_at:type_name -> google.protobuf.Timestamp
+	32,  // 22: laterna.v1.Series.collections:type_name -> laterna.v1.CollectionRef
+	10,  // 23: laterna.v1.Season.images:type_name -> laterna.v1.Image
+	9,   // 24: laterna.v1.Season.user_data:type_name -> laterna.v1.UserData
+	76,  // 25: laterna.v1.Season.title_text:type_name -> laterna.v1.Text
+	74,  // 26: laterna.v1.Episode.runtime:type_name -> google.protobuf.Duration
+	10,  // 27: laterna.v1.Episode.images:type_name -> laterna.v1.Image
+	9,   // 28: laterna.v1.Episode.user_data:type_name -> laterna.v1.UserData
+	75,  // 29: laterna.v1.Episode.added_at:type_name -> google.protobuf.Timestamp
+	76,  // 30: laterna.v1.Episode.title_text:type_name -> laterna.v1.Text
+	10,  // 31: laterna.v1.ArtistSummary.images:type_name -> laterna.v1.Image
+	9,   // 32: laterna.v1.ArtistSummary.user_data:type_name -> laterna.v1.UserData
+	75,  // 33: laterna.v1.ArtistSummary.added_at:type_name -> google.protobuf.Timestamp
+	76,  // 34: laterna.v1.ArtistSummary.name_text:type_name -> laterna.v1.Text
+	72,  // 35: laterna.v1.Artist.provider_ids:type_name -> laterna.v1.Artist.ProviderIdsEntry
+	10,  // 36: laterna.v1.Artist.images:type_name -> laterna.v1.Image
+	9,   // 37: laterna.v1.Artist.user_data:type_name -> laterna.v1.UserData
+	75,  // 38: laterna.v1.Artist.added_at:type_name -> google.protobuf.Timestamp
+	76,  // 39: laterna.v1.Artist.name_text:type_name -> laterna.v1.Text
+	10,  // 40: laterna.v1.AlbumSummary.images:type_name -> laterna.v1.Image
+	74,  // 41: laterna.v1.AlbumSummary.runtime:type_name -> google.protobuf.Duration
+	9,   // 42: laterna.v1.AlbumSummary.user_data:type_name -> laterna.v1.UserData
+	75,  // 43: laterna.v1.AlbumSummary.added_at:type_name -> google.protobuf.Timestamp
+	76,  // 44: laterna.v1.AlbumSummary.title_text:type_name -> laterna.v1.Text
+	73,  // 45: laterna.v1.Album.provider_ids:type_name -> laterna.v1.Album.ProviderIdsEntry
+	10,  // 46: laterna.v1.Album.images:type_name -> laterna.v1.Image
+	74,  // 47: laterna.v1.Album.runtime:type_name -> google.protobuf.Duration
+	9,   // 48: laterna.v1.Album.user_data:type_name -> laterna.v1.UserData
+	75,  // 49: laterna.v1.Album.added_at:type_name -> google.protobuf.Timestamp
+	76,  // 50: laterna.v1.Album.title_text:type_name -> laterna.v1.Text
+	74,  // 51: laterna.v1.Track.runtime:type_name -> google.protobuf.Duration
+	10,  // 52: laterna.v1.Track.images:type_name -> laterna.v1.Image
+	9,   // 53: laterna.v1.Track.user_data:type_name -> laterna.v1.UserData
+	21,  // 54: laterna.v1.Track.replay_gain:type_name -> laterna.v1.ReplayGain
+	75,  // 55: laterna.v1.Track.added_at:type_name -> google.protobuf.Timestamp
+	10,  // 56: laterna.v1.BookSeries.images:type_name -> laterna.v1.Image
+	9,   // 57: laterna.v1.BookSeries.user_data:type_name -> laterna.v1.UserData
+	75,  // 58: laterna.v1.BookSeries.added_at:type_name -> google.protobuf.Timestamp
+	75,  // 59: laterna.v1.ReadingProgress.updated_at:type_name -> google.protobuf.Timestamp
+	10,  // 60: laterna.v1.BookSummary.images:type_name -> laterna.v1.Image
+	9,   // 61: laterna.v1.BookSummary.user_data:type_name -> laterna.v1.UserData
+	24,  // 62: laterna.v1.BookSummary.progress:type_name -> laterna.v1.ReadingProgress
+	75,  // 63: laterna.v1.BookSummary.added_at:type_name -> google.protobuf.Timestamp
+	76,  // 64: laterna.v1.BookSummary.title_text:type_name -> laterna.v1.Text
+	33,  // 65: laterna.v1.Book.credits:type_name -> laterna.v1.Credit
+	10,  // 66: laterna.v1.Book.images:type_name -> laterna.v1.Image
+	9,   // 67: laterna.v1.Book.user_data:type_name -> laterna.v1.UserData
+	24,  // 68: laterna.v1.Book.progress:type_name -> laterna.v1.ReadingProgress
+	75,  // 69: laterna.v1.Book.added_at:type_name -> google.protobuf.Timestamp
+	76,  // 70: laterna.v1.Book.title_text:type_name -> laterna.v1.Text
 	1,   // 71: laterna.v1.BookFile.format:type_name -> laterna.v1.BookFormat
 	2,   // 72: laterna.v1.BookFile.layout:type_name -> laterna.v1.BookLayout
-	9,   // 73: laterna.v1.PhotoAlbum.images:type_name -> laterna.v1.Image
-	8,   // 74: laterna.v1.PhotoAlbum.user_data:type_name -> laterna.v1.UserData
-	71,  // 75: laterna.v1.PhotoAlbum.added_at:type_name -> google.protobuf.Timestamp
-	71,  // 76: laterna.v1.PhotoSummary.taken_at:type_name -> google.protobuf.Timestamp
-	70,  // 77: laterna.v1.PhotoSummary.utc_offset:type_name -> google.protobuf.Duration
-	9,   // 78: laterna.v1.PhotoSummary.images:type_name -> laterna.v1.Image
-	8,   // 79: laterna.v1.PhotoSummary.user_data:type_name -> laterna.v1.UserData
-	71,  // 80: laterna.v1.PhotoSummary.added_at:type_name -> google.protobuf.Timestamp
-	28,  // 81: laterna.v1.Photo.summary:type_name -> laterna.v1.PhotoSummary
-	29,  // 82: laterna.v1.Photo.location:type_name -> laterna.v1.GeoPoint
+	10,  // 73: laterna.v1.PhotoAlbum.images:type_name -> laterna.v1.Image
+	9,   // 74: laterna.v1.PhotoAlbum.user_data:type_name -> laterna.v1.UserData
+	75,  // 75: laterna.v1.PhotoAlbum.added_at:type_name -> google.protobuf.Timestamp
+	75,  // 76: laterna.v1.PhotoSummary.taken_at:type_name -> google.protobuf.Timestamp
+	74,  // 77: laterna.v1.PhotoSummary.utc_offset:type_name -> google.protobuf.Duration
+	10,  // 78: laterna.v1.PhotoSummary.images:type_name -> laterna.v1.Image
+	9,   // 79: laterna.v1.PhotoSummary.user_data:type_name -> laterna.v1.UserData
+	75,  // 80: laterna.v1.PhotoSummary.added_at:type_name -> google.protobuf.Timestamp
+	29,  // 81: laterna.v1.Photo.summary:type_name -> laterna.v1.PhotoSummary
+	30,  // 82: laterna.v1.Photo.location:type_name -> laterna.v1.GeoPoint
 	3,   // 83: laterna.v1.Credit.role:type_name -> laterna.v1.CreditRole
-	9,   // 84: laterna.v1.Credit.image:type_name -> laterna.v1.Image
-	70,  // 85: laterna.v1.MediaFile.duration:type_name -> google.protobuf.Duration
-	35,  // 86: laterna.v1.MediaFile.streams:type_name -> laterna.v1.MediaStream
-	36,  // 87: laterna.v1.MediaFile.chapters:type_name -> laterna.v1.Chapter
-	34,  // 88: laterna.v1.MediaFile.trickplay:type_name -> laterna.v1.Trickplay
-	26,  // 89: laterna.v1.MediaFile.book:type_name -> laterna.v1.BookFile
-	37,  // 90: laterna.v1.MediaFile.segments:type_name -> laterna.v1.MediaSegment
-	70,  // 91: laterna.v1.Trickplay.interval:type_name -> google.protobuf.Duration
+	10,  // 84: laterna.v1.Credit.image:type_name -> laterna.v1.Image
+	74,  // 85: laterna.v1.MediaFile.duration:type_name -> google.protobuf.Duration
+	36,  // 86: laterna.v1.MediaFile.streams:type_name -> laterna.v1.MediaStream
+	37,  // 87: laterna.v1.MediaFile.chapters:type_name -> laterna.v1.Chapter
+	35,  // 88: laterna.v1.MediaFile.trickplay:type_name -> laterna.v1.Trickplay
+	27,  // 89: laterna.v1.MediaFile.book:type_name -> laterna.v1.BookFile
+	38,  // 90: laterna.v1.MediaFile.segments:type_name -> laterna.v1.MediaSegment
+	74,  // 91: laterna.v1.Trickplay.interval:type_name -> google.protobuf.Duration
 	4,   // 92: laterna.v1.MediaStream.kind:type_name -> laterna.v1.StreamKind
 	5,   // 93: laterna.v1.MediaStream.dynamic_range:type_name -> laterna.v1.DynamicRange
-	70,  // 94: laterna.v1.Chapter.start:type_name -> google.protobuf.Duration
-	70,  // 95: laterna.v1.Chapter.end:type_name -> google.protobuf.Duration
+	74,  // 94: laterna.v1.Chapter.start:type_name -> google.protobuf.Duration
+	74,  // 95: laterna.v1.Chapter.end:type_name -> google.protobuf.Duration
 	6,   // 96: laterna.v1.MediaSegment.kind:type_name -> laterna.v1.MediaSegmentKind
-	70,  // 97: laterna.v1.MediaSegment.start:type_name -> google.protobuf.Duration
-	70,  // 98: laterna.v1.MediaSegment.end:type_name -> google.protobuf.Duration
-	73,  // 99: laterna.v1.CatalogLibrary.kind:type_name -> laterna.v1.LibraryKind
-	74,  // 100: laterna.v1.CatalogLibrary.counts:type_name -> laterna.v1.ItemCounts
-	38,  // 101: laterna.v1.ListCatalogLibrariesResponse.libraries:type_name -> laterna.v1.CatalogLibrary
+	74,  // 97: laterna.v1.MediaSegment.start:type_name -> google.protobuf.Duration
+	74,  // 98: laterna.v1.MediaSegment.end:type_name -> google.protobuf.Duration
+	77,  // 99: laterna.v1.CatalogLibrary.kind:type_name -> laterna.v1.LibraryKind
+	78,  // 100: laterna.v1.CatalogLibrary.counts:type_name -> laterna.v1.ItemCounts
+	39,  // 101: laterna.v1.ListCatalogLibrariesResponse.libraries:type_name -> laterna.v1.CatalogLibrary
 	7,   // 102: laterna.v1.ListMoviesRequest.sort:type_name -> laterna.v1.ItemSort
-	10,  // 103: laterna.v1.ListMoviesResponse.movies:type_name -> laterna.v1.MovieSummary
-	11,  // 104: laterna.v1.GetMovieResponse.movie:type_name -> laterna.v1.Movie
-	33,  // 105: laterna.v1.GetMovieResponse.files:type_name -> laterna.v1.MediaFile
+	11,  // 103: laterna.v1.ListMoviesResponse.movies:type_name -> laterna.v1.MovieSummary
+	12,  // 104: laterna.v1.GetMovieResponse.movie:type_name -> laterna.v1.Movie
+	34,  // 105: laterna.v1.GetMovieResponse.files:type_name -> laterna.v1.MediaFile
 	7,   // 106: laterna.v1.ListSeriesRequest.sort:type_name -> laterna.v1.ItemSort
-	12,  // 107: laterna.v1.ListSeriesResponse.series:type_name -> laterna.v1.SeriesSummary
-	13,  // 108: laterna.v1.GetSeriesResponse.series:type_name -> laterna.v1.Series
-	14,  // 109: laterna.v1.GetSeriesResponse.seasons:type_name -> laterna.v1.Season
-	15,  // 110: laterna.v1.ListEpisodesResponse.episodes:type_name -> laterna.v1.Episode
-	15,  // 111: laterna.v1.GetEpisodeResponse.episode:type_name -> laterna.v1.Episode
-	33,  // 112: laterna.v1.GetEpisodeResponse.files:type_name -> laterna.v1.MediaFile
-	32,  // 113: laterna.v1.GetEpisodeResponse.credits:type_name -> laterna.v1.Credit
-	54,  // 114: laterna.v1.ListGenresResponse.genres:type_name -> laterna.v1.Genre
-	10,  // 115: laterna.v1.SearchResult.movie:type_name -> laterna.v1.MovieSummary
-	12,  // 116: laterna.v1.SearchResult.series:type_name -> laterna.v1.SeriesSummary
-	15,  // 117: laterna.v1.SearchResult.episode:type_name -> laterna.v1.Episode
-	16,  // 118: laterna.v1.SearchResult.artist:type_name -> laterna.v1.ArtistSummary
-	18,  // 119: laterna.v1.SearchResult.album:type_name -> laterna.v1.AlbumSummary
-	21,  // 120: laterna.v1.SearchResult.track:type_name -> laterna.v1.Track
-	22,  // 121: laterna.v1.SearchResult.book_series:type_name -> laterna.v1.BookSeries
-	24,  // 122: laterna.v1.SearchResult.book:type_name -> laterna.v1.BookSummary
-	27,  // 123: laterna.v1.SearchResult.photo_album:type_name -> laterna.v1.PhotoAlbum
-	57,  // 124: laterna.v1.SearchResponse.results:type_name -> laterna.v1.SearchResult
-	61,  // 125: laterna.v1.ListSimilarResponse.items:type_name -> laterna.v1.SimilarItem
-	10,  // 126: laterna.v1.SimilarItem.movie:type_name -> laterna.v1.MovieSummary
-	12,  // 127: laterna.v1.SimilarItem.series:type_name -> laterna.v1.SeriesSummary
-	39,  // 128: laterna.v1.CatalogService.ListCatalogLibraries:input_type -> laterna.v1.ListCatalogLibrariesRequest
-	41,  // 129: laterna.v1.CatalogService.ListMovies:input_type -> laterna.v1.ListMoviesRequest
-	43,  // 130: laterna.v1.CatalogService.GetMovie:input_type -> laterna.v1.GetMovieRequest
-	45,  // 131: laterna.v1.CatalogService.ListSeries:input_type -> laterna.v1.ListSeriesRequest
-	47,  // 132: laterna.v1.CatalogService.GetSeries:input_type -> laterna.v1.GetSeriesRequest
-	49,  // 133: laterna.v1.CatalogService.ListEpisodes:input_type -> laterna.v1.ListEpisodesRequest
-	51,  // 134: laterna.v1.CatalogService.GetEpisode:input_type -> laterna.v1.GetEpisodeRequest
-	53,  // 135: laterna.v1.CatalogService.ListGenres:input_type -> laterna.v1.ListGenresRequest
-	56,  // 136: laterna.v1.CatalogService.Search:input_type -> laterna.v1.SearchRequest
-	59,  // 137: laterna.v1.CatalogService.ListSimilar:input_type -> laterna.v1.ListSimilarRequest
-	62,  // 138: laterna.v1.CatalogService.SetPlayed:input_type -> laterna.v1.SetPlayedRequest
-	64,  // 139: laterna.v1.CatalogService.SetFavorite:input_type -> laterna.v1.SetFavoriteRequest
-	40,  // 140: laterna.v1.CatalogService.ListCatalogLibraries:output_type -> laterna.v1.ListCatalogLibrariesResponse
-	42,  // 141: laterna.v1.CatalogService.ListMovies:output_type -> laterna.v1.ListMoviesResponse
-	44,  // 142: laterna.v1.CatalogService.GetMovie:output_type -> laterna.v1.GetMovieResponse
-	46,  // 143: laterna.v1.CatalogService.ListSeries:output_type -> laterna.v1.ListSeriesResponse
-	48,  // 144: laterna.v1.CatalogService.GetSeries:output_type -> laterna.v1.GetSeriesResponse
-	50,  // 145: laterna.v1.CatalogService.ListEpisodes:output_type -> laterna.v1.ListEpisodesResponse
-	52,  // 146: laterna.v1.CatalogService.GetEpisode:output_type -> laterna.v1.GetEpisodeResponse
-	55,  // 147: laterna.v1.CatalogService.ListGenres:output_type -> laterna.v1.ListGenresResponse
-	58,  // 148: laterna.v1.CatalogService.Search:output_type -> laterna.v1.SearchResponse
-	60,  // 149: laterna.v1.CatalogService.ListSimilar:output_type -> laterna.v1.ListSimilarResponse
-	63,  // 150: laterna.v1.CatalogService.SetPlayed:output_type -> laterna.v1.SetPlayedResponse
-	65,  // 151: laterna.v1.CatalogService.SetFavorite:output_type -> laterna.v1.SetFavoriteResponse
-	140, // [140:152] is the sub-list for method output_type
-	128, // [128:140] is the sub-list for method input_type
-	128, // [128:128] is the sub-list for extension type_name
-	128, // [128:128] is the sub-list for extension extendee
-	0,   // [0:128] is the sub-list for field type_name
+	13,  // 107: laterna.v1.ListSeriesResponse.series:type_name -> laterna.v1.SeriesSummary
+	14,  // 108: laterna.v1.GetSeriesResponse.series:type_name -> laterna.v1.Series
+	15,  // 109: laterna.v1.GetSeriesResponse.seasons:type_name -> laterna.v1.Season
+	16,  // 110: laterna.v1.ListEpisodesResponse.episodes:type_name -> laterna.v1.Episode
+	8,   // 111: laterna.v1.Extra.kind:type_name -> laterna.v1.ExtraKind
+	74,  // 112: laterna.v1.Extra.runtime:type_name -> google.protobuf.Duration
+	10,  // 113: laterna.v1.Extra.images:type_name -> laterna.v1.Image
+	75,  // 114: laterna.v1.Extra.added_at:type_name -> google.protobuf.Timestamp
+	52,  // 115: laterna.v1.ListExtrasResponse.extras:type_name -> laterna.v1.Extra
+	16,  // 116: laterna.v1.GetEpisodeResponse.episode:type_name -> laterna.v1.Episode
+	34,  // 117: laterna.v1.GetEpisodeResponse.files:type_name -> laterna.v1.MediaFile
+	33,  // 118: laterna.v1.GetEpisodeResponse.credits:type_name -> laterna.v1.Credit
+	58,  // 119: laterna.v1.ListGenresResponse.genres:type_name -> laterna.v1.Genre
+	11,  // 120: laterna.v1.SearchResult.movie:type_name -> laterna.v1.MovieSummary
+	13,  // 121: laterna.v1.SearchResult.series:type_name -> laterna.v1.SeriesSummary
+	16,  // 122: laterna.v1.SearchResult.episode:type_name -> laterna.v1.Episode
+	17,  // 123: laterna.v1.SearchResult.artist:type_name -> laterna.v1.ArtistSummary
+	19,  // 124: laterna.v1.SearchResult.album:type_name -> laterna.v1.AlbumSummary
+	22,  // 125: laterna.v1.SearchResult.track:type_name -> laterna.v1.Track
+	23,  // 126: laterna.v1.SearchResult.book_series:type_name -> laterna.v1.BookSeries
+	25,  // 127: laterna.v1.SearchResult.book:type_name -> laterna.v1.BookSummary
+	28,  // 128: laterna.v1.SearchResult.photo_album:type_name -> laterna.v1.PhotoAlbum
+	61,  // 129: laterna.v1.SearchResponse.results:type_name -> laterna.v1.SearchResult
+	65,  // 130: laterna.v1.ListSimilarResponse.items:type_name -> laterna.v1.SimilarItem
+	11,  // 131: laterna.v1.SimilarItem.movie:type_name -> laterna.v1.MovieSummary
+	13,  // 132: laterna.v1.SimilarItem.series:type_name -> laterna.v1.SeriesSummary
+	40,  // 133: laterna.v1.CatalogService.ListCatalogLibraries:input_type -> laterna.v1.ListCatalogLibrariesRequest
+	42,  // 134: laterna.v1.CatalogService.ListMovies:input_type -> laterna.v1.ListMoviesRequest
+	44,  // 135: laterna.v1.CatalogService.GetMovie:input_type -> laterna.v1.GetMovieRequest
+	46,  // 136: laterna.v1.CatalogService.ListSeries:input_type -> laterna.v1.ListSeriesRequest
+	48,  // 137: laterna.v1.CatalogService.GetSeries:input_type -> laterna.v1.GetSeriesRequest
+	50,  // 138: laterna.v1.CatalogService.ListEpisodes:input_type -> laterna.v1.ListEpisodesRequest
+	55,  // 139: laterna.v1.CatalogService.GetEpisode:input_type -> laterna.v1.GetEpisodeRequest
+	53,  // 140: laterna.v1.CatalogService.ListExtras:input_type -> laterna.v1.ListExtrasRequest
+	57,  // 141: laterna.v1.CatalogService.ListGenres:input_type -> laterna.v1.ListGenresRequest
+	60,  // 142: laterna.v1.CatalogService.Search:input_type -> laterna.v1.SearchRequest
+	63,  // 143: laterna.v1.CatalogService.ListSimilar:input_type -> laterna.v1.ListSimilarRequest
+	66,  // 144: laterna.v1.CatalogService.SetPlayed:input_type -> laterna.v1.SetPlayedRequest
+	68,  // 145: laterna.v1.CatalogService.SetFavorite:input_type -> laterna.v1.SetFavoriteRequest
+	41,  // 146: laterna.v1.CatalogService.ListCatalogLibraries:output_type -> laterna.v1.ListCatalogLibrariesResponse
+	43,  // 147: laterna.v1.CatalogService.ListMovies:output_type -> laterna.v1.ListMoviesResponse
+	45,  // 148: laterna.v1.CatalogService.GetMovie:output_type -> laterna.v1.GetMovieResponse
+	47,  // 149: laterna.v1.CatalogService.ListSeries:output_type -> laterna.v1.ListSeriesResponse
+	49,  // 150: laterna.v1.CatalogService.GetSeries:output_type -> laterna.v1.GetSeriesResponse
+	51,  // 151: laterna.v1.CatalogService.ListEpisodes:output_type -> laterna.v1.ListEpisodesResponse
+	56,  // 152: laterna.v1.CatalogService.GetEpisode:output_type -> laterna.v1.GetEpisodeResponse
+	54,  // 153: laterna.v1.CatalogService.ListExtras:output_type -> laterna.v1.ListExtrasResponse
+	59,  // 154: laterna.v1.CatalogService.ListGenres:output_type -> laterna.v1.ListGenresResponse
+	62,  // 155: laterna.v1.CatalogService.Search:output_type -> laterna.v1.SearchResponse
+	64,  // 156: laterna.v1.CatalogService.ListSimilar:output_type -> laterna.v1.ListSimilarResponse
+	67,  // 157: laterna.v1.CatalogService.SetPlayed:output_type -> laterna.v1.SetPlayedResponse
+	69,  // 158: laterna.v1.CatalogService.SetFavorite:output_type -> laterna.v1.SetFavoriteResponse
+	146, // [146:159] is the sub-list for method output_type
+	133, // [133:146] is the sub-list for method input_type
+	133, // [133:133] is the sub-list for extension type_name
+	133, // [133:133] is the sub-list for extension extendee
+	0,   // [0:133] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_catalog_proto_init() }
@@ -6502,7 +6842,7 @@ func file_laterna_v1_catalog_proto_init() {
 	file_laterna_v1_text_proto_init()
 	file_laterna_v1_catalog_proto_msgTypes[12].OneofWrappers = []any{}
 	file_laterna_v1_catalog_proto_msgTypes[33].OneofWrappers = []any{}
-	file_laterna_v1_catalog_proto_msgTypes[49].OneofWrappers = []any{
+	file_laterna_v1_catalog_proto_msgTypes[52].OneofWrappers = []any{
 		(*SearchResult_Movie)(nil),
 		(*SearchResult_Series)(nil),
 		(*SearchResult_Episode)(nil),
@@ -6513,7 +6853,7 @@ func file_laterna_v1_catalog_proto_init() {
 		(*SearchResult_Book)(nil),
 		(*SearchResult_PhotoAlbum)(nil),
 	}
-	file_laterna_v1_catalog_proto_msgTypes[53].OneofWrappers = []any{
+	file_laterna_v1_catalog_proto_msgTypes[56].OneofWrappers = []any{
 		(*SimilarItem_Movie)(nil),
 		(*SimilarItem_Series)(nil),
 	}
@@ -6522,8 +6862,8 @@ func file_laterna_v1_catalog_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_catalog_proto_rawDesc), len(file_laterna_v1_catalog_proto_rawDesc)),
-			NumEnums:      8,
-			NumMessages:   62,
+			NumEnums:      9,
+			NumMessages:   65,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -54,6 +54,12 @@ service CatalogService {
   rpc GetEpisode(GetEpisodeRequest) returns (GetEpisodeResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // ListExtras lists the extras of a movie or a series (trailers, featurettes...): trailers first,
+  // then by kind and title. They play like a movie (PlaybackService.StartPlayback), always from the
+  // start, and leave nothing in the history.
+  rpc ListExtras(ListExtrasRequest) returns (ListExtrasResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // ListGenres lists the genres of movies, series and albums, to filter lists.
   rpc ListGenres(ListGenresRequest) returns (ListGenresResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -161,6 +167,10 @@ message Movie {
   google.protobuf.Timestamp added_at = 18;
   // Collections the movie belongs to.
   repeated CollectionRef collections = 19;
+  // Extras of the movie (CatalogService.ListExtras), and the first trailer among them; empty if it
+  // has none, for a "Trailer" button.
+  int32 extra_count = 20;
+  string trailer_id = 21;
 }
 
 // SeriesSummary is a series as a list shows it.
@@ -203,6 +213,9 @@ message Series {
   google.protobuf.Timestamp added_at = 19;
   // Collections the series belongs to.
   repeated CollectionRef collections = 20;
+  // See Movie.extra_count and Movie.trailer_id.
+  int32 extra_count = 21;
+  string trailer_id = 22;
 }
 
 message Season {
@@ -353,6 +366,8 @@ message Track {
   // Unset if the tags do not say.
   ReplayGain replay_gain = 13;
   google.protobuf.Timestamp added_at = 14;
+  // The track has lyrics (MusicService.GetLyrics).
+  bool has_lyrics = 15;
 }
 
 // Books (BookService).
@@ -757,6 +772,43 @@ message ListEpisodesRequest {
 
 message ListEpisodesResponse {
   repeated Episode episodes = 1;
+}
+
+// ExtraKind is the kind of an extra, as given by its folder ("Trailers/") or its suffix
+// ("-trailer").
+enum ExtraKind {
+  // Any other extra: a folder of extras or bonus, a clip.
+  EXTRA_KIND_UNSPECIFIED = 0;
+  EXTRA_KIND_TRAILER = 1;
+  EXTRA_KIND_FEATURETTE = 2;
+  EXTRA_KIND_BEHIND_THE_SCENES = 3;
+  EXTRA_KIND_DELETED_SCENE = 4;
+  EXTRA_KIND_INTERVIEW = 5;
+  EXTRA_KIND_SCENE = 6;
+  EXTRA_KIND_SHORT = 7;
+}
+
+// Extra is an extra of a movie or a series. Its title is the name of its file ("Making of",
+// "Movie (2020)-trailer"): the kind says what it is. A frame of its video stands in for an image of
+// its own.
+message Extra {
+  string id = 1;
+  // Its movie or series.
+  string owner_id = 2;
+  string title = 3;
+  ExtraKind kind = 4;
+  google.protobuf.Duration runtime = 5;
+  repeated Image images = 6;
+  google.protobuf.Timestamp added_at = 7;
+}
+
+message ListExtrasRequest {
+  // A movie or a series.
+  string item_id = 1;
+}
+
+message ListExtrasResponse {
+  repeated Extra extras = 1;
 }
 
 message GetEpisodeRequest {

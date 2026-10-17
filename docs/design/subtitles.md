@@ -145,6 +145,35 @@ playback starts, and `StartPlaybackResponse.subtitle_index` says which one was p
 - A client leaves `profile_subtitle` out when it reopens a playback after the viewer chose a
   subtitle (or none): the viewer's choice wins.
 
+## The audio a playback starts with
+
+`Profile.audio_language` (a BCP 47 tag, `ProfileService.SetAudioPreferences`) is the language of
+the audio a playback starts with when the request names no stream: "ja" for anime in the
+original, "fr" for the dub. Among the streams in that language: a main one before a commentary
+(its title says so), the file's default, the one with the most channels, then the file's order
+(`playback.PickAudio`). Without one in that language, or without a preference, the file's default
+stream plays. The subtitle is then picked against the audio actually played.
+
+## What was chosen in a series
+
+Someone who switched episode 1 to the Japanese audio and turned the subtitles off expects
+episode 2 to start the same way. For each profile and series, the server keeps the last choices
+(`series_choices`) and applies them before the profile's preferences:
+
+- **Audio**: the language of a stream named by `StartPlaybackRequest.audio_stream_index`. A
+  client names one when the viewer picked it (changing the audio reopens the playback); a stream
+  picked by the preferences is not a choice.
+- **Subtitle**: the last one the client reports (`ReportProgressRequest.subtitle_index`, or
+  `StopPlaybackRequest`; `-1` for none), or the one a request names at the start. Switching
+  subtitles restarts nothing, so only the client knows: it says which one is shown with its
+  progress reports. What is kept is its language and whether it was forced
+  (`playback.PickSameSubtitle` finds the like of it in the next episode), or "none".
+- Choices are written once, when the playback ends, and only what was chosen changes: a playback
+  where the viewer only touched the subtitle keeps the audio of the series as it was.
+- A subtitle whose language is unknown is not kept: it could not be found in another episode. An
+  episode without a subtitle in the language chosen falls back to the profile's preferences.
+- Choices belong to a profile, and go away with it or with the series.
+
 ## Asking for a missing subtitle
 
 A file has no subtitle in the viewer's language: the viewer asks for one from the player, and it

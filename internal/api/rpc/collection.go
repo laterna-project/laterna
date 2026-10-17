@@ -79,7 +79,7 @@ func (s *CollectionService) GetCollection(ctx context.Context, req *connect.Requ
 		case domain.ItemSeries:
 			resp.Items = append(resp.Items, &laternav1.CollectionItem{Item: &laternav1.CollectionItem_Series{Series: seriesSummaryMsg(v)}})
 		case domain.ItemSeason, domain.ItemEpisode, domain.ItemArtist, domain.ItemAlbum, domain.ItemTrack,
-			domain.ItemBookSeries, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto:
+			domain.ItemBookSeries, domain.ItemBook, domain.ItemPhotoAlbum, domain.ItemPhoto, domain.ItemExtra:
 		}
 	}
 	return connect.NewResponse(resp), nil
