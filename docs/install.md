@@ -69,13 +69,13 @@ Tailscale, each documented and checked by the CI.
   `--network host`). Multicast does not cross Docker's bridge network.
 - Video transcoding uses the CPU (`libx264`) unless the container gets a GPU: see below for
   Intel graphics and NVIDIA cards.
-- The image serves the web client (from version 0.2.0): open http://localhost:8096 to set the
+- The image serves the web client: open http://localhost:8096 to set the
   server up. The version it carries is pinned in
   [`packaging/web.lock`](../packaging/web.lock).
 
 ### Intel graphics (VAAPI)
 
-From version 0.5.0, the amd64 image carries the VAAPI driver of Intel GPUs (Broadwell, 2014, and
+The amd64 image carries the VAAPI driver of Intel GPUs (Broadwell, 2014, and
 later, integrated graphics and Arc). Give the container the card and the host group that may use
 it, `render` (its number varies from one system to another):
 

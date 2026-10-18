@@ -61,8 +61,9 @@ Directories are kept apart: `data` (database and logs, the part to back up), `me
 (downloaded images, extracted subtitles, scrubbing thumbnails), `cache` (safe to delete) and
 `backups`. Laterna never writes into media folders.
 
-Defaults are `%LOCALAPPDATA%\Laterna` on Windows, the XDG directories on Linux, `~/Library` on
-macOS, and `/config` plus `/cache` in the Docker image.
+Defaults are `%LOCALAPPDATA%\Laterna` on Windows (`%ProgramData%\Laterna` for the Windows service),
+the XDG directories on Linux, `~/Library` on macOS, and `/config` plus `/cache` in the Docker
+image.
 
 ## Background jobs
 

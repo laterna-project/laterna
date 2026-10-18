@@ -9,17 +9,17 @@ not its history. When a change contradicts a note, update the note in the same c
 | [Architecture](architecture.md) | Go without cgo, package layers, IDs, configuration, background jobs, testing, performance budgets |
 | [API](api.md) | The Protobuf contract, access levels, errors, catalog messages, paging, search, images, events |
 | [Storage](storage.md) | SQLite, one writer and many readers, migrations, list queries, backups and restore |
-| [Libraries](library.md) | Scanning, file identity, folder watching, the folder picker, library order |
+| [Libraries](library.md) | Scanning, extras, file identity, folder watching, the folder picker, library order |
 | [Metadata](metadata.md) | NFO files and local artwork, Sonarr, Radarr and Lidarr, collections |
-| [Playback](playback.md) | Direct play, HLS, transcoding, HDR, FFmpeg processes, scrubbing thumbnails, offline downloads |
-| [Subtitles](subtitles.md) | Extraction at import, formats, fonts, burn-in |
+| [Playback](playback.md) | Direct play, HLS, transcoding, HDR, FFmpeg processes, bitrate limits, scrubbing thumbnails, offline downloads |
+| [Subtitles](subtitles.md) | Extraction at import, formats, fonts, burn-in, the audio and subtitles a playback starts with |
 | [Intro and credits detection](intro-detection.md) | Named chapters and audio fingerprints |
-| [Accounts](accounts.md) | Accounts, profiles, sessions, parental controls, device login, passkeys, OpenID Connect, abuse limits |
+| [Accounts](accounts.md) | Accounts, profiles, sessions, API tokens, parental controls, device login, passkeys, OpenID Connect, abuse limits |
 | [Home, history and recommendations](home.md) | Home rows, resume rules, play history, statistics, recommendations |
-| [Music, books and photos](media-types.md) | The non-video libraries, collections and playlists |
+| [Music, books and photos](media-types.md) | The non-video libraries, lyrics, collections and playlists |
 | [Watch parties](watch-party.md) | Shared playback state and how clients stay in sync |
 | [Requests](requests.md) | Asking for movies, series, music and books, approval, Sonarr, Radarr, Lidarr and LazyLibrarian, availability |
-| [Notifications](notifications.md) | What a profile is told about: its requests, new episodes of the series it follows |
+| [Notifications](notifications.md) | What a profile is told about: its requests, new episodes of the series it follows; alerts to Discord, ntfy or a webhook |
 | [Internationalization](i18n.md) | Error codes, composed text, languages |
 | [Themes](themes.md) | Design tokens, contrast checks, per-profile choice |
 | [Operations](operations.md) | Runtime settings, administration, logs, activity, metrics, traces |

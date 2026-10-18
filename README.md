@@ -10,9 +10,9 @@ in [`proto/`](proto/laterna/v1). The web client, [Laterna Web](https://github.co
 is one of them, and the Docker image serves it. A small development console is included to try the
 server without a client.
 
-> The project is young. The server covers the scope below and is well tested, but it has only
-> run on a handful of machines. Until version 1.0, a minor version may change the configuration
-> or what the API offers; the release notes say how to upgrade.
+> Since 1.0 the API contract, the configuration and the on-disk layout are stable: a minor version
+> only adds, a patch only fixes, and the release notes say what is new. The server is well tested
+> but has run on a handful of machines so far.
 
 ## What it does
 
@@ -20,7 +20,9 @@ server without a client.
   with segments aligned on the source keyframes, without re-encoding what the device can already
   play. Each stream is copied or transcoded on its own. Hardware encoders, HDR to SDR tone mapping
   and a full on-GPU chain are detected by real attempts at startup, with fallbacks down to
-  `libx264`.
+  `libx264`. Playbacks from outside the local network can be capped to what the upload carries.
+  Each profile picks the audio and subtitle languages playback starts with, and a series remembers
+  the last ones chosen in it.
 - **Instant subtitles.** Tracks, external files and fonts are extracted at import and served
   separately, so switching subtitles restarts nothing; players that only show those of the
   stream, like Safari on iPhone, find them in it. Burn-in is a last resort. A missing subtitle can
@@ -33,11 +35,13 @@ server without a client.
   artist can be chosen. Each request is followed until it can be watched, listened to or read.
 - **Notifications.** A profile is told what became of its requests and when episodes of the
   series it follows arrive, in the app or by web push when it is closed. The home page shows what
-  Sonarr, Radarr and Lidarr expect next.
+  Sonarr, Radarr and Lidarr expect next. Administrators can get alerts on Discord, ntfy or a
+  webhook: requests to approve, new episodes, playbacks, problems.
 - **Files keep their identity.** A renamed or moved file keeps its watch state, and a share that
   goes offline does not wipe a library.
 - **Households.** Accounts with profiles, PINs, per-library access and parental controls
   enforced on the server. Sign-in by password, passkey, OpenID Connect, or a code shown on a TV.
+  API tokens, possibly read-only, for Home Assistant and scripts.
 - **More than video.** Music from tags with whole-file playback and synced lyrics, EPUB/CBZ/PDF
   books with pages scaled for the screen, photo libraries with EXIF and a timeline.
 - **The extras.** Trailers and featurettes next to movies and series, intro and credits
@@ -59,7 +63,7 @@ docker run -d --name laterna -p 8096:8096 \
   ghcr.io/laterna-project/laterna:latest
 ```
 
-The image includes a pinned FFmpeg build and, from version 0.2.0, the web client: open
+The image includes a pinned FFmpeg build and the web client: open
 http://localhost:8096 to set the server up. Media folders can be mounted read-only: Laterna never
 writes into them. To let TVs and apps find the server on the local network, run the container
 with `--network host` (multicast does not cross Docker's bridge network). `latest` is the last
@@ -109,7 +113,8 @@ go run ./devtools/console
 ## Configuration
 
 Startup configuration comes from an optional TOML file (`laterna.toml` in the working directory,
-`-config <file>` or `LATERNA_CONFIG`), overridden by environment variables. Everything else
+`-config <file>` or `LATERNA_CONFIG`; `%ProgramData%\Laterna\laterna.toml` for the Windows
+service), overridden by environment variables. Everything else
 (server name, scan interval, public URL, transcode limit…) is a setting changed at runtime through
 the API.
 
