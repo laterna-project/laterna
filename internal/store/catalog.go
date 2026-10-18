@@ -27,10 +27,12 @@ type ItemQuery struct {
 	LibraryID *domain.ID
 	// ParentID restricts to the children of an item (the albums of an artist); nil means all.
 	ParentID *domain.ID
+	// ArtistID restricts tracks to those of the albums of an artist; nil means all.
+	ArtistID *domain.ID
 	// Viewer is the profile we read for, and what it is allowed to see.
 	Viewer domain.Viewer
 	Genre  string
-	// Played filters on the played state (movies only).
+	// Played filters on the played state: movies, or series whose present episodes are all played.
 	Played   *bool
 	Favorite bool
 	Sort     domain.ItemSort
@@ -342,11 +344,24 @@ func itemFilters(b *query, iq ItemQuery) {
 	if iq.ParentID != nil {
 		b.where("i.parent_id = ?", *iq.ParentID)
 	}
+	if iq.ArtistID != nil {
+		b.where("EXISTS (SELECT 1 FROM tracks ft WHERE ft.item_id = i.id AND ft.artist_id = ?)", *iq.ArtistID)
+	}
 	b.where(presentCond(iq.Kind))
 	if iq.Genre != "" {
 		b.where("EXISTS (SELECT 1 FROM item_genres g WHERE g.item_id = i.id AND g.genre = ? COLLATE NOCASE)", iq.Genre)
 	}
-	if iq.Played != nil {
+	switch {
+	case iq.Played == nil:
+	case iq.Kind == domain.ItemSeries:
+		// A series is played when none of its present episodes is left to play.
+		left := `EXISTS (SELECT 1 FROM episodes pe LEFT JOIN user_data pu ON pu.item_id = pe.item_id AND pu.profile_id = ?
+			WHERE pe.series_id = i.id AND COALESCE(pu.played, 0) = 0 AND ` + fmt.Sprintf(presentFileOf, "pe.item_id") + `)`
+		if *iq.Played {
+			left = "NOT " + left
+		}
+		b.where(left, iq.Viewer.ProfileID)
+	default:
 		b.where("COALESCE(u.played, 0) = ?", toInt(*iq.Played))
 	}
 	if iq.Favorite {
@@ -383,6 +398,7 @@ func (q Q) Items(ctx context.Context, iq ItemQuery) ([]domain.ItemView, *Cursor,
 		}
 	case domain.SortRating:
 		next.Num = last.CommunityRating
+	case domain.SortAlbum: // not a sort of the store: itemsQuery refuses it
 	}
 	return cards, next, nil
 }

@@ -237,10 +237,10 @@ type Account struct {
 	// At most this many requests in seven days; 0 for no limit. Administrators have none.
 	RequestQuota int32 `protobuf:"varint,11,opt,name=request_quota,json=requestQuota,proto3" json:"request_quota,omitempty"`
 	// Highest bitrate of its playbacks from outside the local network, in kbit/s; 0 means only the
-	// server's limit (Settings.remote_max_bitrate). The lower of the two applies.
-	RemoteMaxBitrate int32 `protobuf:"varint,12,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3" json:"remote_max_bitrate,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// server's limit (Settings.remote_max_bitrate_kbps). The lower of the two applies.
+	RemoteMaxBitrateKbps int32 `protobuf:"varint,12,opt,name=remote_max_bitrate_kbps,json=remoteMaxBitrateKbps,proto3" json:"remote_max_bitrate_kbps,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Account) Reset() {
@@ -350,9 +350,9 @@ func (x *Account) GetRequestQuota() int32 {
 	return 0
 }
 
-func (x *Account) GetRemoteMaxBitrate() int32 {
+func (x *Account) GetRemoteMaxBitrateKbps() int32 {
 	if x != nil {
-		return x.RemoteMaxBitrate
+		return x.RemoteMaxBitrateKbps
 	}
 	return 0
 }
@@ -1143,6 +1143,369 @@ func (*ChangePasswordResponse) Descriptor() ([]byte, []int) {
 	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{17}
 }
 
+// ApiToken is an API token, without its secret.
+type ApiToken struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// What it is for ("Home Assistant").
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// It only calls the methods that change nothing.
+	ReadOnly bool `protobuf:"varint,3,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	// The profile it acts as; unset if that profile was deleted (the token then only reaches what
+	// needs no profile).
+	Profile       *Profile               `protobuf:"bytes,4,opt,name=profile,proto3,oneof" json:"profile,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	LastUsedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
+	LastIp        string                 `protobuf:"bytes,7,opt,name=last_ip,json=lastIp,proto3" json:"last_ip,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApiToken) Reset() {
+	*x = ApiToken{}
+	mi := &file_laterna_v1_auth_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApiToken) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApiToken) ProtoMessage() {}
+
+func (x *ApiToken) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_auth_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApiToken.ProtoReflect.Descriptor instead.
+func (*ApiToken) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ApiToken) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ApiToken) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ApiToken) GetReadOnly() bool {
+	if x != nil {
+		return x.ReadOnly
+	}
+	return false
+}
+
+func (x *ApiToken) GetProfile() *Profile {
+	if x != nil {
+		return x.Profile
+	}
+	return nil
+}
+
+func (x *ApiToken) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *ApiToken) GetLastUsedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastUsedAt
+	}
+	return nil
+}
+
+func (x *ApiToken) GetLastIp() string {
+	if x != nil {
+		return x.LastIp
+	}
+	return ""
+}
+
+type CreateApiTokenRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 1 to 64 characters.
+	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	ReadOnly      bool   `protobuf:"varint,2,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateApiTokenRequest) Reset() {
+	*x = CreateApiTokenRequest{}
+	mi := &file_laterna_v1_auth_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateApiTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateApiTokenRequest) ProtoMessage() {}
+
+func (x *CreateApiTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_auth_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateApiTokenRequest.ProtoReflect.Descriptor instead.
+func (*CreateApiTokenRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *CreateApiTokenRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateApiTokenRequest) GetReadOnly() bool {
+	if x != nil {
+		return x.ReadOnly
+	}
+	return false
+}
+
+type CreateApiTokenResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The secret, shown this once.
+	Token         string    `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	ApiToken      *ApiToken `protobuf:"bytes,2,opt,name=api_token,json=apiToken,proto3" json:"api_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateApiTokenResponse) Reset() {
+	*x = CreateApiTokenResponse{}
+	mi := &file_laterna_v1_auth_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateApiTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateApiTokenResponse) ProtoMessage() {}
+
+func (x *CreateApiTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_auth_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateApiTokenResponse.ProtoReflect.Descriptor instead.
+func (*CreateApiTokenResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *CreateApiTokenResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *CreateApiTokenResponse) GetApiToken() *ApiToken {
+	if x != nil {
+		return x.ApiToken
+	}
+	return nil
+}
+
+type ListApiTokensRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListApiTokensRequest) Reset() {
+	*x = ListApiTokensRequest{}
+	mi := &file_laterna_v1_auth_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListApiTokensRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListApiTokensRequest) ProtoMessage() {}
+
+func (x *ListApiTokensRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_auth_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListApiTokensRequest.ProtoReflect.Descriptor instead.
+func (*ListApiTokensRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{21}
+}
+
+type ListApiTokensResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ApiTokens     []*ApiToken            `protobuf:"bytes,1,rep,name=api_tokens,json=apiTokens,proto3" json:"api_tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListApiTokensResponse) Reset() {
+	*x = ListApiTokensResponse{}
+	mi := &file_laterna_v1_auth_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListApiTokensResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListApiTokensResponse) ProtoMessage() {}
+
+func (x *ListApiTokensResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_auth_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListApiTokensResponse.ProtoReflect.Descriptor instead.
+func (*ListApiTokensResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ListApiTokensResponse) GetApiTokens() []*ApiToken {
+	if x != nil {
+		return x.ApiTokens
+	}
+	return nil
+}
+
+type RevokeApiTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ApiTokenId    string                 `protobuf:"bytes,1,opt,name=api_token_id,json=apiTokenId,proto3" json:"api_token_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeApiTokenRequest) Reset() {
+	*x = RevokeApiTokenRequest{}
+	mi := &file_laterna_v1_auth_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeApiTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeApiTokenRequest) ProtoMessage() {}
+
+func (x *RevokeApiTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_auth_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeApiTokenRequest.ProtoReflect.Descriptor instead.
+func (*RevokeApiTokenRequest) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *RevokeApiTokenRequest) GetApiTokenId() string {
+	if x != nil {
+		return x.ApiTokenId
+	}
+	return ""
+}
+
+type RevokeApiTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeApiTokenResponse) Reset() {
+	*x = RevokeApiTokenResponse{}
+	mi := &file_laterna_v1_auth_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeApiTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeApiTokenResponse) ProtoMessage() {}
+
+func (x *RevokeApiTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_auth_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeApiTokenResponse.ProtoReflect.Descriptor instead.
+func (*RevokeApiTokenResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{24}
+}
+
 type StartDeviceLoginRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The device asking (its name is shown to the user who approves).
@@ -1153,7 +1516,7 @@ type StartDeviceLoginRequest struct {
 
 func (x *StartDeviceLoginRequest) Reset() {
 	*x = StartDeviceLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[18]
+	mi := &file_laterna_v1_auth_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1165,7 +1528,7 @@ func (x *StartDeviceLoginRequest) String() string {
 func (*StartDeviceLoginRequest) ProtoMessage() {}
 
 func (x *StartDeviceLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[18]
+	mi := &file_laterna_v1_auth_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1178,7 +1541,7 @@ func (x *StartDeviceLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartDeviceLoginRequest.ProtoReflect.Descriptor instead.
 func (*StartDeviceLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{18}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *StartDeviceLoginRequest) GetDevice() *Device {
@@ -1211,7 +1574,7 @@ type StartDeviceLoginResponse struct {
 
 func (x *StartDeviceLoginResponse) Reset() {
 	*x = StartDeviceLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[19]
+	mi := &file_laterna_v1_auth_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1223,7 +1586,7 @@ func (x *StartDeviceLoginResponse) String() string {
 func (*StartDeviceLoginResponse) ProtoMessage() {}
 
 func (x *StartDeviceLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[19]
+	mi := &file_laterna_v1_auth_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1236,7 +1599,7 @@ func (x *StartDeviceLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartDeviceLoginResponse.ProtoReflect.Descriptor instead.
 func (*StartDeviceLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{19}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *StartDeviceLoginResponse) GetDeviceCode() string {
@@ -1290,7 +1653,7 @@ type PollDeviceLoginRequest struct {
 
 func (x *PollDeviceLoginRequest) Reset() {
 	*x = PollDeviceLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[20]
+	mi := &file_laterna_v1_auth_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1302,7 +1665,7 @@ func (x *PollDeviceLoginRequest) String() string {
 func (*PollDeviceLoginRequest) ProtoMessage() {}
 
 func (x *PollDeviceLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[20]
+	mi := &file_laterna_v1_auth_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1315,7 +1678,7 @@ func (x *PollDeviceLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollDeviceLoginRequest.ProtoReflect.Descriptor instead.
 func (*PollDeviceLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{20}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *PollDeviceLoginRequest) GetDeviceCode() string {
@@ -1339,7 +1702,7 @@ type PollDeviceLoginResponse struct {
 
 func (x *PollDeviceLoginResponse) Reset() {
 	*x = PollDeviceLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[21]
+	mi := &file_laterna_v1_auth_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1351,7 +1714,7 @@ func (x *PollDeviceLoginResponse) String() string {
 func (*PollDeviceLoginResponse) ProtoMessage() {}
 
 func (x *PollDeviceLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[21]
+	mi := &file_laterna_v1_auth_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1364,7 +1727,7 @@ func (x *PollDeviceLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollDeviceLoginResponse.ProtoReflect.Descriptor instead.
 func (*PollDeviceLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{21}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *PollDeviceLoginResponse) GetState() DeviceLoginState {
@@ -1404,7 +1767,7 @@ type GetDeviceLoginRequest struct {
 
 func (x *GetDeviceLoginRequest) Reset() {
 	*x = GetDeviceLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[22]
+	mi := &file_laterna_v1_auth_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1416,7 +1779,7 @@ func (x *GetDeviceLoginRequest) String() string {
 func (*GetDeviceLoginRequest) ProtoMessage() {}
 
 func (x *GetDeviceLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[22]
+	mi := &file_laterna_v1_auth_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1429,7 +1792,7 @@ func (x *GetDeviceLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDeviceLoginRequest.ProtoReflect.Descriptor instead.
 func (*GetDeviceLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{22}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetDeviceLoginRequest) GetUserCode() string {
@@ -1452,7 +1815,7 @@ type GetDeviceLoginResponse struct {
 
 func (x *GetDeviceLoginResponse) Reset() {
 	*x = GetDeviceLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[23]
+	mi := &file_laterna_v1_auth_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1464,7 +1827,7 @@ func (x *GetDeviceLoginResponse) String() string {
 func (*GetDeviceLoginResponse) ProtoMessage() {}
 
 func (x *GetDeviceLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[23]
+	mi := &file_laterna_v1_auth_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1477,7 +1840,7 @@ func (x *GetDeviceLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDeviceLoginResponse.ProtoReflect.Descriptor instead.
 func (*GetDeviceLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{23}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetDeviceLoginResponse) GetDevice() *Device {
@@ -1520,7 +1883,7 @@ type ApproveDeviceLoginRequest struct {
 
 func (x *ApproveDeviceLoginRequest) Reset() {
 	*x = ApproveDeviceLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[24]
+	mi := &file_laterna_v1_auth_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1532,7 +1895,7 @@ func (x *ApproveDeviceLoginRequest) String() string {
 func (*ApproveDeviceLoginRequest) ProtoMessage() {}
 
 func (x *ApproveDeviceLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[24]
+	mi := &file_laterna_v1_auth_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1545,7 +1908,7 @@ func (x *ApproveDeviceLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveDeviceLoginRequest.ProtoReflect.Descriptor instead.
 func (*ApproveDeviceLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{24}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ApproveDeviceLoginRequest) GetUserCode() string {
@@ -1570,7 +1933,7 @@ type ApproveDeviceLoginResponse struct {
 
 func (x *ApproveDeviceLoginResponse) Reset() {
 	*x = ApproveDeviceLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[25]
+	mi := &file_laterna_v1_auth_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1582,7 +1945,7 @@ func (x *ApproveDeviceLoginResponse) String() string {
 func (*ApproveDeviceLoginResponse) ProtoMessage() {}
 
 func (x *ApproveDeviceLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[25]
+	mi := &file_laterna_v1_auth_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1595,7 +1958,7 @@ func (x *ApproveDeviceLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveDeviceLoginResponse.ProtoReflect.Descriptor instead.
 func (*ApproveDeviceLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{25}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{32}
 }
 
 type DenyDeviceLoginRequest struct {
@@ -1607,7 +1970,7 @@ type DenyDeviceLoginRequest struct {
 
 func (x *DenyDeviceLoginRequest) Reset() {
 	*x = DenyDeviceLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[26]
+	mi := &file_laterna_v1_auth_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1619,7 +1982,7 @@ func (x *DenyDeviceLoginRequest) String() string {
 func (*DenyDeviceLoginRequest) ProtoMessage() {}
 
 func (x *DenyDeviceLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[26]
+	mi := &file_laterna_v1_auth_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1632,7 +1995,7 @@ func (x *DenyDeviceLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DenyDeviceLoginRequest.ProtoReflect.Descriptor instead.
 func (*DenyDeviceLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{26}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DenyDeviceLoginRequest) GetUserCode() string {
@@ -1650,7 +2013,7 @@ type DenyDeviceLoginResponse struct {
 
 func (x *DenyDeviceLoginResponse) Reset() {
 	*x = DenyDeviceLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[27]
+	mi := &file_laterna_v1_auth_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1662,7 +2025,7 @@ func (x *DenyDeviceLoginResponse) String() string {
 func (*DenyDeviceLoginResponse) ProtoMessage() {}
 
 func (x *DenyDeviceLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[27]
+	mi := &file_laterna_v1_auth_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1675,7 +2038,7 @@ func (x *DenyDeviceLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DenyDeviceLoginResponse.ProtoReflect.Descriptor instead.
 func (*DenyDeviceLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{27}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{34}
 }
 
 // Passkey is a WebAuthn key of the account.
@@ -1693,7 +2056,7 @@ type Passkey struct {
 
 func (x *Passkey) Reset() {
 	*x = Passkey{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[28]
+	mi := &file_laterna_v1_auth_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1705,7 +2068,7 @@ func (x *Passkey) String() string {
 func (*Passkey) ProtoMessage() {}
 
 func (x *Passkey) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[28]
+	mi := &file_laterna_v1_auth_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1718,7 +2081,7 @@ func (x *Passkey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Passkey.ProtoReflect.Descriptor instead.
 func (*Passkey) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{28}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *Passkey) GetId() string {
@@ -1757,7 +2120,7 @@ type BeginPasskeyRegistrationRequest struct {
 
 func (x *BeginPasskeyRegistrationRequest) Reset() {
 	*x = BeginPasskeyRegistrationRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[29]
+	mi := &file_laterna_v1_auth_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1769,7 +2132,7 @@ func (x *BeginPasskeyRegistrationRequest) String() string {
 func (*BeginPasskeyRegistrationRequest) ProtoMessage() {}
 
 func (x *BeginPasskeyRegistrationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[29]
+	mi := &file_laterna_v1_auth_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1782,7 +2145,7 @@ func (x *BeginPasskeyRegistrationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BeginPasskeyRegistrationRequest.ProtoReflect.Descriptor instead.
 func (*BeginPasskeyRegistrationRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{29}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{36}
 }
 
 type BeginPasskeyRegistrationResponse struct {
@@ -1796,7 +2159,7 @@ type BeginPasskeyRegistrationResponse struct {
 
 func (x *BeginPasskeyRegistrationResponse) Reset() {
 	*x = BeginPasskeyRegistrationResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[30]
+	mi := &file_laterna_v1_auth_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1808,7 +2171,7 @@ func (x *BeginPasskeyRegistrationResponse) String() string {
 func (*BeginPasskeyRegistrationResponse) ProtoMessage() {}
 
 func (x *BeginPasskeyRegistrationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[30]
+	mi := &file_laterna_v1_auth_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1821,7 +2184,7 @@ func (x *BeginPasskeyRegistrationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BeginPasskeyRegistrationResponse.ProtoReflect.Descriptor instead.
 func (*BeginPasskeyRegistrationResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{30}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *BeginPasskeyRegistrationResponse) GetRegistrationId() string {
@@ -1851,7 +2214,7 @@ type FinishPasskeyRegistrationRequest struct {
 
 func (x *FinishPasskeyRegistrationRequest) Reset() {
 	*x = FinishPasskeyRegistrationRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[31]
+	mi := &file_laterna_v1_auth_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1863,7 +2226,7 @@ func (x *FinishPasskeyRegistrationRequest) String() string {
 func (*FinishPasskeyRegistrationRequest) ProtoMessage() {}
 
 func (x *FinishPasskeyRegistrationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[31]
+	mi := &file_laterna_v1_auth_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1876,7 +2239,7 @@ func (x *FinishPasskeyRegistrationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FinishPasskeyRegistrationRequest.ProtoReflect.Descriptor instead.
 func (*FinishPasskeyRegistrationRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{31}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *FinishPasskeyRegistrationRequest) GetRegistrationId() string {
@@ -1909,7 +2272,7 @@ type FinishPasskeyRegistrationResponse struct {
 
 func (x *FinishPasskeyRegistrationResponse) Reset() {
 	*x = FinishPasskeyRegistrationResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[32]
+	mi := &file_laterna_v1_auth_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1921,7 +2284,7 @@ func (x *FinishPasskeyRegistrationResponse) String() string {
 func (*FinishPasskeyRegistrationResponse) ProtoMessage() {}
 
 func (x *FinishPasskeyRegistrationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[32]
+	mi := &file_laterna_v1_auth_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1934,7 +2297,7 @@ func (x *FinishPasskeyRegistrationResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use FinishPasskeyRegistrationResponse.ProtoReflect.Descriptor instead.
 func (*FinishPasskeyRegistrationResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{32}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *FinishPasskeyRegistrationResponse) GetPasskey() *Passkey {
@@ -1952,7 +2315,7 @@ type ListPasskeysRequest struct {
 
 func (x *ListPasskeysRequest) Reset() {
 	*x = ListPasskeysRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[33]
+	mi := &file_laterna_v1_auth_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1964,7 +2327,7 @@ func (x *ListPasskeysRequest) String() string {
 func (*ListPasskeysRequest) ProtoMessage() {}
 
 func (x *ListPasskeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[33]
+	mi := &file_laterna_v1_auth_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1977,7 +2340,7 @@ func (x *ListPasskeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPasskeysRequest.ProtoReflect.Descriptor instead.
 func (*ListPasskeysRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{33}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{40}
 }
 
 type ListPasskeysResponse struct {
@@ -1989,7 +2352,7 @@ type ListPasskeysResponse struct {
 
 func (x *ListPasskeysResponse) Reset() {
 	*x = ListPasskeysResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[34]
+	mi := &file_laterna_v1_auth_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2001,7 +2364,7 @@ func (x *ListPasskeysResponse) String() string {
 func (*ListPasskeysResponse) ProtoMessage() {}
 
 func (x *ListPasskeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[34]
+	mi := &file_laterna_v1_auth_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2014,7 +2377,7 @@ func (x *ListPasskeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPasskeysResponse.ProtoReflect.Descriptor instead.
 func (*ListPasskeysResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{34}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ListPasskeysResponse) GetPasskeys() []*Passkey {
@@ -2033,7 +2396,7 @@ type DeletePasskeyRequest struct {
 
 func (x *DeletePasskeyRequest) Reset() {
 	*x = DeletePasskeyRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[35]
+	mi := &file_laterna_v1_auth_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2045,7 +2408,7 @@ func (x *DeletePasskeyRequest) String() string {
 func (*DeletePasskeyRequest) ProtoMessage() {}
 
 func (x *DeletePasskeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[35]
+	mi := &file_laterna_v1_auth_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2058,7 +2421,7 @@ func (x *DeletePasskeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePasskeyRequest.ProtoReflect.Descriptor instead.
 func (*DeletePasskeyRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{35}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *DeletePasskeyRequest) GetPasskeyId() string {
@@ -2076,7 +2439,7 @@ type DeletePasskeyResponse struct {
 
 func (x *DeletePasskeyResponse) Reset() {
 	*x = DeletePasskeyResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[36]
+	mi := &file_laterna_v1_auth_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2088,7 +2451,7 @@ func (x *DeletePasskeyResponse) String() string {
 func (*DeletePasskeyResponse) ProtoMessage() {}
 
 func (x *DeletePasskeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[36]
+	mi := &file_laterna_v1_auth_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2101,7 +2464,7 @@ func (x *DeletePasskeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePasskeyResponse.ProtoReflect.Descriptor instead.
 func (*DeletePasskeyResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{36}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{43}
 }
 
 type BeginPasskeyLoginRequest struct {
@@ -2112,7 +2475,7 @@ type BeginPasskeyLoginRequest struct {
 
 func (x *BeginPasskeyLoginRequest) Reset() {
 	*x = BeginPasskeyLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[37]
+	mi := &file_laterna_v1_auth_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2124,7 +2487,7 @@ func (x *BeginPasskeyLoginRequest) String() string {
 func (*BeginPasskeyLoginRequest) ProtoMessage() {}
 
 func (x *BeginPasskeyLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[37]
+	mi := &file_laterna_v1_auth_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2137,7 +2500,7 @@ func (x *BeginPasskeyLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BeginPasskeyLoginRequest.ProtoReflect.Descriptor instead.
 func (*BeginPasskeyLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{37}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{44}
 }
 
 type BeginPasskeyLoginResponse struct {
@@ -2151,7 +2514,7 @@ type BeginPasskeyLoginResponse struct {
 
 func (x *BeginPasskeyLoginResponse) Reset() {
 	*x = BeginPasskeyLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[38]
+	mi := &file_laterna_v1_auth_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2163,7 +2526,7 @@ func (x *BeginPasskeyLoginResponse) String() string {
 func (*BeginPasskeyLoginResponse) ProtoMessage() {}
 
 func (x *BeginPasskeyLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[38]
+	mi := &file_laterna_v1_auth_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2176,7 +2539,7 @@ func (x *BeginPasskeyLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BeginPasskeyLoginResponse.ProtoReflect.Descriptor instead.
 func (*BeginPasskeyLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{38}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *BeginPasskeyLoginResponse) GetLoginId() string {
@@ -2205,7 +2568,7 @@ type FinishPasskeyLoginRequest struct {
 
 func (x *FinishPasskeyLoginRequest) Reset() {
 	*x = FinishPasskeyLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[39]
+	mi := &file_laterna_v1_auth_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2217,7 +2580,7 @@ func (x *FinishPasskeyLoginRequest) String() string {
 func (*FinishPasskeyLoginRequest) ProtoMessage() {}
 
 func (x *FinishPasskeyLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[39]
+	mi := &file_laterna_v1_auth_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2230,7 +2593,7 @@ func (x *FinishPasskeyLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FinishPasskeyLoginRequest.ProtoReflect.Descriptor instead.
 func (*FinishPasskeyLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{39}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *FinishPasskeyLoginRequest) GetLoginId() string {
@@ -2265,7 +2628,7 @@ type FinishPasskeyLoginResponse struct {
 
 func (x *FinishPasskeyLoginResponse) Reset() {
 	*x = FinishPasskeyLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[40]
+	mi := &file_laterna_v1_auth_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2277,7 +2640,7 @@ func (x *FinishPasskeyLoginResponse) String() string {
 func (*FinishPasskeyLoginResponse) ProtoMessage() {}
 
 func (x *FinishPasskeyLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[40]
+	mi := &file_laterna_v1_auth_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2290,7 +2653,7 @@ func (x *FinishPasskeyLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FinishPasskeyLoginResponse.ProtoReflect.Descriptor instead.
 func (*FinishPasskeyLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{40}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *FinishPasskeyLoginResponse) GetSession() *Session {
@@ -2316,7 +2679,7 @@ type StartOidcLoginRequest struct {
 
 func (x *StartOidcLoginRequest) Reset() {
 	*x = StartOidcLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[41]
+	mi := &file_laterna_v1_auth_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2328,7 +2691,7 @@ func (x *StartOidcLoginRequest) String() string {
 func (*StartOidcLoginRequest) ProtoMessage() {}
 
 func (x *StartOidcLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[41]
+	mi := &file_laterna_v1_auth_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2341,7 +2704,7 @@ func (x *StartOidcLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartOidcLoginRequest.ProtoReflect.Descriptor instead.
 func (*StartOidcLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{41}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *StartOidcLoginRequest) GetDevice() *Device {
@@ -2356,16 +2719,18 @@ type StartOidcLoginResponse struct {
 	// Secret ID of the login, to pass to PollOidcLogin.
 	LoginId string `protobuf:"bytes,1,opt,name=login_id,json=loginId,proto3" json:"login_id,omitempty"`
 	// URL to open in a browser.
-	AuthorizationUrl string               `protobuf:"bytes,2,opt,name=authorization_url,json=authorizationUrl,proto3" json:"authorization_url,omitempty"`
-	Interval         *durationpb.Duration `protobuf:"bytes,3,opt,name=interval,proto3" json:"interval,omitempty"`
-	ExpiresIn        *durationpb.Duration `protobuf:"bytes,4,opt,name=expires_in,json=expiresIn,proto3" json:"expires_in,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	AuthorizationUrl string `protobuf:"bytes,2,opt,name=authorization_url,json=authorizationUrl,proto3" json:"authorization_url,omitempty"`
+	// Minimum time between two polls.
+	Interval *durationpb.Duration `protobuf:"bytes,3,opt,name=interval,proto3" json:"interval,omitempty"`
+	// Past it, the login is over: start again.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StartOidcLoginResponse) Reset() {
 	*x = StartOidcLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[42]
+	mi := &file_laterna_v1_auth_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2377,7 +2742,7 @@ func (x *StartOidcLoginResponse) String() string {
 func (*StartOidcLoginResponse) ProtoMessage() {}
 
 func (x *StartOidcLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[42]
+	mi := &file_laterna_v1_auth_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2390,7 +2755,7 @@ func (x *StartOidcLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartOidcLoginResponse.ProtoReflect.Descriptor instead.
 func (*StartOidcLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{42}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *StartOidcLoginResponse) GetLoginId() string {
@@ -2414,9 +2779,9 @@ func (x *StartOidcLoginResponse) GetInterval() *durationpb.Duration {
 	return nil
 }
 
-func (x *StartOidcLoginResponse) GetExpiresIn() *durationpb.Duration {
+func (x *StartOidcLoginResponse) GetExpiresAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.ExpiresIn
+		return x.ExpiresAt
 	}
 	return nil
 }
@@ -2430,7 +2795,7 @@ type PollOidcLoginRequest struct {
 
 func (x *PollOidcLoginRequest) Reset() {
 	*x = PollOidcLoginRequest{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[43]
+	mi := &file_laterna_v1_auth_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2442,7 +2807,7 @@ func (x *PollOidcLoginRequest) String() string {
 func (*PollOidcLoginRequest) ProtoMessage() {}
 
 func (x *PollOidcLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[43]
+	mi := &file_laterna_v1_auth_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2455,7 +2820,7 @@ func (x *PollOidcLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollOidcLoginRequest.ProtoReflect.Descriptor instead.
 func (*PollOidcLoginRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{43}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *PollOidcLoginRequest) GetLoginId() string {
@@ -2481,7 +2846,7 @@ type PollOidcLoginResponse struct {
 
 func (x *PollOidcLoginResponse) Reset() {
 	*x = PollOidcLoginResponse{}
-	mi := &file_laterna_v1_auth_proto_msgTypes[44]
+	mi := &file_laterna_v1_auth_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2493,7 +2858,7 @@ func (x *PollOidcLoginResponse) String() string {
 func (*PollOidcLoginResponse) ProtoMessage() {}
 
 func (x *PollOidcLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_auth_proto_msgTypes[44]
+	mi := &file_laterna_v1_auth_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2506,7 +2871,7 @@ func (x *PollOidcLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollOidcLoginResponse.ProtoReflect.Descriptor instead.
 func (*PollOidcLoginResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{44}
+	return file_laterna_v1_auth_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *PollOidcLoginResponse) GetState() OidcLoginState {
@@ -2554,7 +2919,7 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06client\x18\x02 \x01(\tR\x06client\x12%\n" +
 	"\x0eclient_version\x18\x03 \x01(\tR\rclientVersion\x12\x1a\n" +
-	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xec\x03\n" +
+	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xf5\x03\n" +
 	"\aAccount\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x19\n" +
@@ -2568,8 +2933,8 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\rdeny_requests\x18\t \x01(\bR\fdenyRequests\x122\n" +
 	"\x15auto_approve_requests\x18\n" +
 	" \x01(\bR\x13autoApproveRequests\x12#\n" +
-	"\rrequest_quota\x18\v \x01(\x05R\frequestQuota\x12,\n" +
-	"\x12remote_max_bitrate\x18\f \x01(\x05R\x10remoteMaxBitrate\"B\n" +
+	"\rrequest_quota\x18\v \x01(\x05R\frequestQuota\x125\n" +
+	"\x17remote_max_bitrate_kbps\x18\f \x01(\x05R\x14remoteMaxBitrateKbps\"B\n" +
 	"\rLibraryAccess\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1f\n" +
 	"\vlibrary_ids\x18\x02 \x03(\tR\n" +
@@ -2617,7 +2982,33 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\x15ChangePasswordRequest\x12)\n" +
 	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"\x18\n" +
-	"\x16ChangePasswordResponse\"E\n" +
+	"\x16ChangePasswordResponse\"\x9d\x02\n" +
+	"\bApiToken\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
+	"\tread_only\x18\x03 \x01(\bR\breadOnly\x122\n" +
+	"\aprofile\x18\x04 \x01(\v2\x13.laterna.v1.ProfileH\x00R\aprofile\x88\x01\x01\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12<\n" +
+	"\flast_used_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"lastUsedAt\x12\x17\n" +
+	"\alast_ip\x18\a \x01(\tR\x06lastIpB\n" +
+	"\n" +
+	"\b_profile\"H\n" +
+	"\x15CreateApiTokenRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
+	"\tread_only\x18\x02 \x01(\bR\breadOnly\"a\n" +
+	"\x16CreateApiTokenResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x121\n" +
+	"\tapi_token\x18\x02 \x01(\v2\x14.laterna.v1.ApiTokenR\bapiToken\"\x16\n" +
+	"\x14ListApiTokensRequest\"L\n" +
+	"\x15ListApiTokensResponse\x123\n" +
+	"\n" +
+	"api_tokens\x18\x01 \x03(\v2\x14.laterna.v1.ApiTokenR\tapiTokens\"9\n" +
+	"\x15RevokeApiTokenRequest\x12 \n" +
+	"\fapi_token_id\x18\x01 \x01(\tR\n" +
+	"apiTokenId\"\x18\n" +
+	"\x16RevokeApiTokenResponse\"E\n" +
 	"\x17StartDeviceLoginRequest\x12*\n" +
 	"\x06device\x18\x01 \x01(\v2\x12.laterna.v1.DeviceR\x06device\"\xb1\x02\n" +
 	"\x18StartDeviceLoginResponse\x12\x1f\n" +
@@ -2689,13 +3080,14 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\asession\x18\x01 \x01(\v2\x13.laterna.v1.SessionR\asession\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"C\n" +
 	"\x15StartOidcLoginRequest\x12*\n" +
-	"\x06device\x18\x01 \x01(\v2\x12.laterna.v1.DeviceR\x06device\"\xd1\x01\n" +
+	"\x06device\x18\x01 \x01(\v2\x12.laterna.v1.DeviceR\x06device\"\xe4\x01\n" +
 	"\x16StartOidcLoginResponse\x12\x19\n" +
 	"\blogin_id\x18\x01 \x01(\tR\aloginId\x12+\n" +
 	"\x11authorization_url\x18\x02 \x01(\tR\x10authorizationUrl\x125\n" +
-	"\binterval\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\binterval\x128\n" +
+	"\binterval\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\binterval\x129\n" +
 	"\n" +
-	"expires_in\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\texpiresIn\"1\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAtJ\x04\b\x04\x10\x05R\n" +
+	"expires_in\"1\n" +
 	"\x14PollOidcLoginRequest\x12\x19\n" +
 	"\blogin_id\x18\x01 \x01(\tR\aloginId\"\xdd\x01\n" +
 	"\x15PollOidcLoginResponse\x120\n" +
@@ -2715,25 +3107,28 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\x18OIDC_LOGIN_STATE_PENDING\x10\x01\x12\x1d\n" +
 	"\x19OIDC_LOGIN_STATE_APPROVED\x10\x02\x12\x1b\n" +
 	"\x17OIDC_LOGIN_STATE_DENIED\x10\x03\x12\x1c\n" +
-	"\x18OIDC_LOGIN_STATE_EXPIRED\x10\x042\xff\x0e\n" +
+	"\x18OIDC_LOGIN_STATE_EXPIRED\x10\x042\xc5\x11\n" +
 	"\vAuthService\x12B\n" +
 	"\x05Setup\x12\x18.laterna.v1.SetupRequest\x1a\x19.laterna.v1.SetupResponse\"\x04\x88\xb5\x18\x01\x12B\n" +
 	"\x05Login\x12\x18.laterna.v1.LoginRequest\x1a\x19.laterna.v1.LoginResponse\"\x04\x88\xb5\x18\x01\x12E\n" +
 	"\x06Logout\x12\x19.laterna.v1.LogoutRequest\x1a\x1a.laterna.v1.LogoutResponse\"\x04\x88\xb5\x18\x02\x12T\n" +
 	"\n" +
 	"GetSession\x12\x1d.laterna.v1.GetSessionRequest\x1a\x1e.laterna.v1.GetSessionResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12Z\n" +
-	"\fListSessions\x12\x1f.laterna.v1.ListSessionsRequest\x1a .laterna.v1.ListSessionsResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12Z\n" +
-	"\rRevokeSession\x12 .laterna.v1.RevokeSessionRequest\x1a!.laterna.v1.RevokeSessionResponse\"\x04\x88\xb5\x18\x02\x12]\n" +
-	"\x0eChangePassword\x12!.laterna.v1.ChangePasswordRequest\x1a\".laterna.v1.ChangePasswordResponse\"\x04\x88\xb5\x18\x02\x12c\n" +
+	"\fListSessions\x12\x1f.laterna.v1.ListSessionsRequest\x1a .laterna.v1.ListSessionsResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12^\n" +
+	"\rRevokeSession\x12 .laterna.v1.RevokeSessionRequest\x1a!.laterna.v1.RevokeSessionResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12a\n" +
+	"\x0eChangePassword\x12!.laterna.v1.ChangePasswordRequest\x1a\".laterna.v1.ChangePasswordResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12]\n" +
+	"\x0eCreateApiToken\x12!.laterna.v1.CreateApiTokenRequest\x1a\".laterna.v1.CreateApiTokenResponse\"\x04\x90\xb5\x18\x02\x12a\n" +
+	"\rListApiTokens\x12 .laterna.v1.ListApiTokensRequest\x1a!.laterna.v1.ListApiTokensResponse\"\v\x88\xb5\x18\x02\x90\xb5\x18\x02\x90\x02\x01\x12a\n" +
+	"\x0eRevokeApiToken\x12!.laterna.v1.RevokeApiTokenRequest\x1a\".laterna.v1.RevokeApiTokenResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12c\n" +
 	"\x10StartDeviceLogin\x12#.laterna.v1.StartDeviceLoginRequest\x1a$.laterna.v1.StartDeviceLoginResponse\"\x04\x88\xb5\x18\x01\x12`\n" +
-	"\x0fPollDeviceLogin\x12\".laterna.v1.PollDeviceLoginRequest\x1a#.laterna.v1.PollDeviceLoginResponse\"\x04\x88\xb5\x18\x01\x12]\n" +
-	"\x0eGetDeviceLogin\x12!.laterna.v1.GetDeviceLoginRequest\x1a\".laterna.v1.GetDeviceLoginResponse\"\x04\x88\xb5\x18\x02\x12i\n" +
-	"\x12ApproveDeviceLogin\x12%.laterna.v1.ApproveDeviceLoginRequest\x1a&.laterna.v1.ApproveDeviceLoginResponse\"\x04\x88\xb5\x18\x02\x12`\n" +
-	"\x0fDenyDeviceLogin\x12\".laterna.v1.DenyDeviceLoginRequest\x1a#.laterna.v1.DenyDeviceLoginResponse\"\x04\x88\xb5\x18\x02\x12{\n" +
-	"\x18BeginPasskeyRegistration\x12+.laterna.v1.BeginPasskeyRegistrationRequest\x1a,.laterna.v1.BeginPasskeyRegistrationResponse\"\x04\x88\xb5\x18\x02\x12~\n" +
-	"\x19FinishPasskeyRegistration\x12,.laterna.v1.FinishPasskeyRegistrationRequest\x1a-.laterna.v1.FinishPasskeyRegistrationResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
-	"\fListPasskeys\x12\x1f.laterna.v1.ListPasskeysRequest\x1a .laterna.v1.ListPasskeysResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12Z\n" +
-	"\rDeletePasskey\x12 .laterna.v1.DeletePasskeyRequest\x1a!.laterna.v1.DeletePasskeyResponse\"\x04\x88\xb5\x18\x02\x12f\n" +
+	"\x0fPollDeviceLogin\x12\".laterna.v1.PollDeviceLoginRequest\x1a#.laterna.v1.PollDeviceLoginResponse\"\x04\x88\xb5\x18\x01\x12a\n" +
+	"\x0eGetDeviceLogin\x12!.laterna.v1.GetDeviceLoginRequest\x1a\".laterna.v1.GetDeviceLoginResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12m\n" +
+	"\x12ApproveDeviceLogin\x12%.laterna.v1.ApproveDeviceLoginRequest\x1a&.laterna.v1.ApproveDeviceLoginResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12d\n" +
+	"\x0fDenyDeviceLogin\x12\".laterna.v1.DenyDeviceLoginRequest\x1a#.laterna.v1.DenyDeviceLoginResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12\x7f\n" +
+	"\x18BeginPasskeyRegistration\x12+.laterna.v1.BeginPasskeyRegistrationRequest\x1a,.laterna.v1.BeginPasskeyRegistrationResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12\x82\x01\n" +
+	"\x19FinishPasskeyRegistration\x12,.laterna.v1.FinishPasskeyRegistrationRequest\x1a-.laterna.v1.FinishPasskeyRegistrationResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12Z\n" +
+	"\fListPasskeys\x12\x1f.laterna.v1.ListPasskeysRequest\x1a .laterna.v1.ListPasskeysResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12^\n" +
+	"\rDeletePasskey\x12 .laterna.v1.DeletePasskeyRequest\x1a!.laterna.v1.DeletePasskeyResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12f\n" +
 	"\x11BeginPasskeyLogin\x12$.laterna.v1.BeginPasskeyLoginRequest\x1a%.laterna.v1.BeginPasskeyLoginResponse\"\x04\x88\xb5\x18\x01\x12i\n" +
 	"\x12FinishPasskeyLogin\x12%.laterna.v1.FinishPasskeyLoginRequest\x1a&.laterna.v1.FinishPasskeyLoginResponse\"\x04\x88\xb5\x18\x01\x12]\n" +
 	"\x0eStartOidcLogin\x12!.laterna.v1.StartOidcLoginRequest\x1a\".laterna.v1.StartOidcLoginResponse\"\x04\x88\xb5\x18\x01\x12Z\n" +
@@ -2752,7 +3147,7 @@ func file_laterna_v1_auth_proto_rawDescGZIP() []byte {
 }
 
 var file_laterna_v1_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_laterna_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_laterna_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
 var file_laterna_v1_auth_proto_goTypes = []any{
 	(DeviceLoginState)(0),                     // 0: laterna.v1.DeviceLoginState
 	(OidcLoginState)(0),                       // 1: laterna.v1.OidcLoginState
@@ -2774,121 +3169,139 @@ var file_laterna_v1_auth_proto_goTypes = []any{
 	(*RevokeSessionResponse)(nil),             // 17: laterna.v1.RevokeSessionResponse
 	(*ChangePasswordRequest)(nil),             // 18: laterna.v1.ChangePasswordRequest
 	(*ChangePasswordResponse)(nil),            // 19: laterna.v1.ChangePasswordResponse
-	(*StartDeviceLoginRequest)(nil),           // 20: laterna.v1.StartDeviceLoginRequest
-	(*StartDeviceLoginResponse)(nil),          // 21: laterna.v1.StartDeviceLoginResponse
-	(*PollDeviceLoginRequest)(nil),            // 22: laterna.v1.PollDeviceLoginRequest
-	(*PollDeviceLoginResponse)(nil),           // 23: laterna.v1.PollDeviceLoginResponse
-	(*GetDeviceLoginRequest)(nil),             // 24: laterna.v1.GetDeviceLoginRequest
-	(*GetDeviceLoginResponse)(nil),            // 25: laterna.v1.GetDeviceLoginResponse
-	(*ApproveDeviceLoginRequest)(nil),         // 26: laterna.v1.ApproveDeviceLoginRequest
-	(*ApproveDeviceLoginResponse)(nil),        // 27: laterna.v1.ApproveDeviceLoginResponse
-	(*DenyDeviceLoginRequest)(nil),            // 28: laterna.v1.DenyDeviceLoginRequest
-	(*DenyDeviceLoginResponse)(nil),           // 29: laterna.v1.DenyDeviceLoginResponse
-	(*Passkey)(nil),                           // 30: laterna.v1.Passkey
-	(*BeginPasskeyRegistrationRequest)(nil),   // 31: laterna.v1.BeginPasskeyRegistrationRequest
-	(*BeginPasskeyRegistrationResponse)(nil),  // 32: laterna.v1.BeginPasskeyRegistrationResponse
-	(*FinishPasskeyRegistrationRequest)(nil),  // 33: laterna.v1.FinishPasskeyRegistrationRequest
-	(*FinishPasskeyRegistrationResponse)(nil), // 34: laterna.v1.FinishPasskeyRegistrationResponse
-	(*ListPasskeysRequest)(nil),               // 35: laterna.v1.ListPasskeysRequest
-	(*ListPasskeysResponse)(nil),              // 36: laterna.v1.ListPasskeysResponse
-	(*DeletePasskeyRequest)(nil),              // 37: laterna.v1.DeletePasskeyRequest
-	(*DeletePasskeyResponse)(nil),             // 38: laterna.v1.DeletePasskeyResponse
-	(*BeginPasskeyLoginRequest)(nil),          // 39: laterna.v1.BeginPasskeyLoginRequest
-	(*BeginPasskeyLoginResponse)(nil),         // 40: laterna.v1.BeginPasskeyLoginResponse
-	(*FinishPasskeyLoginRequest)(nil),         // 41: laterna.v1.FinishPasskeyLoginRequest
-	(*FinishPasskeyLoginResponse)(nil),        // 42: laterna.v1.FinishPasskeyLoginResponse
-	(*StartOidcLoginRequest)(nil),             // 43: laterna.v1.StartOidcLoginRequest
-	(*StartOidcLoginResponse)(nil),            // 44: laterna.v1.StartOidcLoginResponse
-	(*PollOidcLoginRequest)(nil),              // 45: laterna.v1.PollOidcLoginRequest
-	(*PollOidcLoginResponse)(nil),             // 46: laterna.v1.PollOidcLoginResponse
-	(*timestamppb.Timestamp)(nil),             // 47: google.protobuf.Timestamp
-	(*ParentalControl)(nil),                   // 48: laterna.v1.ParentalControl
-	(*Profile)(nil),                           // 49: laterna.v1.Profile
-	(*durationpb.Duration)(nil),               // 50: google.protobuf.Duration
-	(*Text)(nil),                              // 51: laterna.v1.Text
+	(*ApiToken)(nil),                          // 20: laterna.v1.ApiToken
+	(*CreateApiTokenRequest)(nil),             // 21: laterna.v1.CreateApiTokenRequest
+	(*CreateApiTokenResponse)(nil),            // 22: laterna.v1.CreateApiTokenResponse
+	(*ListApiTokensRequest)(nil),              // 23: laterna.v1.ListApiTokensRequest
+	(*ListApiTokensResponse)(nil),             // 24: laterna.v1.ListApiTokensResponse
+	(*RevokeApiTokenRequest)(nil),             // 25: laterna.v1.RevokeApiTokenRequest
+	(*RevokeApiTokenResponse)(nil),            // 26: laterna.v1.RevokeApiTokenResponse
+	(*StartDeviceLoginRequest)(nil),           // 27: laterna.v1.StartDeviceLoginRequest
+	(*StartDeviceLoginResponse)(nil),          // 28: laterna.v1.StartDeviceLoginResponse
+	(*PollDeviceLoginRequest)(nil),            // 29: laterna.v1.PollDeviceLoginRequest
+	(*PollDeviceLoginResponse)(nil),           // 30: laterna.v1.PollDeviceLoginResponse
+	(*GetDeviceLoginRequest)(nil),             // 31: laterna.v1.GetDeviceLoginRequest
+	(*GetDeviceLoginResponse)(nil),            // 32: laterna.v1.GetDeviceLoginResponse
+	(*ApproveDeviceLoginRequest)(nil),         // 33: laterna.v1.ApproveDeviceLoginRequest
+	(*ApproveDeviceLoginResponse)(nil),        // 34: laterna.v1.ApproveDeviceLoginResponse
+	(*DenyDeviceLoginRequest)(nil),            // 35: laterna.v1.DenyDeviceLoginRequest
+	(*DenyDeviceLoginResponse)(nil),           // 36: laterna.v1.DenyDeviceLoginResponse
+	(*Passkey)(nil),                           // 37: laterna.v1.Passkey
+	(*BeginPasskeyRegistrationRequest)(nil),   // 38: laterna.v1.BeginPasskeyRegistrationRequest
+	(*BeginPasskeyRegistrationResponse)(nil),  // 39: laterna.v1.BeginPasskeyRegistrationResponse
+	(*FinishPasskeyRegistrationRequest)(nil),  // 40: laterna.v1.FinishPasskeyRegistrationRequest
+	(*FinishPasskeyRegistrationResponse)(nil), // 41: laterna.v1.FinishPasskeyRegistrationResponse
+	(*ListPasskeysRequest)(nil),               // 42: laterna.v1.ListPasskeysRequest
+	(*ListPasskeysResponse)(nil),              // 43: laterna.v1.ListPasskeysResponse
+	(*DeletePasskeyRequest)(nil),              // 44: laterna.v1.DeletePasskeyRequest
+	(*DeletePasskeyResponse)(nil),             // 45: laterna.v1.DeletePasskeyResponse
+	(*BeginPasskeyLoginRequest)(nil),          // 46: laterna.v1.BeginPasskeyLoginRequest
+	(*BeginPasskeyLoginResponse)(nil),         // 47: laterna.v1.BeginPasskeyLoginResponse
+	(*FinishPasskeyLoginRequest)(nil),         // 48: laterna.v1.FinishPasskeyLoginRequest
+	(*FinishPasskeyLoginResponse)(nil),        // 49: laterna.v1.FinishPasskeyLoginResponse
+	(*StartOidcLoginRequest)(nil),             // 50: laterna.v1.StartOidcLoginRequest
+	(*StartOidcLoginResponse)(nil),            // 51: laterna.v1.StartOidcLoginResponse
+	(*PollOidcLoginRequest)(nil),              // 52: laterna.v1.PollOidcLoginRequest
+	(*PollOidcLoginResponse)(nil),             // 53: laterna.v1.PollOidcLoginResponse
+	(*timestamppb.Timestamp)(nil),             // 54: google.protobuf.Timestamp
+	(*ParentalControl)(nil),                   // 55: laterna.v1.ParentalControl
+	(*Profile)(nil),                           // 56: laterna.v1.Profile
+	(*durationpb.Duration)(nil),               // 57: google.protobuf.Duration
+	(*Text)(nil),                              // 58: laterna.v1.Text
 }
 var file_laterna_v1_auth_proto_depIdxs = []int32{
-	47, // 0: laterna.v1.Account.created_at:type_name -> google.protobuf.Timestamp
+	54, // 0: laterna.v1.Account.created_at:type_name -> google.protobuf.Timestamp
 	4,  // 1: laterna.v1.Account.libraries:type_name -> laterna.v1.LibraryAccess
-	48, // 2: laterna.v1.Account.parental:type_name -> laterna.v1.ParentalControl
+	55, // 2: laterna.v1.Account.parental:type_name -> laterna.v1.ParentalControl
 	3,  // 3: laterna.v1.Session.account:type_name -> laterna.v1.Account
-	49, // 4: laterna.v1.Session.profile:type_name -> laterna.v1.Profile
+	56, // 4: laterna.v1.Session.profile:type_name -> laterna.v1.Profile
 	2,  // 5: laterna.v1.Session.device:type_name -> laterna.v1.Device
-	47, // 6: laterna.v1.Session.created_at:type_name -> google.protobuf.Timestamp
-	47, // 7: laterna.v1.Session.last_used_at:type_name -> google.protobuf.Timestamp
-	47, // 8: laterna.v1.Session.expires_at:type_name -> google.protobuf.Timestamp
+	54, // 6: laterna.v1.Session.created_at:type_name -> google.protobuf.Timestamp
+	54, // 7: laterna.v1.Session.last_used_at:type_name -> google.protobuf.Timestamp
+	54, // 8: laterna.v1.Session.expires_at:type_name -> google.protobuf.Timestamp
 	2,  // 9: laterna.v1.SetupRequest.device:type_name -> laterna.v1.Device
 	5,  // 10: laterna.v1.SetupResponse.session:type_name -> laterna.v1.Session
 	2,  // 11: laterna.v1.LoginRequest.device:type_name -> laterna.v1.Device
 	5,  // 12: laterna.v1.LoginResponse.session:type_name -> laterna.v1.Session
 	5,  // 13: laterna.v1.GetSessionResponse.session:type_name -> laterna.v1.Session
 	5,  // 14: laterna.v1.ListSessionsResponse.sessions:type_name -> laterna.v1.Session
-	2,  // 15: laterna.v1.StartDeviceLoginRequest.device:type_name -> laterna.v1.Device
-	47, // 16: laterna.v1.StartDeviceLoginResponse.expires_at:type_name -> google.protobuf.Timestamp
-	50, // 17: laterna.v1.StartDeviceLoginResponse.interval:type_name -> google.protobuf.Duration
-	0,  // 18: laterna.v1.PollDeviceLoginResponse.state:type_name -> laterna.v1.DeviceLoginState
-	5,  // 19: laterna.v1.PollDeviceLoginResponse.session:type_name -> laterna.v1.Session
-	50, // 20: laterna.v1.PollDeviceLoginResponse.interval:type_name -> google.protobuf.Duration
-	2,  // 21: laterna.v1.GetDeviceLoginResponse.device:type_name -> laterna.v1.Device
-	47, // 22: laterna.v1.GetDeviceLoginResponse.created_at:type_name -> google.protobuf.Timestamp
-	47, // 23: laterna.v1.GetDeviceLoginResponse.expires_at:type_name -> google.protobuf.Timestamp
-	47, // 24: laterna.v1.Passkey.created_at:type_name -> google.protobuf.Timestamp
-	47, // 25: laterna.v1.Passkey.last_used_at:type_name -> google.protobuf.Timestamp
-	30, // 26: laterna.v1.FinishPasskeyRegistrationResponse.passkey:type_name -> laterna.v1.Passkey
-	30, // 27: laterna.v1.ListPasskeysResponse.passkeys:type_name -> laterna.v1.Passkey
-	2,  // 28: laterna.v1.FinishPasskeyLoginRequest.device:type_name -> laterna.v1.Device
-	5,  // 29: laterna.v1.FinishPasskeyLoginResponse.session:type_name -> laterna.v1.Session
-	2,  // 30: laterna.v1.StartOidcLoginRequest.device:type_name -> laterna.v1.Device
-	50, // 31: laterna.v1.StartOidcLoginResponse.interval:type_name -> google.protobuf.Duration
-	50, // 32: laterna.v1.StartOidcLoginResponse.expires_in:type_name -> google.protobuf.Duration
-	1,  // 33: laterna.v1.PollOidcLoginResponse.state:type_name -> laterna.v1.OidcLoginState
-	5,  // 34: laterna.v1.PollOidcLoginResponse.session:type_name -> laterna.v1.Session
-	51, // 35: laterna.v1.PollOidcLoginResponse.message_text:type_name -> laterna.v1.Text
-	6,  // 36: laterna.v1.AuthService.Setup:input_type -> laterna.v1.SetupRequest
-	8,  // 37: laterna.v1.AuthService.Login:input_type -> laterna.v1.LoginRequest
-	10, // 38: laterna.v1.AuthService.Logout:input_type -> laterna.v1.LogoutRequest
-	12, // 39: laterna.v1.AuthService.GetSession:input_type -> laterna.v1.GetSessionRequest
-	14, // 40: laterna.v1.AuthService.ListSessions:input_type -> laterna.v1.ListSessionsRequest
-	16, // 41: laterna.v1.AuthService.RevokeSession:input_type -> laterna.v1.RevokeSessionRequest
-	18, // 42: laterna.v1.AuthService.ChangePassword:input_type -> laterna.v1.ChangePasswordRequest
-	20, // 43: laterna.v1.AuthService.StartDeviceLogin:input_type -> laterna.v1.StartDeviceLoginRequest
-	22, // 44: laterna.v1.AuthService.PollDeviceLogin:input_type -> laterna.v1.PollDeviceLoginRequest
-	24, // 45: laterna.v1.AuthService.GetDeviceLogin:input_type -> laterna.v1.GetDeviceLoginRequest
-	26, // 46: laterna.v1.AuthService.ApproveDeviceLogin:input_type -> laterna.v1.ApproveDeviceLoginRequest
-	28, // 47: laterna.v1.AuthService.DenyDeviceLogin:input_type -> laterna.v1.DenyDeviceLoginRequest
-	31, // 48: laterna.v1.AuthService.BeginPasskeyRegistration:input_type -> laterna.v1.BeginPasskeyRegistrationRequest
-	33, // 49: laterna.v1.AuthService.FinishPasskeyRegistration:input_type -> laterna.v1.FinishPasskeyRegistrationRequest
-	35, // 50: laterna.v1.AuthService.ListPasskeys:input_type -> laterna.v1.ListPasskeysRequest
-	37, // 51: laterna.v1.AuthService.DeletePasskey:input_type -> laterna.v1.DeletePasskeyRequest
-	39, // 52: laterna.v1.AuthService.BeginPasskeyLogin:input_type -> laterna.v1.BeginPasskeyLoginRequest
-	41, // 53: laterna.v1.AuthService.FinishPasskeyLogin:input_type -> laterna.v1.FinishPasskeyLoginRequest
-	43, // 54: laterna.v1.AuthService.StartOidcLogin:input_type -> laterna.v1.StartOidcLoginRequest
-	45, // 55: laterna.v1.AuthService.PollOidcLogin:input_type -> laterna.v1.PollOidcLoginRequest
-	7,  // 56: laterna.v1.AuthService.Setup:output_type -> laterna.v1.SetupResponse
-	9,  // 57: laterna.v1.AuthService.Login:output_type -> laterna.v1.LoginResponse
-	11, // 58: laterna.v1.AuthService.Logout:output_type -> laterna.v1.LogoutResponse
-	13, // 59: laterna.v1.AuthService.GetSession:output_type -> laterna.v1.GetSessionResponse
-	15, // 60: laterna.v1.AuthService.ListSessions:output_type -> laterna.v1.ListSessionsResponse
-	17, // 61: laterna.v1.AuthService.RevokeSession:output_type -> laterna.v1.RevokeSessionResponse
-	19, // 62: laterna.v1.AuthService.ChangePassword:output_type -> laterna.v1.ChangePasswordResponse
-	21, // 63: laterna.v1.AuthService.StartDeviceLogin:output_type -> laterna.v1.StartDeviceLoginResponse
-	23, // 64: laterna.v1.AuthService.PollDeviceLogin:output_type -> laterna.v1.PollDeviceLoginResponse
-	25, // 65: laterna.v1.AuthService.GetDeviceLogin:output_type -> laterna.v1.GetDeviceLoginResponse
-	27, // 66: laterna.v1.AuthService.ApproveDeviceLogin:output_type -> laterna.v1.ApproveDeviceLoginResponse
-	29, // 67: laterna.v1.AuthService.DenyDeviceLogin:output_type -> laterna.v1.DenyDeviceLoginResponse
-	32, // 68: laterna.v1.AuthService.BeginPasskeyRegistration:output_type -> laterna.v1.BeginPasskeyRegistrationResponse
-	34, // 69: laterna.v1.AuthService.FinishPasskeyRegistration:output_type -> laterna.v1.FinishPasskeyRegistrationResponse
-	36, // 70: laterna.v1.AuthService.ListPasskeys:output_type -> laterna.v1.ListPasskeysResponse
-	38, // 71: laterna.v1.AuthService.DeletePasskey:output_type -> laterna.v1.DeletePasskeyResponse
-	40, // 72: laterna.v1.AuthService.BeginPasskeyLogin:output_type -> laterna.v1.BeginPasskeyLoginResponse
-	42, // 73: laterna.v1.AuthService.FinishPasskeyLogin:output_type -> laterna.v1.FinishPasskeyLoginResponse
-	44, // 74: laterna.v1.AuthService.StartOidcLogin:output_type -> laterna.v1.StartOidcLoginResponse
-	46, // 75: laterna.v1.AuthService.PollOidcLogin:output_type -> laterna.v1.PollOidcLoginResponse
-	56, // [56:76] is the sub-list for method output_type
-	36, // [36:56] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	56, // 15: laterna.v1.ApiToken.profile:type_name -> laterna.v1.Profile
+	54, // 16: laterna.v1.ApiToken.created_at:type_name -> google.protobuf.Timestamp
+	54, // 17: laterna.v1.ApiToken.last_used_at:type_name -> google.protobuf.Timestamp
+	20, // 18: laterna.v1.CreateApiTokenResponse.api_token:type_name -> laterna.v1.ApiToken
+	20, // 19: laterna.v1.ListApiTokensResponse.api_tokens:type_name -> laterna.v1.ApiToken
+	2,  // 20: laterna.v1.StartDeviceLoginRequest.device:type_name -> laterna.v1.Device
+	54, // 21: laterna.v1.StartDeviceLoginResponse.expires_at:type_name -> google.protobuf.Timestamp
+	57, // 22: laterna.v1.StartDeviceLoginResponse.interval:type_name -> google.protobuf.Duration
+	0,  // 23: laterna.v1.PollDeviceLoginResponse.state:type_name -> laterna.v1.DeviceLoginState
+	5,  // 24: laterna.v1.PollDeviceLoginResponse.session:type_name -> laterna.v1.Session
+	57, // 25: laterna.v1.PollDeviceLoginResponse.interval:type_name -> google.protobuf.Duration
+	2,  // 26: laterna.v1.GetDeviceLoginResponse.device:type_name -> laterna.v1.Device
+	54, // 27: laterna.v1.GetDeviceLoginResponse.created_at:type_name -> google.protobuf.Timestamp
+	54, // 28: laterna.v1.GetDeviceLoginResponse.expires_at:type_name -> google.protobuf.Timestamp
+	54, // 29: laterna.v1.Passkey.created_at:type_name -> google.protobuf.Timestamp
+	54, // 30: laterna.v1.Passkey.last_used_at:type_name -> google.protobuf.Timestamp
+	37, // 31: laterna.v1.FinishPasskeyRegistrationResponse.passkey:type_name -> laterna.v1.Passkey
+	37, // 32: laterna.v1.ListPasskeysResponse.passkeys:type_name -> laterna.v1.Passkey
+	2,  // 33: laterna.v1.FinishPasskeyLoginRequest.device:type_name -> laterna.v1.Device
+	5,  // 34: laterna.v1.FinishPasskeyLoginResponse.session:type_name -> laterna.v1.Session
+	2,  // 35: laterna.v1.StartOidcLoginRequest.device:type_name -> laterna.v1.Device
+	57, // 36: laterna.v1.StartOidcLoginResponse.interval:type_name -> google.protobuf.Duration
+	54, // 37: laterna.v1.StartOidcLoginResponse.expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 38: laterna.v1.PollOidcLoginResponse.state:type_name -> laterna.v1.OidcLoginState
+	5,  // 39: laterna.v1.PollOidcLoginResponse.session:type_name -> laterna.v1.Session
+	58, // 40: laterna.v1.PollOidcLoginResponse.message_text:type_name -> laterna.v1.Text
+	6,  // 41: laterna.v1.AuthService.Setup:input_type -> laterna.v1.SetupRequest
+	8,  // 42: laterna.v1.AuthService.Login:input_type -> laterna.v1.LoginRequest
+	10, // 43: laterna.v1.AuthService.Logout:input_type -> laterna.v1.LogoutRequest
+	12, // 44: laterna.v1.AuthService.GetSession:input_type -> laterna.v1.GetSessionRequest
+	14, // 45: laterna.v1.AuthService.ListSessions:input_type -> laterna.v1.ListSessionsRequest
+	16, // 46: laterna.v1.AuthService.RevokeSession:input_type -> laterna.v1.RevokeSessionRequest
+	18, // 47: laterna.v1.AuthService.ChangePassword:input_type -> laterna.v1.ChangePasswordRequest
+	21, // 48: laterna.v1.AuthService.CreateApiToken:input_type -> laterna.v1.CreateApiTokenRequest
+	23, // 49: laterna.v1.AuthService.ListApiTokens:input_type -> laterna.v1.ListApiTokensRequest
+	25, // 50: laterna.v1.AuthService.RevokeApiToken:input_type -> laterna.v1.RevokeApiTokenRequest
+	27, // 51: laterna.v1.AuthService.StartDeviceLogin:input_type -> laterna.v1.StartDeviceLoginRequest
+	29, // 52: laterna.v1.AuthService.PollDeviceLogin:input_type -> laterna.v1.PollDeviceLoginRequest
+	31, // 53: laterna.v1.AuthService.GetDeviceLogin:input_type -> laterna.v1.GetDeviceLoginRequest
+	33, // 54: laterna.v1.AuthService.ApproveDeviceLogin:input_type -> laterna.v1.ApproveDeviceLoginRequest
+	35, // 55: laterna.v1.AuthService.DenyDeviceLogin:input_type -> laterna.v1.DenyDeviceLoginRequest
+	38, // 56: laterna.v1.AuthService.BeginPasskeyRegistration:input_type -> laterna.v1.BeginPasskeyRegistrationRequest
+	40, // 57: laterna.v1.AuthService.FinishPasskeyRegistration:input_type -> laterna.v1.FinishPasskeyRegistrationRequest
+	42, // 58: laterna.v1.AuthService.ListPasskeys:input_type -> laterna.v1.ListPasskeysRequest
+	44, // 59: laterna.v1.AuthService.DeletePasskey:input_type -> laterna.v1.DeletePasskeyRequest
+	46, // 60: laterna.v1.AuthService.BeginPasskeyLogin:input_type -> laterna.v1.BeginPasskeyLoginRequest
+	48, // 61: laterna.v1.AuthService.FinishPasskeyLogin:input_type -> laterna.v1.FinishPasskeyLoginRequest
+	50, // 62: laterna.v1.AuthService.StartOidcLogin:input_type -> laterna.v1.StartOidcLoginRequest
+	52, // 63: laterna.v1.AuthService.PollOidcLogin:input_type -> laterna.v1.PollOidcLoginRequest
+	7,  // 64: laterna.v1.AuthService.Setup:output_type -> laterna.v1.SetupResponse
+	9,  // 65: laterna.v1.AuthService.Login:output_type -> laterna.v1.LoginResponse
+	11, // 66: laterna.v1.AuthService.Logout:output_type -> laterna.v1.LogoutResponse
+	13, // 67: laterna.v1.AuthService.GetSession:output_type -> laterna.v1.GetSessionResponse
+	15, // 68: laterna.v1.AuthService.ListSessions:output_type -> laterna.v1.ListSessionsResponse
+	17, // 69: laterna.v1.AuthService.RevokeSession:output_type -> laterna.v1.RevokeSessionResponse
+	19, // 70: laterna.v1.AuthService.ChangePassword:output_type -> laterna.v1.ChangePasswordResponse
+	22, // 71: laterna.v1.AuthService.CreateApiToken:output_type -> laterna.v1.CreateApiTokenResponse
+	24, // 72: laterna.v1.AuthService.ListApiTokens:output_type -> laterna.v1.ListApiTokensResponse
+	26, // 73: laterna.v1.AuthService.RevokeApiToken:output_type -> laterna.v1.RevokeApiTokenResponse
+	28, // 74: laterna.v1.AuthService.StartDeviceLogin:output_type -> laterna.v1.StartDeviceLoginResponse
+	30, // 75: laterna.v1.AuthService.PollDeviceLogin:output_type -> laterna.v1.PollDeviceLoginResponse
+	32, // 76: laterna.v1.AuthService.GetDeviceLogin:output_type -> laterna.v1.GetDeviceLoginResponse
+	34, // 77: laterna.v1.AuthService.ApproveDeviceLogin:output_type -> laterna.v1.ApproveDeviceLoginResponse
+	36, // 78: laterna.v1.AuthService.DenyDeviceLogin:output_type -> laterna.v1.DenyDeviceLoginResponse
+	39, // 79: laterna.v1.AuthService.BeginPasskeyRegistration:output_type -> laterna.v1.BeginPasskeyRegistrationResponse
+	41, // 80: laterna.v1.AuthService.FinishPasskeyRegistration:output_type -> laterna.v1.FinishPasskeyRegistrationResponse
+	43, // 81: laterna.v1.AuthService.ListPasskeys:output_type -> laterna.v1.ListPasskeysResponse
+	45, // 82: laterna.v1.AuthService.DeletePasskey:output_type -> laterna.v1.DeletePasskeyResponse
+	47, // 83: laterna.v1.AuthService.BeginPasskeyLogin:output_type -> laterna.v1.BeginPasskeyLoginResponse
+	49, // 84: laterna.v1.AuthService.FinishPasskeyLogin:output_type -> laterna.v1.FinishPasskeyLoginResponse
+	51, // 85: laterna.v1.AuthService.StartOidcLogin:output_type -> laterna.v1.StartOidcLoginResponse
+	53, // 86: laterna.v1.AuthService.PollOidcLogin:output_type -> laterna.v1.PollOidcLoginResponse
+	64, // [64:87] is the sub-list for method output_type
+	41, // [41:64] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_auth_proto_init() }
@@ -2900,13 +3313,14 @@ func file_laterna_v1_auth_proto_init() {
 	file_laterna_v1_profile_proto_init()
 	file_laterna_v1_text_proto_init()
 	file_laterna_v1_auth_proto_msgTypes[3].OneofWrappers = []any{}
+	file_laterna_v1_auth_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_auth_proto_rawDesc), len(file_laterna_v1_auth_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   45,
+			NumMessages:   52,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

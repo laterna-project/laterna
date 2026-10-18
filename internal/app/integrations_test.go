@@ -79,7 +79,7 @@ func TestSonarrIntegration(t *testing.T) {
 		mustNil(t, os.MkdirAll(filepath.Join(tv, filepath.FromSlash(d)), 0o750))
 	}
 	writeText(t, filepath.Join(tv, "Anime", "Dr. STONE", "tvshow.nfo"), "<tvshow><title>Dr. STONE</title></tvshow>")
-	lib, err := a.CreateLibrary(ctx, "Anime", domain.LibraryShows, []string{filepath.Join(tv, "Anime")}, "")
+	lib, err := a.CreateLibrary(ctx, "Anime", domain.LibraryShows, []string{filepath.Join(tv, "Anime")})
 	mustNil(t, err)
 	waitIdle(t, a)
 	fake.Set(func(s *arrtest.Server) {

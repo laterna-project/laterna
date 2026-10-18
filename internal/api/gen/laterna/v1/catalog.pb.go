@@ -434,6 +434,9 @@ const (
 	ItemSort_ITEM_SORT_RELEASED ItemSort = 3
 	// Best rated first.
 	ItemSort_ITEM_SORT_RATING ItemSort = 4
+	// Album by album, oldest first, each in disc order: the tracks of an artist as they play
+	// (MusicService.ListTracks with artist_id, nothing else).
+	ItemSort_ITEM_SORT_ALBUM ItemSort = 5
 )
 
 // Enum value maps for ItemSort.
@@ -444,6 +447,7 @@ var (
 		2: "ITEM_SORT_ADDED",
 		3: "ITEM_SORT_RELEASED",
 		4: "ITEM_SORT_RATING",
+		5: "ITEM_SORT_ALBUM",
 	}
 	ItemSort_value = map[string]int32{
 		"ITEM_SORT_UNSPECIFIED": 0,
@@ -451,6 +455,7 @@ var (
 		"ITEM_SORT_ADDED":       2,
 		"ITEM_SORT_RELEASED":    3,
 		"ITEM_SORT_RATING":      4,
+		"ITEM_SORT_ALBUM":       5,
 	}
 )
 
@@ -3575,7 +3580,7 @@ type MediaFile struct {
 	// File format ("mkv", "mp4"...).
 	Container string               `protobuf:"bytes,5,opt,name=container,proto3" json:"container,omitempty"`
 	Duration  *durationpb.Duration `protobuf:"bytes,6,opt,name=duration,proto3" json:"duration,omitempty"`
-	Size      int64                `protobuf:"varint,7,opt,name=size,proto3" json:"size,omitempty"`
+	SizeBytes int64                `protobuf:"varint,7,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
 	// Overall bitrate in bit/s.
 	Bitrate  int64          `protobuf:"varint,8,opt,name=bitrate,proto3" json:"bitrate,omitempty"`
 	Streams  []*MediaStream `protobuf:"bytes,9,rep,name=streams,proto3" json:"streams,omitempty"`
@@ -3663,9 +3668,9 @@ func (x *MediaFile) GetDuration() *durationpb.Duration {
 	return nil
 }
 
-func (x *MediaFile) GetSize() int64 {
+func (x *MediaFile) GetSizeBytes() int64 {
 	if x != nil {
-		return x.Size
+		return x.SizeBytes
 	}
 	return 0
 }
@@ -4538,8 +4543,11 @@ type ListSeriesRequest struct {
 	Genre         string   `protobuf:"bytes,4,opt,name=genre,proto3" json:"genre,omitempty"`
 	FavoritesOnly bool     `protobuf:"varint,5,opt,name=favorites_only,json=favoritesOnly,proto3" json:"favorites_only,omitempty"`
 	// 1 to 200; 0 means 50.
-	PageSize      int32  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	PageToken     string `protobuf:"bytes,7,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	PageSize  int32  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken string `protobuf:"bytes,7,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Keep only the series whose present episodes are all played (true), or those with an episode
+	// left to play (false); unset means all.
+	Played        *bool `protobuf:"varint,8,opt,name=played,proto3,oneof" json:"played,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4621,6 +4629,13 @@ func (x *ListSeriesRequest) GetPageToken() string {
 		return x.PageToken
 	}
 	return ""
+}
+
+func (x *ListSeriesRequest) GetPlayed() bool {
+	if x != nil && x.Played != nil {
+		return *x.Played
+	}
+	return false
 }
 
 type ListSeriesResponse struct {
@@ -5215,7 +5230,7 @@ func (x *ListGenresRequest) GetLibraryId() string {
 type Genre struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Movies, series and albums with this genre.
+	// Movies, series, albums and books with this genre.
 	Count         int32 `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -5558,7 +5573,7 @@ func (*SearchResult_PhotoAlbum) isSearchResult_Item() {}
 
 type SearchResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Movies, series, artists and albums first, then episodes and tracks; each group by relevance.
+	// Episodes and tracks after everything else; each group by relevance.
 	Results       []*SearchResult `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -6320,15 +6335,16 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12*\n" +
 	"\x04role\x18\x03 \x01(\x0e2\x16.laterna.v1.CreditRoleR\x04role\x12\x1c\n" +
 	"\tcharacter\x18\x04 \x01(\tR\tcharacter\x12'\n" +
-	"\x05image\x18\x05 \x01(\v2\x11.laterna.v1.ImageR\x05image\"\xe3\x03\n" +
+	"\x05image\x18\x05 \x01(\v2\x11.laterna.v1.ImageR\x05image\"\xee\x03\n" +
 	"\tMediaFile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x12\n" +
 	"\x04part\x18\x03 \x01(\x05R\x04part\x12\x1c\n" +
 	"\tavailable\x18\x04 \x01(\bR\tavailable\x12\x1c\n" +
 	"\tcontainer\x18\x05 \x01(\tR\tcontainer\x125\n" +
-	"\bduration\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12\x12\n" +
-	"\x04size\x18\a \x01(\x03R\x04size\x12\x18\n" +
+	"\bduration\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\a \x01(\x03R\tsizeBytes\x12\x18\n" +
 	"\abitrate\x18\b \x01(\x03R\abitrate\x121\n" +
 	"\astreams\x18\t \x03(\v2\x17.laterna.v1.MediaStreamR\astreams\x12/\n" +
 	"\bchapters\x18\n" +
@@ -6403,7 +6419,7 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\bmovie_id\x18\x01 \x01(\tR\amovieId\"h\n" +
 	"\x10GetMovieResponse\x12'\n" +
 	"\x05movie\x18\x01 \x01(\v2\x11.laterna.v1.MovieR\x05movie\x12+\n" +
-	"\x05files\x18\x02 \x03(\v2\x15.laterna.v1.MediaFileR\x05files\"\xef\x01\n" +
+	"\x05files\x18\x02 \x03(\v2\x15.laterna.v1.MediaFileR\x05files\"\x97\x02\n" +
 	"\x11ListSeriesRequest\x12\x1d\n" +
 	"\n" +
 	"library_id\x18\x01 \x01(\tR\tlibraryId\x12(\n" +
@@ -6413,7 +6429,9 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\x0efavorites_only\x18\x05 \x01(\bR\rfavoritesOnly\x12\x1b\n" +
 	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\a \x01(\tR\tpageToken\"\x8e\x01\n" +
+	"page_token\x18\a \x01(\tR\tpageToken\x12\x1b\n" +
+	"\x06played\x18\b \x01(\bH\x00R\x06played\x88\x01\x01B\t\n" +
+	"\a_played\"\x8e\x01\n" +
 	"\x12ListSeriesResponse\x121\n" +
 	"\x06series\x18\x01 \x03(\v2\x19.laterna.v1.SeriesSummaryR\x06series\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1d\n" +
@@ -6535,13 +6553,14 @@ const file_laterna_v1_catalog_proto_rawDesc = "" +
 	"\x18MEDIA_SEGMENT_KIND_INTRO\x10\x01\x12\x1e\n" +
 	"\x1aMEDIA_SEGMENT_KIND_CREDITS\x10\x02\x12\x1c\n" +
 	"\x18MEDIA_SEGMENT_KIND_RECAP\x10\x03\x12\x1e\n" +
-	"\x1aMEDIA_SEGMENT_KIND_PREVIEW\x10\x04*}\n" +
+	"\x1aMEDIA_SEGMENT_KIND_PREVIEW\x10\x04*\x92\x01\n" +
 	"\bItemSort\x12\x19\n" +
 	"\x15ITEM_SORT_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fITEM_SORT_TITLE\x10\x01\x12\x13\n" +
 	"\x0fITEM_SORT_ADDED\x10\x02\x12\x16\n" +
 	"\x12ITEM_SORT_RELEASED\x10\x03\x12\x14\n" +
-	"\x10ITEM_SORT_RATING\x10\x04*\xe0\x01\n" +
+	"\x10ITEM_SORT_RATING\x10\x04\x12\x13\n" +
+	"\x0fITEM_SORT_ALBUM\x10\x05*\xe0\x01\n" +
 	"\tExtraKind\x12\x1a\n" +
 	"\x16EXTRA_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12EXTRA_KIND_TRAILER\x10\x01\x12\x19\n" +
@@ -6842,6 +6861,7 @@ func file_laterna_v1_catalog_proto_init() {
 	file_laterna_v1_text_proto_init()
 	file_laterna_v1_catalog_proto_msgTypes[12].OneofWrappers = []any{}
 	file_laterna_v1_catalog_proto_msgTypes[33].OneofWrappers = []any{}
+	file_laterna_v1_catalog_proto_msgTypes[37].OneofWrappers = []any{}
 	file_laterna_v1_catalog_proto_msgTypes[52].OneofWrappers = []any{
 		(*SearchResult_Movie)(nil),
 		(*SearchResult_Series)(nil),

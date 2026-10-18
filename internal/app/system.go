@@ -17,6 +17,7 @@ import (
 	"github.com/laterna-project/laterna/internal/domain"
 	"github.com/laterna-project/laterna/internal/logging"
 	"github.com/laterna-project/laterna/internal/media/fmp4"
+	"github.com/laterna-project/laterna/internal/playback"
 	"github.com/laterna-project/laterna/internal/proc"
 	"github.com/laterna-project/laterna/internal/store"
 )
@@ -373,7 +374,7 @@ type Playback struct {
 	Device                string
 	ItemID                domain.ID
 	Title                 string
-	Method                string
+	Method                playback.Method
 	CopyVideo, CopyAudio  bool
 	Encoder, ToneMap      string
 	GPU                   bool
@@ -397,7 +398,7 @@ func (a *App) Playbacks() []Playback {
 		s.mu.Lock()
 		p := Playback{
 			ID: s.id, AccountID: s.who.accountID, ProfileID: s.profile, Username: s.who.username, ProfileName: s.who.profileName,
-			Device: s.who.device, ItemID: s.item, Title: s.who.title, Method: string(s.plan.Method),
+			Device: s.who.device, ItemID: s.item, Title: s.who.title, Method: s.plan.Method,
 			CopyVideo: s.plan.CopyVideo, CopyAudio: s.plan.CopyAudio, Encoder: s.encoder.Name, ToneMap: toneMapName(s.toneMap, s.gpu),
 			GPU: s.gpu, Decoder: decoderName(s.decoder), StartedAt: s.who.startedAt, Position: s.position, Duration: s.file.Info.Duration,
 			Transcoding: s.run != nil && !s.run.done,

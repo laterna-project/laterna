@@ -77,7 +77,7 @@ func (q *Queries) DeleteMetadataDir(ctx context.Context, arg DeleteMetadataDirPa
 }
 
 const getLibrary = `-- name: GetLibrary :one
-SELECT id, name, name_key, kind, language, created_at, updated_at, last_scan_at, position FROM libraries WHERE id = ?
+SELECT id, name, name_key, kind, created_at, updated_at, last_scan_at, position FROM libraries WHERE id = ?
 `
 
 func (q *Queries) GetLibrary(ctx context.Context, id domain.ID) (Library, error) {
@@ -88,7 +88,6 @@ func (q *Queries) GetLibrary(ctx context.Context, id domain.ID) (Library, error)
 		&i.Name,
 		&i.NameKey,
 		&i.Kind,
-		&i.Language,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastScanAt,
@@ -98,8 +97,8 @@ func (q *Queries) GetLibrary(ctx context.Context, id domain.ID) (Library, error)
 }
 
 const insertLibrary = `-- name: InsertLibrary :exec
-INSERT INTO libraries (id, name, name_key, kind, language, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO libraries (id, name, name_key, kind, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type InsertLibraryParams struct {
@@ -107,7 +106,6 @@ type InsertLibraryParams struct {
 	Name      string
 	NameKey   string
 	Kind      string
-	Language  string
 	CreatedAt int64
 	UpdatedAt int64
 }
@@ -118,7 +116,6 @@ func (q *Queries) InsertLibrary(ctx context.Context, arg InsertLibraryParams) er
 		arg.Name,
 		arg.NameKey,
 		arg.Kind,
-		arg.Language,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -167,7 +164,7 @@ func (q *Queries) ListAllLibraryPaths(ctx context.Context) ([]LibraryPath, error
 }
 
 const listLibraries = `-- name: ListLibraries :many
-SELECT id, name, name_key, kind, language, created_at, updated_at, last_scan_at, position FROM libraries
+SELECT id, name, name_key, kind, created_at, updated_at, last_scan_at, position FROM libraries
 ORDER BY position = 0, position,
          CASE kind WHEN 'movies' THEN 0 WHEN 'shows' THEN 1 WHEN 'music' THEN 2 WHEN 'books' THEN 3 ELSE 4 END,
          name_key
@@ -187,7 +184,6 @@ func (q *Queries) ListLibraries(ctx context.Context) ([]Library, error) {
 			&i.Name,
 			&i.NameKey,
 			&i.Kind,
-			&i.Language,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.LastScanAt,
@@ -294,13 +290,12 @@ func (q *Queries) SetLibraryScanned(ctx context.Context, arg SetLibraryScannedPa
 }
 
 const updateLibrary = `-- name: UpdateLibrary :exec
-UPDATE libraries SET name = ?, name_key = ?, language = ?, updated_at = ? WHERE id = ?
+UPDATE libraries SET name = ?, name_key = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateLibraryParams struct {
 	Name      string
 	NameKey   string
-	Language  string
 	UpdatedAt int64
 	ID        domain.ID
 }
@@ -309,7 +304,6 @@ func (q *Queries) UpdateLibrary(ctx context.Context, arg UpdateLibraryParams) er
 	_, err := q.db.ExecContext(ctx, updateLibrary,
 		arg.Name,
 		arg.NameKey,
-		arg.Language,
 		arg.UpdatedAt,
 		arg.ID,
 	)

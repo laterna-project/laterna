@@ -5,6 +5,7 @@ package laterna.v1;
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "laterna/v1/catalog.proto";
+import "laterna/v1/events.proto";
 import "laterna/v1/text.proto";
 
 option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
@@ -161,20 +162,27 @@ message WatchPartyRequest {
 }
 
 message WatchPartyResponse {
+  reserved 4, 5, 6;
+  reserved "ended_text";
+
   // Server time when sent.
   google.protobuf.Timestamp server_time = 1;
   oneof update {
     PartyState state = 2;
     PartyMessage message = 3;
-    // End of the group for the caller (group ended, removed by the host): the reason, in the
-    // language of the request.
-    string ended = 4;
+    // End of the group for the caller (group ended, removed by the host).
+    PartyEnded ended = 7;
     // Keep-alive (every 30 s without anything else sent).
-    bool heartbeat = 5;
+    Heartbeat heartbeat = 8;
   }
-  // With ended: the reason, for translation ("party.ended.left", "party.ended.removed",
-  // "party.ended.by_host").
-  Text ended_text = 6;
+}
+
+// PartyEnded says why the group ended for the caller.
+message PartyEnded {
+  // In the language of the request.
+  string reason = 1;
+  // The same, for translation ("party.ended.left", "party.ended.removed", "party.ended.by_host").
+  Text reason_text = 2;
 }
 
 // PartyQueue replaces the queue.

@@ -29,20 +29,31 @@ import (
 // shutdownTimeout caps the graceful shutdown: past it, remaining connections are cut.
 const shutdownTimeout = 15 * time.Second
 
-func loadConfig(fs *flag.FlagSet, args []string) (config.Config, platform.Dirs, error) {
+// where says where a way of running the server finds its folders and its configuration file.
+type where struct {
+	// dirs gives the folders used when the configuration does not name them.
+	dirs func() (platform.Dirs, error)
+	// config is the configuration file read when it exists and none is named.
+	config string
+}
+
+// console is where the server started from a console, or by systemd, finds its files.
+var console = where{dirs: platform.DefaultDirs, config: "laterna.toml"}
+
+func loadConfig(fs *flag.FlagSet, args []string, at where) (config.Config, platform.Dirs, error) {
 	cfgFile := fs.String("config", "", "TOML configuration file")
 	address := fs.String("address", "", "listen address")
 	if err := fs.Parse(args); err != nil {
 		return config.Config{}, platform.Dirs{}, err
 	}
-	cfg, err := config.Load(configPath(*cfgFile), os.LookupEnv)
+	cfg, err := config.Load(configPath(*cfgFile, at.config), os.LookupEnv)
 	if err != nil {
 		return config.Config{}, platform.Dirs{}, err
 	}
 	if *address != "" {
 		cfg.Server.Address = *address
 	}
-	defaults, err := platform.DefaultDirs()
+	defaults, err := at.dirs()
 	if err != nil {
 		return config.Config{}, platform.Dirs{}, err
 	}
@@ -79,10 +90,16 @@ func newLogger(cfg config.Config, dirs platform.Dirs, stdout io.Writer, ring *lo
 func serveCommand(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	cfg, dirs, err := loadConfig(fs, args)
+	cfg, dirs, err := loadConfig(fs, args, console)
 	if err != nil {
 		return err
 	}
+	return runServer(ctx, cfg, dirs, stdout, nil)
+}
+
+// runServer opens the logs and runs the server until ctx is canceled. ready (optional) is called
+// once the server listens.
+func runServer(ctx context.Context, cfg config.Config, dirs platform.Dirs, stdout io.Writer, ready func(addr string)) error {
 	ring := logging.NewRing(recentLogs)
 	log, closer, err := newLogger(cfg, dirs, stdout, ring)
 	if err != nil {
@@ -93,13 +110,13 @@ func serveCommand(ctx context.Context, args []string, stdout, stderr io.Writer) 
 	if err := proc.Bind(); err != nil {
 		log.Warn("child processes may outlive a hard stop of the server", "err", err)
 	}
-	return serve(ctx, cfg, dirs, log, ring, nil)
+	return serve(ctx, cfg, dirs, log, ring, ready)
 }
 
 func migrateCommand(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("migrate", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	_, dirs, err := loadConfig(fs, args)
+	_, dirs, err := loadConfig(fs, args, console)
 	if err != nil {
 		return err
 	}

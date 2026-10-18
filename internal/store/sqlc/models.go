@@ -228,7 +228,6 @@ type Library struct {
 	Name       string
 	NameKey    string
 	Kind       string
-	Language   string
 	CreatedAt  int64
 	UpdatedAt  int64
 	LastScanAt sql.NullInt64
@@ -516,6 +515,8 @@ type Session struct {
 	LastUsedAt    int64
 	ExpiresAt     int64
 	LastIp        string
+	Kind          string
+	ReadOnly      int64
 }
 
 type Setting struct {

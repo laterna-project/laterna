@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -79,6 +80,9 @@ func TestOIDCLoginOverHTTP(t *testing.T) {
 		start, err := auth.StartOidcLogin(ctx, connect.NewRequest(&laternav1.StartOidcLoginRequest{Device: dev}))
 		if err != nil {
 			t.Fatal(err)
+		}
+		if until := time.Until(start.Msg.GetExpiresAt().AsTime()); until < 9*time.Minute || until > 10*time.Minute {
+			t.Errorf("login expires in %s", until)
 		}
 		poll := func() *laternav1.PollOidcLoginResponse {
 			t.Helper()

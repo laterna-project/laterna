@@ -539,8 +539,8 @@ type Settings struct {
 	// (StartDeviceLoginResponse.verification_url).
 	WebUrl string `protobuf:"bytes,14,opt,name=web_url,json=webUrl,proto3" json:"web_url,omitempty"`
 	// Highest bitrate of a playback from outside the local network, in kbit/s (500 to 1,000,000); 0
-	// means no limit. An account may have a lower one (Account.remote_max_bitrate).
-	RemoteMaxBitrate int32 `protobuf:"varint,15,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3" json:"remote_max_bitrate,omitempty"`
+	// means no limit. An account may have a lower one (Account.remote_max_bitrate_kbps).
+	RemoteMaxBitrateKbps int32 `protobuf:"varint,15,opt,name=remote_max_bitrate_kbps,json=remoteMaxBitrateKbps,proto3" json:"remote_max_bitrate_kbps,omitempty"`
 	// Networks counted as local ("192.168.1.0/24", "fd00::/8"; 32 at most), whose playbacks are never
 	// limited by the server. Empty means the private, loopback and link-local ranges. The client
 	// address is the one seen by the server, or given by a trusted proxy (server.trusted_proxies):
@@ -678,9 +678,9 @@ func (x *Settings) GetWebUrl() string {
 	return ""
 }
 
-func (x *Settings) GetRemoteMaxBitrate() int32 {
+func (x *Settings) GetRemoteMaxBitrateKbps() int32 {
 	if x != nil {
-		return x.RemoteMaxBitrate
+		return x.RemoteMaxBitrateKbps
 	}
 	return 0
 }
@@ -836,7 +836,7 @@ type UpdateSettingsRequest struct {
 	Language      *string `protobuf:"bytes,13,opt,name=language,proto3,oneof" json:"language,omitempty"`
 	WebUrl        *string `protobuf:"bytes,14,opt,name=web_url,json=webUrl,proto3,oneof" json:"web_url,omitempty"`
 	// 0 means no limit.
-	RemoteMaxBitrate *int32 `protobuf:"varint,15,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3,oneof" json:"remote_max_bitrate,omitempty"`
+	RemoteMaxBitrateKbps *int32 `protobuf:"varint,15,opt,name=remote_max_bitrate_kbps,json=remoteMaxBitrateKbps,proto3,oneof" json:"remote_max_bitrate_kbps,omitempty"`
 	// An empty list means the private ranges.
 	LocalNetworks *StringList `protobuf:"bytes,16,opt,name=local_networks,json=localNetworks,proto3" json:"local_networks,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -971,9 +971,9 @@ func (x *UpdateSettingsRequest) GetWebUrl() string {
 	return ""
 }
 
-func (x *UpdateSettingsRequest) GetRemoteMaxBitrate() int32 {
-	if x != nil && x.RemoteMaxBitrate != nil {
-		return *x.RemoteMaxBitrate
+func (x *UpdateSettingsRequest) GetRemoteMaxBitrateKbps() int32 {
+	if x != nil && x.RemoteMaxBitrateKbps != nil {
+		return *x.RemoteMaxBitrateKbps
 	}
 	return 0
 }
@@ -1756,7 +1756,7 @@ type LogFile struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name to pass to GET /logs/{name} ("laterna_20260930.log").
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Size          int64                  `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	SizeBytes     int64                  `protobuf:"varint,2,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
 	ModifiedAt    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=modified_at,json=modifiedAt,proto3" json:"modified_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1799,9 +1799,9 @@ func (x *LogFile) GetName() string {
 	return ""
 }
 
-func (x *LogFile) GetSize() int64 {
+func (x *LogFile) GetSizeBytes() int64 {
 	if x != nil {
-		return x.Size
+		return x.SizeBytes
 	}
 	return 0
 }
@@ -2951,7 +2951,7 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\x0ftranscode_limit\x18\x15 \x01(\x05R\x0etranscodeLimit\"\x18\n" +
 	"\x16GetSystemStatusRequest\"K\n" +
 	"\x17GetSystemStatusResponse\x120\n" +
-	"\x06status\x18\x01 \x01(\v2\x18.laterna.v1.SystemStatusR\x06status\"\x82\x05\n" +
+	"\x06status\x18\x01 \x01(\v2\x18.laterna.v1.SystemStatusR\x06status\"\x8b\x05\n" +
 	"\bSettings\x12\x1f\n" +
 	"\vserver_name\x18\x01 \x01(\tR\n" +
 	"serverName\x12'\n" +
@@ -2970,15 +2970,15 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\vbackup_keep\x18\f \x01(\x05R\n" +
 	"backupKeep\x12\x1a\n" +
 	"\blanguage\x18\r \x01(\tR\blanguage\x12\x17\n" +
-	"\aweb_url\x18\x0e \x01(\tR\x06webUrl\x12,\n" +
-	"\x12remote_max_bitrate\x18\x0f \x01(\x05R\x10remoteMaxBitrate\x12%\n" +
+	"\aweb_url\x18\x0e \x01(\tR\x06webUrl\x125\n" +
+	"\x17remote_max_bitrate_kbps\x18\x0f \x01(\x05R\x14remoteMaxBitrateKbps\x12%\n" +
 	"\x0elocal_networks\x18\x10 \x03(\tR\rlocalNetworks\"$\n" +
 	"\n" +
 	"StringList\x12\x16\n" +
 	"\x06values\x18\x01 \x03(\tR\x06values\"\x14\n" +
 	"\x12GetSettingsRequest\"G\n" +
 	"\x13GetSettingsResponse\x120\n" +
-	"\bsettings\x18\x01 \x01(\v2\x14.laterna.v1.SettingsR\bsettings\"\xc9\a\n" +
+	"\bsettings\x18\x01 \x01(\v2\x14.laterna.v1.SettingsR\bsettings\"\xd7\a\n" +
 	"\x15UpdateSettingsRequest\x12$\n" +
 	"\vserver_name\x18\x01 \x01(\tH\x00R\n" +
 	"serverName\x88\x01\x01\x12,\n" +
@@ -2998,8 +2998,8 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"backupKeep\x88\x01\x01\x12\x1f\n" +
 	"\blanguage\x18\r \x01(\tH\tR\blanguage\x88\x01\x01\x12\x1c\n" +
 	"\aweb_url\x18\x0e \x01(\tH\n" +
-	"R\x06webUrl\x88\x01\x01\x121\n" +
-	"\x12remote_max_bitrate\x18\x0f \x01(\x05H\vR\x10remoteMaxBitrate\x88\x01\x01\x12=\n" +
+	"R\x06webUrl\x88\x01\x01\x12:\n" +
+	"\x17remote_max_bitrate_kbps\x18\x0f \x01(\x05H\vR\x14remoteMaxBitrateKbps\x88\x01\x01\x12=\n" +
 	"\x0elocal_networks\x18\x10 \x01(\v2\x16.laterna.v1.StringListR\rlocalNetworksB\x0e\n" +
 	"\f_server_nameB\x12\n" +
 	"\x10_download_imagesB\f\n" +
@@ -3013,8 +3013,8 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\f_backup_keepB\v\n" +
 	"\t_languageB\n" +
 	"\n" +
-	"\b_web_urlB\x15\n" +
-	"\x13_remote_max_bitrate\"J\n" +
+	"\b_web_urlB\x1a\n" +
+	"\x18_remote_max_bitrate_kbps\"J\n" +
 	"\x16UpdateSettingsResponse\x120\n" +
 	"\bsettings\x18\x01 \x01(\v2\x14.laterna.v1.SettingsR\bsettings\"J\n" +
 	"\bJobCount\x12\x12\n" +
@@ -3057,10 +3057,11 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\"B\n" +
 	"\x10ListLogsResponse\x12.\n" +
-	"\aentries\x18\x01 \x03(\v2\x14.laterna.v1.LogEntryR\aentries\"n\n" +
+	"\aentries\x18\x01 \x03(\v2\x14.laterna.v1.LogEntryR\aentries\"y\n" +
 	"\aLogFile\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04size\x18\x02 \x01(\x03R\x04size\x12;\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x02 \x01(\x03R\tsizeBytes\x12;\n" +
 	"\vmodified_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"modifiedAt\"\x15\n" +
 	"\x13ListLogFilesRequest\"A\n" +
@@ -3137,16 +3138,16 @@ const file_laterna_v1_system_proto_rawDesc = "" +
 	"\x10BACKUP_KIND_AUTO\x10\x01\x12\x16\n" +
 	"\x12BACKUP_KIND_MANUAL\x10\x02\x12\x19\n" +
 	"\x15BACKUP_KIND_MIGRATION\x10\x03\x12\x18\n" +
-	"\x14BACKUP_KIND_REPLACED\x10\x042\xb0\r\n" +
+	"\x14BACKUP_KIND_REPLACED\x10\x042\xb8\r\n" +
 	"\rSystemService\x12c\n" +
 	"\x0fGetSystemStatus\x12\".laterna.v1.GetSystemStatusRequest\x1a#.laterna.v1.GetSystemStatusResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +
 	"\vGetSettings\x12\x1e.laterna.v1.GetSettingsRequest\x1a\x1f.laterna.v1.GetSettingsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12]\n" +
 	"\x0eUpdateSettings\x12!.laterna.v1.UpdateSettingsRequest\x1a\".laterna.v1.UpdateSettingsResponse\"\x04\x88\xb5\x18\x04\x12c\n" +
-	"\x0fGetOidcProvider\x12\".laterna.v1.GetOidcProviderRequest\x1a#.laterna.v1.GetOidcProviderResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12`\n" +
-	"\x0fSetOidcProvider\x12\".laterna.v1.SetOidcProviderRequest\x1a#.laterna.v1.SetOidcProviderResponse\"\x04\x88\xb5\x18\x04\x12T\n" +
+	"\x0fGetOidcProvider\x12\".laterna.v1.GetOidcProviderRequest\x1a#.laterna.v1.GetOidcProviderResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12d\n" +
+	"\x0fSetOidcProvider\x12\".laterna.v1.SetOidcProviderRequest\x1a#.laterna.v1.SetOidcProviderResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02\x12T\n" +
 	"\n" +
-	"GetMetrics\x12\x1d.laterna.v1.GetMetricsRequest\x1a\x1e.laterna.v1.GetMetricsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12Z\n" +
-	"\rEnableMetrics\x12 .laterna.v1.EnableMetricsRequest\x1a!.laterna.v1.EnableMetricsResponse\"\x04\x88\xb5\x18\x04\x12]\n" +
+	"GetMetrics\x12\x1d.laterna.v1.GetMetricsRequest\x1a\x1e.laterna.v1.GetMetricsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12^\n" +
+	"\rEnableMetrics\x12 .laterna.v1.EnableMetricsRequest\x1a!.laterna.v1.EnableMetricsResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02\x12]\n" +
 	"\x0eDisableMetrics\x12!.laterna.v1.DisableMetricsRequest\x1a\".laterna.v1.DisableMetricsResponse\"\x04\x88\xb5\x18\x04\x12W\n" +
 	"\vListBackups\x12\x1e.laterna.v1.ListBackupsRequest\x1a\x1f.laterna.v1.ListBackupsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12W\n" +
 	"\fCreateBackup\x12\x1f.laterna.v1.CreateBackupRequest\x1a .laterna.v1.CreateBackupResponse\"\x04\x88\xb5\x18\x04\x12W\n" +

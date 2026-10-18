@@ -796,28 +796,35 @@ func (x *SelectProfileResponse) GetProfile() *Profile {
 	return nil
 }
 
-type SetLanguageRequest struct {
+// UpdatePreferencesRequest changes what it sets; unset leaves it unchanged. Languages are BCP 47
+// tags, as in Profile.
+type UpdatePreferencesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// BCP 47 tag; empty means none.
-	Language      string `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
+	// Empty means none.
+	Language     *string       `protobuf:"bytes,1,opt,name=language,proto3,oneof" json:"language,omitempty"`
+	SubtitleMode *SubtitleMode `protobuf:"varint,2,opt,name=subtitle_mode,json=subtitleMode,proto3,enum=laterna.v1.SubtitleMode,oneof" json:"subtitle_mode,omitempty"`
+	// Empty means the profile's language.
+	SubtitleLanguage *string `protobuf:"bytes,3,opt,name=subtitle_language,json=subtitleLanguage,proto3,oneof" json:"subtitle_language,omitempty"`
+	// Empty means the file's default stream.
+	AudioLanguage *string `protobuf:"bytes,4,opt,name=audio_language,json=audioLanguage,proto3,oneof" json:"audio_language,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SetLanguageRequest) Reset() {
-	*x = SetLanguageRequest{}
+func (x *UpdatePreferencesRequest) Reset() {
+	*x = UpdatePreferencesRequest{}
 	mi := &file_laterna_v1_profile_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SetLanguageRequest) String() string {
+func (x *UpdatePreferencesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SetLanguageRequest) ProtoMessage() {}
+func (*UpdatePreferencesRequest) ProtoMessage() {}
 
-func (x *SetLanguageRequest) ProtoReflect() protoreflect.Message {
+func (x *UpdatePreferencesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_laterna_v1_profile_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -829,137 +836,61 @@ func (x *SetLanguageRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SetLanguageRequest.ProtoReflect.Descriptor instead.
-func (*SetLanguageRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use UpdatePreferencesRequest.ProtoReflect.Descriptor instead.
+func (*UpdatePreferencesRequest) Descriptor() ([]byte, []int) {
 	return file_laterna_v1_profile_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *SetLanguageRequest) GetLanguage() string {
-	if x != nil {
-		return x.Language
+func (x *UpdatePreferencesRequest) GetLanguage() string {
+	if x != nil && x.Language != nil {
+		return *x.Language
 	}
 	return ""
 }
 
-type SetLanguageResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Profile       *Profile               `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetLanguageResponse) Reset() {
-	*x = SetLanguageResponse{}
-	mi := &file_laterna_v1_profile_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetLanguageResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetLanguageResponse) ProtoMessage() {}
-
-func (x *SetLanguageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_profile_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetLanguageResponse.ProtoReflect.Descriptor instead.
-func (*SetLanguageResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_profile_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *SetLanguageResponse) GetProfile() *Profile {
-	if x != nil {
-		return x.Profile
-	}
-	return nil
-}
-
-type SetSubtitlePreferencesRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Mode  SubtitleMode           `protobuf:"varint,1,opt,name=mode,proto3,enum=laterna.v1.SubtitleMode" json:"mode,omitempty"`
-	// BCP 47 tag; empty means the profile's language.
-	Language      string `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetSubtitlePreferencesRequest) Reset() {
-	*x = SetSubtitlePreferencesRequest{}
-	mi := &file_laterna_v1_profile_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetSubtitlePreferencesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetSubtitlePreferencesRequest) ProtoMessage() {}
-
-func (x *SetSubtitlePreferencesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_profile_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetSubtitlePreferencesRequest.ProtoReflect.Descriptor instead.
-func (*SetSubtitlePreferencesRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_profile_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *SetSubtitlePreferencesRequest) GetMode() SubtitleMode {
-	if x != nil {
-		return x.Mode
+func (x *UpdatePreferencesRequest) GetSubtitleMode() SubtitleMode {
+	if x != nil && x.SubtitleMode != nil {
+		return *x.SubtitleMode
 	}
 	return SubtitleMode_SUBTITLE_MODE_UNSPECIFIED
 }
 
-func (x *SetSubtitlePreferencesRequest) GetLanguage() string {
-	if x != nil {
-		return x.Language
+func (x *UpdatePreferencesRequest) GetSubtitleLanguage() string {
+	if x != nil && x.SubtitleLanguage != nil {
+		return *x.SubtitleLanguage
 	}
 	return ""
 }
 
-type SetSubtitlePreferencesResponse struct {
+func (x *UpdatePreferencesRequest) GetAudioLanguage() string {
+	if x != nil && x.AudioLanguage != nil {
+		return *x.AudioLanguage
+	}
+	return ""
+}
+
+type UpdatePreferencesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Profile       *Profile               `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SetSubtitlePreferencesResponse) Reset() {
-	*x = SetSubtitlePreferencesResponse{}
-	mi := &file_laterna_v1_profile_proto_msgTypes[15]
+func (x *UpdatePreferencesResponse) Reset() {
+	*x = UpdatePreferencesResponse{}
+	mi := &file_laterna_v1_profile_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SetSubtitlePreferencesResponse) String() string {
+func (x *UpdatePreferencesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SetSubtitlePreferencesResponse) ProtoMessage() {}
+func (*UpdatePreferencesResponse) ProtoMessage() {}
 
-func (x *SetSubtitlePreferencesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_profile_proto_msgTypes[15]
+func (x *UpdatePreferencesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_profile_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -970,101 +901,12 @@ func (x *SetSubtitlePreferencesResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SetSubtitlePreferencesResponse.ProtoReflect.Descriptor instead.
-func (*SetSubtitlePreferencesResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_profile_proto_rawDescGZIP(), []int{15}
+// Deprecated: Use UpdatePreferencesResponse.ProtoReflect.Descriptor instead.
+func (*UpdatePreferencesResponse) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_profile_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *SetSubtitlePreferencesResponse) GetProfile() *Profile {
-	if x != nil {
-		return x.Profile
-	}
-	return nil
-}
-
-type SetAudioPreferencesRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// BCP 47 tag; empty means the file's default stream.
-	Language      string `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetAudioPreferencesRequest) Reset() {
-	*x = SetAudioPreferencesRequest{}
-	mi := &file_laterna_v1_profile_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetAudioPreferencesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetAudioPreferencesRequest) ProtoMessage() {}
-
-func (x *SetAudioPreferencesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_profile_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetAudioPreferencesRequest.ProtoReflect.Descriptor instead.
-func (*SetAudioPreferencesRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_profile_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *SetAudioPreferencesRequest) GetLanguage() string {
-	if x != nil {
-		return x.Language
-	}
-	return ""
-}
-
-type SetAudioPreferencesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Profile       *Profile               `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetAudioPreferencesResponse) Reset() {
-	*x = SetAudioPreferencesResponse{}
-	mi := &file_laterna_v1_profile_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetAudioPreferencesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetAudioPreferencesResponse) ProtoMessage() {}
-
-func (x *SetAudioPreferencesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_profile_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetAudioPreferencesResponse.ProtoReflect.Descriptor instead.
-func (*SetAudioPreferencesResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_profile_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *SetAudioPreferencesResponse) GetProfile() *Profile {
+func (x *UpdatePreferencesResponse) GetProfile() *Profile {
 	if x != nil {
 		return x.Profile
 	}
@@ -1133,34 +975,30 @@ const file_laterna_v1_profile_proto_rawDesc = "" +
 	"profile_id\x18\x01 \x01(\tR\tprofileId\x12\x10\n" +
 	"\x03pin\x18\x02 \x01(\tR\x03pin\"F\n" +
 	"\x15SelectProfileResponse\x12-\n" +
-	"\aprofile\x18\x01 \x01(\v2\x13.laterna.v1.ProfileR\aprofile\"0\n" +
-	"\x12SetLanguageRequest\x12\x1a\n" +
-	"\blanguage\x18\x01 \x01(\tR\blanguage\"D\n" +
-	"\x13SetLanguageResponse\x12-\n" +
-	"\aprofile\x18\x01 \x01(\v2\x13.laterna.v1.ProfileR\aprofile\"i\n" +
-	"\x1dSetSubtitlePreferencesRequest\x12,\n" +
-	"\x04mode\x18\x01 \x01(\x0e2\x18.laterna.v1.SubtitleModeR\x04mode\x12\x1a\n" +
-	"\blanguage\x18\x02 \x01(\tR\blanguage\"O\n" +
-	"\x1eSetSubtitlePreferencesResponse\x12-\n" +
-	"\aprofile\x18\x01 \x01(\v2\x13.laterna.v1.ProfileR\aprofile\"8\n" +
-	"\x1aSetAudioPreferencesRequest\x12\x1a\n" +
-	"\blanguage\x18\x01 \x01(\tR\blanguage\"L\n" +
-	"\x1bSetAudioPreferencesResponse\x12-\n" +
+	"\aprofile\x18\x01 \x01(\v2\x13.laterna.v1.ProfileR\aprofile\"\xa5\x02\n" +
+	"\x18UpdatePreferencesRequest\x12\x1f\n" +
+	"\blanguage\x18\x01 \x01(\tH\x00R\blanguage\x88\x01\x01\x12B\n" +
+	"\rsubtitle_mode\x18\x02 \x01(\x0e2\x18.laterna.v1.SubtitleModeH\x01R\fsubtitleMode\x88\x01\x01\x120\n" +
+	"\x11subtitle_language\x18\x03 \x01(\tH\x02R\x10subtitleLanguage\x88\x01\x01\x12*\n" +
+	"\x0eaudio_language\x18\x04 \x01(\tH\x03R\raudioLanguage\x88\x01\x01B\v\n" +
+	"\t_languageB\x10\n" +
+	"\x0e_subtitle_modeB\x14\n" +
+	"\x12_subtitle_languageB\x11\n" +
+	"\x0f_audio_language\"J\n" +
+	"\x19UpdatePreferencesResponse\x12-\n" +
 	"\aprofile\x18\x01 \x01(\v2\x13.laterna.v1.ProfileR\aprofile*x\n" +
 	"\fSubtitleMode\x12\x1d\n" +
 	"\x19SUBTITLE_MODE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14SUBTITLE_MODE_ALWAYS\x10\x01\x12\x18\n" +
 	"\x14SUBTITLE_MODE_FORCED\x10\x02\x12\x15\n" +
-	"\x11SUBTITLE_MODE_OFF\x10\x032\x85\x06\n" +
+	"\x11SUBTITLE_MODE_OFF\x10\x032\xce\x04\n" +
 	"\x0eProfileService\x12Z\n" +
-	"\fListProfiles\x12\x1f.laterna.v1.ListProfilesRequest\x1a .laterna.v1.ListProfilesResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12Z\n" +
-	"\rCreateProfile\x12 .laterna.v1.CreateProfileRequest\x1a!.laterna.v1.CreateProfileResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
-	"\rUpdateProfile\x12 .laterna.v1.UpdateProfileRequest\x1a!.laterna.v1.UpdateProfileResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
-	"\rDeleteProfile\x12 .laterna.v1.DeleteProfileRequest\x1a!.laterna.v1.DeleteProfileResponse\"\x04\x88\xb5\x18\x02\x12Z\n" +
-	"\rSelectProfile\x12 .laterna.v1.SelectProfileRequest\x1a!.laterna.v1.SelectProfileResponse\"\x04\x88\xb5\x18\x02\x12N\n" +
-	"\vSetLanguage\x12\x1e.laterna.v1.SetLanguageRequest\x1a\x1f.laterna.v1.SetLanguageResponse\x12o\n" +
-	"\x16SetSubtitlePreferences\x12).laterna.v1.SetSubtitlePreferencesRequest\x1a*.laterna.v1.SetSubtitlePreferencesResponse\x12f\n" +
-	"\x13SetAudioPreferences\x12&.laterna.v1.SetAudioPreferencesRequest\x1a'.laterna.v1.SetAudioPreferencesResponseBJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
+	"\fListProfiles\x12\x1f.laterna.v1.ListProfilesRequest\x1a .laterna.v1.ListProfilesResponse\"\a\x88\xb5\x18\x02\x90\x02\x01\x12^\n" +
+	"\rCreateProfile\x12 .laterna.v1.CreateProfileRequest\x1a!.laterna.v1.CreateProfileResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12^\n" +
+	"\rUpdateProfile\x12 .laterna.v1.UpdateProfileRequest\x1a!.laterna.v1.UpdateProfileResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12^\n" +
+	"\rDeleteProfile\x12 .laterna.v1.DeleteProfileRequest\x1a!.laterna.v1.DeleteProfileResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12^\n" +
+	"\rSelectProfile\x12 .laterna.v1.SelectProfileRequest\x1a!.laterna.v1.SelectProfileResponse\"\b\x88\xb5\x18\x02\x90\xb5\x18\x02\x12`\n" +
+	"\x11UpdatePreferences\x12$.laterna.v1.UpdatePreferencesRequest\x1a%.laterna.v1.UpdatePreferencesResponseBJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
 var (
 	file_laterna_v1_profile_proto_rawDescOnce sync.Once
@@ -1175,31 +1013,27 @@ func file_laterna_v1_profile_proto_rawDescGZIP() []byte {
 }
 
 var file_laterna_v1_profile_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_laterna_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_laterna_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_laterna_v1_profile_proto_goTypes = []any{
-	(SubtitleMode)(0),                      // 0: laterna.v1.SubtitleMode
-	(*Profile)(nil),                        // 1: laterna.v1.Profile
-	(*ParentalControl)(nil),                // 2: laterna.v1.ParentalControl
-	(*ListProfilesRequest)(nil),            // 3: laterna.v1.ListProfilesRequest
-	(*ListProfilesResponse)(nil),           // 4: laterna.v1.ListProfilesResponse
-	(*CreateProfileRequest)(nil),           // 5: laterna.v1.CreateProfileRequest
-	(*CreateProfileResponse)(nil),          // 6: laterna.v1.CreateProfileResponse
-	(*UpdateProfileRequest)(nil),           // 7: laterna.v1.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil),          // 8: laterna.v1.UpdateProfileResponse
-	(*DeleteProfileRequest)(nil),           // 9: laterna.v1.DeleteProfileRequest
-	(*DeleteProfileResponse)(nil),          // 10: laterna.v1.DeleteProfileResponse
-	(*SelectProfileRequest)(nil),           // 11: laterna.v1.SelectProfileRequest
-	(*SelectProfileResponse)(nil),          // 12: laterna.v1.SelectProfileResponse
-	(*SetLanguageRequest)(nil),             // 13: laterna.v1.SetLanguageRequest
-	(*SetLanguageResponse)(nil),            // 14: laterna.v1.SetLanguageResponse
-	(*SetSubtitlePreferencesRequest)(nil),  // 15: laterna.v1.SetSubtitlePreferencesRequest
-	(*SetSubtitlePreferencesResponse)(nil), // 16: laterna.v1.SetSubtitlePreferencesResponse
-	(*SetAudioPreferencesRequest)(nil),     // 17: laterna.v1.SetAudioPreferencesRequest
-	(*SetAudioPreferencesResponse)(nil),    // 18: laterna.v1.SetAudioPreferencesResponse
-	(*timestamppb.Timestamp)(nil),          // 19: google.protobuf.Timestamp
+	(SubtitleMode)(0),                 // 0: laterna.v1.SubtitleMode
+	(*Profile)(nil),                   // 1: laterna.v1.Profile
+	(*ParentalControl)(nil),           // 2: laterna.v1.ParentalControl
+	(*ListProfilesRequest)(nil),       // 3: laterna.v1.ListProfilesRequest
+	(*ListProfilesResponse)(nil),      // 4: laterna.v1.ListProfilesResponse
+	(*CreateProfileRequest)(nil),      // 5: laterna.v1.CreateProfileRequest
+	(*CreateProfileResponse)(nil),     // 6: laterna.v1.CreateProfileResponse
+	(*UpdateProfileRequest)(nil),      // 7: laterna.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),     // 8: laterna.v1.UpdateProfileResponse
+	(*DeleteProfileRequest)(nil),      // 9: laterna.v1.DeleteProfileRequest
+	(*DeleteProfileResponse)(nil),     // 10: laterna.v1.DeleteProfileResponse
+	(*SelectProfileRequest)(nil),      // 11: laterna.v1.SelectProfileRequest
+	(*SelectProfileResponse)(nil),     // 12: laterna.v1.SelectProfileResponse
+	(*UpdatePreferencesRequest)(nil),  // 13: laterna.v1.UpdatePreferencesRequest
+	(*UpdatePreferencesResponse)(nil), // 14: laterna.v1.UpdatePreferencesResponse
+	(*timestamppb.Timestamp)(nil),     // 15: google.protobuf.Timestamp
 }
 var file_laterna_v1_profile_proto_depIdxs = []int32{
-	19, // 0: laterna.v1.Profile.created_at:type_name -> google.protobuf.Timestamp
+	15, // 0: laterna.v1.Profile.created_at:type_name -> google.protobuf.Timestamp
 	2,  // 1: laterna.v1.Profile.parental:type_name -> laterna.v1.ParentalControl
 	0,  // 2: laterna.v1.Profile.subtitle_mode:type_name -> laterna.v1.SubtitleMode
 	1,  // 3: laterna.v1.ListProfilesResponse.profiles:type_name -> laterna.v1.Profile
@@ -1208,31 +1042,25 @@ var file_laterna_v1_profile_proto_depIdxs = []int32{
 	2,  // 6: laterna.v1.UpdateProfileRequest.parental:type_name -> laterna.v1.ParentalControl
 	1,  // 7: laterna.v1.UpdateProfileResponse.profile:type_name -> laterna.v1.Profile
 	1,  // 8: laterna.v1.SelectProfileResponse.profile:type_name -> laterna.v1.Profile
-	1,  // 9: laterna.v1.SetLanguageResponse.profile:type_name -> laterna.v1.Profile
-	0,  // 10: laterna.v1.SetSubtitlePreferencesRequest.mode:type_name -> laterna.v1.SubtitleMode
-	1,  // 11: laterna.v1.SetSubtitlePreferencesResponse.profile:type_name -> laterna.v1.Profile
-	1,  // 12: laterna.v1.SetAudioPreferencesResponse.profile:type_name -> laterna.v1.Profile
-	3,  // 13: laterna.v1.ProfileService.ListProfiles:input_type -> laterna.v1.ListProfilesRequest
-	5,  // 14: laterna.v1.ProfileService.CreateProfile:input_type -> laterna.v1.CreateProfileRequest
-	7,  // 15: laterna.v1.ProfileService.UpdateProfile:input_type -> laterna.v1.UpdateProfileRequest
-	9,  // 16: laterna.v1.ProfileService.DeleteProfile:input_type -> laterna.v1.DeleteProfileRequest
-	11, // 17: laterna.v1.ProfileService.SelectProfile:input_type -> laterna.v1.SelectProfileRequest
-	13, // 18: laterna.v1.ProfileService.SetLanguage:input_type -> laterna.v1.SetLanguageRequest
-	15, // 19: laterna.v1.ProfileService.SetSubtitlePreferences:input_type -> laterna.v1.SetSubtitlePreferencesRequest
-	17, // 20: laterna.v1.ProfileService.SetAudioPreferences:input_type -> laterna.v1.SetAudioPreferencesRequest
-	4,  // 21: laterna.v1.ProfileService.ListProfiles:output_type -> laterna.v1.ListProfilesResponse
-	6,  // 22: laterna.v1.ProfileService.CreateProfile:output_type -> laterna.v1.CreateProfileResponse
-	8,  // 23: laterna.v1.ProfileService.UpdateProfile:output_type -> laterna.v1.UpdateProfileResponse
-	10, // 24: laterna.v1.ProfileService.DeleteProfile:output_type -> laterna.v1.DeleteProfileResponse
-	12, // 25: laterna.v1.ProfileService.SelectProfile:output_type -> laterna.v1.SelectProfileResponse
-	14, // 26: laterna.v1.ProfileService.SetLanguage:output_type -> laterna.v1.SetLanguageResponse
-	16, // 27: laterna.v1.ProfileService.SetSubtitlePreferences:output_type -> laterna.v1.SetSubtitlePreferencesResponse
-	18, // 28: laterna.v1.ProfileService.SetAudioPreferences:output_type -> laterna.v1.SetAudioPreferencesResponse
-	21, // [21:29] is the sub-list for method output_type
-	13, // [13:21] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	0,  // 9: laterna.v1.UpdatePreferencesRequest.subtitle_mode:type_name -> laterna.v1.SubtitleMode
+	1,  // 10: laterna.v1.UpdatePreferencesResponse.profile:type_name -> laterna.v1.Profile
+	3,  // 11: laterna.v1.ProfileService.ListProfiles:input_type -> laterna.v1.ListProfilesRequest
+	5,  // 12: laterna.v1.ProfileService.CreateProfile:input_type -> laterna.v1.CreateProfileRequest
+	7,  // 13: laterna.v1.ProfileService.UpdateProfile:input_type -> laterna.v1.UpdateProfileRequest
+	9,  // 14: laterna.v1.ProfileService.DeleteProfile:input_type -> laterna.v1.DeleteProfileRequest
+	11, // 15: laterna.v1.ProfileService.SelectProfile:input_type -> laterna.v1.SelectProfileRequest
+	13, // 16: laterna.v1.ProfileService.UpdatePreferences:input_type -> laterna.v1.UpdatePreferencesRequest
+	4,  // 17: laterna.v1.ProfileService.ListProfiles:output_type -> laterna.v1.ListProfilesResponse
+	6,  // 18: laterna.v1.ProfileService.CreateProfile:output_type -> laterna.v1.CreateProfileResponse
+	8,  // 19: laterna.v1.ProfileService.UpdateProfile:output_type -> laterna.v1.UpdateProfileResponse
+	10, // 20: laterna.v1.ProfileService.DeleteProfile:output_type -> laterna.v1.DeleteProfileResponse
+	12, // 21: laterna.v1.ProfileService.SelectProfile:output_type -> laterna.v1.SelectProfileResponse
+	14, // 22: laterna.v1.ProfileService.UpdatePreferences:output_type -> laterna.v1.UpdatePreferencesResponse
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_profile_proto_init() }
@@ -1243,13 +1071,14 @@ func file_laterna_v1_profile_proto_init() {
 	file_laterna_v1_options_proto_init()
 	file_laterna_v1_profile_proto_msgTypes[1].OneofWrappers = []any{}
 	file_laterna_v1_profile_proto_msgTypes[6].OneofWrappers = []any{}
+	file_laterna_v1_profile_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_profile_proto_rawDesc), len(file_laterna_v1_profile_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   18,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

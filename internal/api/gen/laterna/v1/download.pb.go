@@ -220,9 +220,9 @@ type Download struct {
 	Method  DownloadMethod  `protobuf:"varint,8,opt,name=method,proto3,enum=laterna.v1.DownloadMethod" json:"method,omitempty"`
 	// Progress of the preparation, from 0 to 1.
 	Progress float64 `protobuf:"fixed64,9,opt,name=progress,proto3" json:"progress,omitempty"`
-	// Expected size, then the real one once ready (bytes).
-	EstimatedSize int64 `protobuf:"varint,10,opt,name=estimated_size,json=estimatedSize,proto3" json:"estimated_size,omitempty"`
-	Size          int64 `protobuf:"varint,11,opt,name=size,proto3" json:"size,omitempty"`
+	// Expected size, then the real one once ready.
+	EstimatedSizeBytes int64 `protobuf:"varint,10,opt,name=estimated_size_bytes,json=estimatedSizeBytes,proto3" json:"estimated_size_bytes,omitempty"`
+	SizeBytes          int64 `protobuf:"varint,11,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
 	// Path of the file, to append to the server's address; empty until it is ready.
 	Url string `protobuf:"bytes,12,opt,name=url,proto3" json:"url,omitempty"`
 	// Suggested name to save it under ("Show - S01E02 - Title.mp4").
@@ -236,7 +236,8 @@ type Download struct {
 	// until they are extracted (file just added).
 	Subtitles []*SubtitleTrack `protobuf:"bytes,17,rep,name=subtitles,proto3" json:"subtitles,omitempty"`
 	Fonts     []*Font          `protobuf:"bytes,18,rep,name=fonts,proto3" json:"fonts,omitempty"`
-	// Why the preparation failed (DOWNLOAD_STATE_FAILED).
+	// Why the preparation failed (DOWNLOAD_STATE_FAILED), in the language of the request; error_text
+	// is the same for translation ("download.failed", param "reason": the error of FFmpeg).
 	Error     string                 `protobuf:"bytes,19,opt,name=error,proto3" json:"error,omitempty"`
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	ReadyAt   *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=ready_at,json=readyAt,proto3" json:"ready_at,omitempty"`
@@ -247,6 +248,7 @@ type Download struct {
 	AudioStreamIndex *int32 `protobuf:"varint,24,opt,name=audio_stream_index,json=audioStreamIndex,proto3,oneof" json:"audio_stream_index,omitempty"`
 	// The reasons, for translation (as in StartPlaybackResponse.reason_texts).
 	ReasonTexts   []*Text `protobuf:"bytes,25,rep,name=reason_texts,json=reasonTexts,proto3" json:"reason_texts,omitempty"`
+	ErrorText     *Text   `protobuf:"bytes,26,opt,name=error_text,json=errorText,proto3" json:"error_text,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -357,16 +359,16 @@ func (x *Download) GetProgress() float64 {
 	return 0
 }
 
-func (x *Download) GetEstimatedSize() int64 {
+func (x *Download) GetEstimatedSizeBytes() int64 {
 	if x != nil {
-		return x.EstimatedSize
+		return x.EstimatedSizeBytes
 	}
 	return 0
 }
 
-func (x *Download) GetSize() int64 {
+func (x *Download) GetSizeBytes() int64 {
 	if x != nil {
-		return x.Size
+		return x.SizeBytes
 	}
 	return 0
 }
@@ -465,6 +467,13 @@ func (x *Download) GetAudioStreamIndex() int32 {
 func (x *Download) GetReasonTexts() []*Text {
 	if x != nil {
 		return x.ReasonTexts
+	}
+	return nil
+}
+
+func (x *Download) GetErrorText() *Text {
+	if x != nil {
+		return x.ErrorText
 	}
 	return nil
 }
@@ -1024,7 +1033,7 @@ var File_laterna_v1_download_proto protoreflect.FileDescriptor
 const file_laterna_v1_download_proto_rawDesc = "" +
 	"\n" +
 	"\x19laterna/v1/download.proto\x12\n" +
-	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/catalog.proto\x1a\x19laterna/v1/playback.proto\x1a\x15laterna/v1/text.proto\"\xb5\b\n" +
+	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/catalog.proto\x1a\x19laterna/v1/playback.proto\x1a\x15laterna/v1/text.proto\"\xfc\b\n" +
 	"\bDownload\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x120\n" +
 	"\x05movie\x18\x02 \x01(\v2\x18.laterna.v1.MovieSummaryH\x00R\x05movie\x12/\n" +
@@ -1034,10 +1043,11 @@ const file_laterna_v1_download_proto_rawDesc = "" +
 	"\aquality\x18\x06 \x01(\x0e2\x1b.laterna.v1.DownloadQualityR\aquality\x12/\n" +
 	"\x05state\x18\a \x01(\x0e2\x19.laterna.v1.DownloadStateR\x05state\x122\n" +
 	"\x06method\x18\b \x01(\x0e2\x1a.laterna.v1.DownloadMethodR\x06method\x12\x1a\n" +
-	"\bprogress\x18\t \x01(\x01R\bprogress\x12%\n" +
-	"\x0eestimated_size\x18\n" +
-	" \x01(\x03R\restimatedSize\x12\x12\n" +
-	"\x04size\x18\v \x01(\x03R\x04size\x12\x10\n" +
+	"\bprogress\x18\t \x01(\x01R\bprogress\x120\n" +
+	"\x14estimated_size_bytes\x18\n" +
+	" \x01(\x03R\x12estimatedSizeBytes\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\v \x01(\x03R\tsizeBytes\x12\x10\n" +
 	"\x03url\x18\f \x01(\tR\x03url\x12\x1b\n" +
 	"\tfile_name\x18\r \x01(\tR\bfileName\x12)\n" +
 	"\x10video_transcoded\x18\x0e \x01(\bR\x0fvideoTranscoded\x12)\n" +
@@ -1053,7 +1063,9 @@ const file_laterna_v1_download_proto_rawDesc = "" +
 	"expires_at\x18\x16 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x125\n" +
 	"\bduration\x18\x17 \x01(\v2\x19.google.protobuf.DurationR\bduration\x121\n" +
 	"\x12audio_stream_index\x18\x18 \x01(\x05H\x01R\x10audioStreamIndex\x88\x01\x01\x123\n" +
-	"\freason_texts\x18\x19 \x03(\v2\x10.laterna.v1.TextR\vreasonTextsB\x06\n" +
+	"\freason_texts\x18\x19 \x03(\v2\x10.laterna.v1.TextR\vreasonTexts\x12/\n" +
+	"\n" +
+	"error_text\x18\x1a \x01(\v2\x10.laterna.v1.TextR\terrorTextB\x06\n" +
 	"\x04itemB\x15\n" +
 	"\x13_audio_stream_index\"\x80\x02\n" +
 	"\x16CreateDownloadsRequest\x12\x19\n" +
@@ -1163,29 +1175,30 @@ var file_laterna_v1_download_proto_depIdxs = []int32{
 	20, // 10: laterna.v1.Download.expires_at:type_name -> google.protobuf.Timestamp
 	21, // 11: laterna.v1.Download.duration:type_name -> google.protobuf.Duration
 	22, // 12: laterna.v1.Download.reason_texts:type_name -> laterna.v1.Text
-	0,  // 13: laterna.v1.CreateDownloadsRequest.quality:type_name -> laterna.v1.DownloadQuality
-	23, // 14: laterna.v1.CreateDownloadsRequest.device:type_name -> laterna.v1.DeviceProfile
-	3,  // 15: laterna.v1.CreateDownloadsResponse.downloads:type_name -> laterna.v1.Download
-	3,  // 16: laterna.v1.ListDownloadsResponse.downloads:type_name -> laterna.v1.Download
-	3,  // 17: laterna.v1.GetDownloadResponse.download:type_name -> laterna.v1.Download
-	21, // 18: laterna.v1.OfflinePlay.position:type_name -> google.protobuf.Duration
-	20, // 19: laterna.v1.OfflinePlay.played_at:type_name -> google.protobuf.Timestamp
-	12, // 20: laterna.v1.SyncOfflinePlaybackRequest.plays:type_name -> laterna.v1.OfflinePlay
-	4,  // 21: laterna.v1.DownloadService.CreateDownloads:input_type -> laterna.v1.CreateDownloadsRequest
-	6,  // 22: laterna.v1.DownloadService.ListDownloads:input_type -> laterna.v1.ListDownloadsRequest
-	8,  // 23: laterna.v1.DownloadService.GetDownload:input_type -> laterna.v1.GetDownloadRequest
-	10, // 24: laterna.v1.DownloadService.DeleteDownloads:input_type -> laterna.v1.DeleteDownloadsRequest
-	13, // 25: laterna.v1.DownloadService.SyncOfflinePlayback:input_type -> laterna.v1.SyncOfflinePlaybackRequest
-	5,  // 26: laterna.v1.DownloadService.CreateDownloads:output_type -> laterna.v1.CreateDownloadsResponse
-	7,  // 27: laterna.v1.DownloadService.ListDownloads:output_type -> laterna.v1.ListDownloadsResponse
-	9,  // 28: laterna.v1.DownloadService.GetDownload:output_type -> laterna.v1.GetDownloadResponse
-	11, // 29: laterna.v1.DownloadService.DeleteDownloads:output_type -> laterna.v1.DeleteDownloadsResponse
-	14, // 30: laterna.v1.DownloadService.SyncOfflinePlayback:output_type -> laterna.v1.SyncOfflinePlaybackResponse
-	26, // [26:31] is the sub-list for method output_type
-	21, // [21:26] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	22, // 13: laterna.v1.Download.error_text:type_name -> laterna.v1.Text
+	0,  // 14: laterna.v1.CreateDownloadsRequest.quality:type_name -> laterna.v1.DownloadQuality
+	23, // 15: laterna.v1.CreateDownloadsRequest.device:type_name -> laterna.v1.DeviceProfile
+	3,  // 16: laterna.v1.CreateDownloadsResponse.downloads:type_name -> laterna.v1.Download
+	3,  // 17: laterna.v1.ListDownloadsResponse.downloads:type_name -> laterna.v1.Download
+	3,  // 18: laterna.v1.GetDownloadResponse.download:type_name -> laterna.v1.Download
+	21, // 19: laterna.v1.OfflinePlay.position:type_name -> google.protobuf.Duration
+	20, // 20: laterna.v1.OfflinePlay.played_at:type_name -> google.protobuf.Timestamp
+	12, // 21: laterna.v1.SyncOfflinePlaybackRequest.plays:type_name -> laterna.v1.OfflinePlay
+	4,  // 22: laterna.v1.DownloadService.CreateDownloads:input_type -> laterna.v1.CreateDownloadsRequest
+	6,  // 23: laterna.v1.DownloadService.ListDownloads:input_type -> laterna.v1.ListDownloadsRequest
+	8,  // 24: laterna.v1.DownloadService.GetDownload:input_type -> laterna.v1.GetDownloadRequest
+	10, // 25: laterna.v1.DownloadService.DeleteDownloads:input_type -> laterna.v1.DeleteDownloadsRequest
+	13, // 26: laterna.v1.DownloadService.SyncOfflinePlayback:input_type -> laterna.v1.SyncOfflinePlaybackRequest
+	5,  // 27: laterna.v1.DownloadService.CreateDownloads:output_type -> laterna.v1.CreateDownloadsResponse
+	7,  // 28: laterna.v1.DownloadService.ListDownloads:output_type -> laterna.v1.ListDownloadsResponse
+	9,  // 29: laterna.v1.DownloadService.GetDownload:output_type -> laterna.v1.GetDownloadResponse
+	11, // 30: laterna.v1.DownloadService.DeleteDownloads:output_type -> laterna.v1.DeleteDownloadsResponse
+	14, // 31: laterna.v1.DownloadService.SyncOfflinePlayback:output_type -> laterna.v1.SyncOfflinePlaybackResponse
+	27, // [27:32] is the sub-list for method output_type
+	22, // [22:27] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_download_proto_init() }

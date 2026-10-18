@@ -122,7 +122,7 @@ func requestableMsg(t domain.RequestableTitle) *laternav1.RequestableTitle {
 	return &laternav1.RequestableTitle{
 		Kind: requestKinds[t.Kind], ExternalId: t.ExternalID, Title: t.Title, Year: clampInt32(t.Year), Overview: t.Overview,
 		PosterUrl: app.RequestPosterPath(t.Poster), State: requestableStates[t.State], ItemId: idString(t.ItemID),
-		RequestId: idString(t.RequestID), SeasonCount: clampInt32(t.SeasonCount), Network: t.Network,
+		RequestId: idString(t.RequestID), SeasonCount: clampInt32(t.SeasonCount), Subtitle: t.Network,
 		ExternalKey: t.ExternalKey,
 	}
 }
@@ -357,7 +357,7 @@ func (s *RequestService) GetRequestOptions(ctx context.Context, req *connect.Req
 	}
 	resp := &laternav1.GetRequestOptionsResponse{}
 	for _, f := range opts.RootFolders {
-		resp.RootFolders = append(resp.RootFolders, &laternav1.RequestRootFolder{Path: f.Path, FreeSpace: f.FreeSpace})
+		resp.RootFolders = append(resp.RootFolders, &laternav1.RequestRootFolder{Path: f.Path, FreeSpaceBytes: f.FreeSpace})
 	}
 	for _, q := range opts.QualityProfiles {
 		resp.QualityProfiles = append(resp.QualityProfiles, &laternav1.RequestQualityProfile{Id: clampInt32(q.ID), Name: q.Name})

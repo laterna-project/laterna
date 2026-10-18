@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -13,15 +14,27 @@ import (
 // Activity log.
 
 // AddActivity appends an entry to the activity log.
-func (q Q) AddActivity(ctx context.Context, a domain.Activity) error {
+func (q Q) AddActivity(ctx context.Context, a domain.Activity) (int64, error) {
 	message, err := json.Marshal(a.Text)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	return q.q.InsertActivity(ctx, sqlc.InsertActivityParams{
 		At: toMillis(a.At), Kind: string(a.Kind), Warning: toInt(a.Warning),
 		AccountID: a.AccountID, ProfileID: a.ProfileID, ItemID: a.ItemID, Message: string(message),
 	})
+}
+
+// ActivityEntry reads an entry of the activity log.
+func (q Q) ActivityEntry(ctx context.Context, id int64) (domain.Activity, error) {
+	entries, err := q.Activity(ctx, ActivityQuery{Before: id + 1, Limit: 1})
+	if err != nil {
+		return domain.Activity{}, err
+	}
+	if len(entries) == 0 || entries[0].ID != id {
+		return domain.Activity{}, sql.ErrNoRows
+	}
+	return entries[0], nil
 }
 
 // ActivityQuery describes a page of the activity log, newest first.
@@ -135,7 +148,7 @@ func (q Q) AllSessions(ctx context.Context, now time.Time) ([]Device, error) {
 			Session: sessionFromRow(sqlc.Session{
 				ID: r.ID, AccountID: r.AccountID, ProfileID: r.ProfileID, DeviceName: r.DeviceName, Client: r.Client,
 				ClientVersion: r.ClientVersion, Platform: r.Platform, CreatedAt: r.CreatedAt, LastUsedAt: r.LastUsedAt,
-				ExpiresAt: r.ExpiresAt, LastIp: r.LastIp,
+				ExpiresAt: r.ExpiresAt, LastIp: r.LastIp, Kind: r.Kind, ReadOnly: r.ReadOnly,
 			}),
 			Username: r.Username, ProfileName: r.ProfileName,
 		}

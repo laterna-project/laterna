@@ -17,7 +17,7 @@ import (
 func TestSegmentsEndToEnd(t *testing.T) {
 	a, _ := startMediaApp(t, func(o *Options) { o.SegmentMin = 2 * time.Second })
 	ctx := context.Background()
-	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows"), testRoot("Anime")}, "")
+	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows"), testRoot("Anime")})
 	mustNil(t, err)
 	waitIdle(t, a)
 	fileOf := func(it domain.Item) domain.MediaFile {

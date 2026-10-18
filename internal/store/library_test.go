@@ -85,7 +85,7 @@ func TestJobsQueue(t *testing.T) {
 }
 
 func newLibrary(name string, kind domain.LibraryKind, paths ...string) domain.Library {
-	return domain.Library{ID: domain.NewID(), Name: name, Kind: kind, Paths: paths, Language: "fr-FR", CreatedAt: t0, UpdatedAt: t0}
+	return domain.Library{ID: domain.NewID(), Name: name, Kind: kind, Paths: paths, CreatedAt: t0, UpdatedAt: t0}
 }
 
 func TestLibrariesAndPaths(t *testing.T) {

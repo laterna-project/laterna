@@ -6,6 +6,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "laterna/v1/auth.proto";
 import "laterna/v1/options.proto";
+import "laterna/v1/playback.proto";
 import "laterna/v1/text.proto";
 
 option go_package = "github.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1";
@@ -63,6 +64,11 @@ enum ActivityKind {
   ACTIVITY_KIND_IMPORT = 18;
   // A request created, approved, declined or available (RequestService).
   ACTIVITY_KIND_REQUEST = 19;
+  // An API token created or revoked (AuthService.CreateApiToken).
+  ACTIVITY_KIND_API_TOKEN_CREATED = 20;
+  ACTIVITY_KIND_API_TOKEN_REVOKED = 21;
+  // Episodes of a series that arrived, told once the series has been quiet for a while.
+  ACTIVITY_KIND_EPISODES_ARRIVED = 22;
 }
 
 message ActivityEntry {
@@ -111,6 +117,10 @@ message DeviceSession {
   string last_ip = 8;
   // True for the device making the call.
   bool current = 9;
+  // An API token (AuthService.CreateApiToken) rather than a device: device is its name, and
+  // read_only says whether it only reads.
+  bool api_token = 10;
+  bool read_only = 11;
 }
 
 message ListDevicesRequest {}
@@ -125,8 +135,12 @@ message RevokeDeviceRequest {
 
 message RevokeDeviceResponse {}
 
-// ActivePlayback is a playback in progress.
+// ActivePlayback is a playback in progress. Method, streams re-encoded, encoder, conversion and
+// decoder are those of StartPlaybackResponse.
 message ActivePlayback {
+  reserved 9, 10, 11;
+  reserved "copy_video", "copy_audio";
+
   string id = 1;
   string account_id = 2;
   string username = 3;
@@ -137,13 +151,12 @@ message ActivePlayback {
   string item_id = 7;
   // Title (an episode with its series).
   string title = 8;
-  // Playback method: "direct", "remux", "transcode".
-  string method = 9;
-  bool copy_video = 10;
-  bool copy_audio = 11;
+  PlaybackMethod method = 23;
+  bool video_transcoded = 24;
+  bool audio_transcoded = 25;
   // Video encoder and HDR to SDR conversion, if the video is re-encoded.
-  string encoder = 12;
-  string tone_map = 13;
+  string video_encoder = 12;
+  string tone_mapping = 13;
   bool gpu = 14;
   google.protobuf.Timestamp started_at = 15;
   // Last position reported by the client, and duration.
@@ -156,10 +169,10 @@ message ActivePlayback {
   string decoder = 19;
   // The client is outside the local network (Settings.local_networks).
   bool remote = 20;
-  // Bitrate limit applied (kbit/s, StartPlaybackResponse.bitrate_limit); 0 means none.
-  int32 bitrate_limit = 21;
+  // Bitrate limit applied (kbit/s, StartPlaybackResponse.bitrate_limit_kbps); 0 means none.
+  int32 bitrate_limit_kbps = 21;
   // Client address, as seen by the server or given by a trusted proxy.
-  string address = 22;
+  string ip = 22;
 }
 
 message ListPlaybacksRequest {}

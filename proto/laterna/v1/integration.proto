@@ -80,7 +80,7 @@ message Integration {
   // unset if the instance answers.
   Text error_text = 13;
   // The instance writes Kodi metadata and takes a webhook and a refresh (Sonarr, Radarr, Lidarr):
-  // the fields above and ConfigureIntegration apply. False for LazyLibrarian.
+  // the fields above and ConfigureIntegration apply. False for LazyLibrarian and Bazarr.
   bool manages_metadata = 14;
 }
 

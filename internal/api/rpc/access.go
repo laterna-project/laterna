@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 
 	laternav1 "github.com/laterna-project/laterna/internal/api/gen/laterna/v1"
 	"github.com/laterna-project/laterna/internal/api/gen/laterna/v1/laternav1connect"
@@ -84,7 +85,36 @@ func (i *authInterceptor) authorize(ctx context.Context, spec connect.Spec, head
 	if err := allowed(level, p); err != nil {
 		return ctx, err
 	}
+	if err := tokenAllowed(spec, p); err != nil {
+		return ctx, err
+	}
 	return context.WithValue(ctx, principalKey{}, p), nil
+}
+
+// tokenAllowed checks what an API token may call, as the contract declares it (the
+// laterna.v1.api_tokens option): never a method that manages credentials or profiles, and for a
+// read-only token, only one that changes nothing.
+func tokenAllowed(spec connect.Spec, p domain.Principal) error {
+	if !p.APIToken {
+		return nil
+	}
+	md, ok := spec.Schema.(protoreflect.MethodDescriptor)
+	if !ok {
+		return domain.Forbidden("auth.api_token_not_allowed")
+	}
+	opts, _ := md.Options().(*descriptorpb.MethodOptions)
+	tokens, _ := proto.GetExtension(opts, laternav1.E_ApiTokens).(laternav1.ApiTokens)
+	switch tokens {
+	case laternav1.ApiTokens_API_TOKENS_NONE:
+		return domain.Forbidden("auth.api_token_not_allowed")
+	case laternav1.ApiTokens_API_TOKENS_READ:
+		return nil
+	case laternav1.ApiTokens_API_TOKENS_UNSPECIFIED:
+	}
+	if p.ReadOnly && opts.GetIdempotencyLevel() != descriptorpb.MethodOptions_NO_SIDE_EFFECTS {
+		return domain.Forbidden("auth.read_only_token")
+	}
+	return nil
 }
 
 // allowed checks that an authenticated caller has the required level.

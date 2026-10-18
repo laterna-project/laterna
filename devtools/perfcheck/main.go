@@ -396,7 +396,7 @@ func populate(ctx context.Context, dir string) (sampleIDs, error) {
 		if err := os.MkdirAll(root, 0o750); err != nil {
 			return ids, err
 		}
-		libs[k] = domain.Library{ID: domain.NewID(), Name: string(k), Kind: k, Paths: []string{root}, Language: "en-US", CreatedAt: now, UpdatedAt: now}
+		libs[k] = domain.Library{ID: domain.NewID(), Name: string(k), Kind: k, Paths: []string{root}, CreatedAt: now, UpdatedAt: now}
 	}
 	err = st.Write(ctx, func(q store.Q) error {
 		if err := q.CreateAccount(ctx, account, hash); err != nil {

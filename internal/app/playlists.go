@@ -93,15 +93,21 @@ func (a *App) CreatePlaylist(ctx context.Context, p domain.Principal, name strin
 	return a.store.Read().PlaylistView(ctx, v, pl)
 }
 
-// RenamePlaylist renames a playlist.
-func (a *App) RenamePlaylist(ctx context.Context, p domain.Principal, id domain.ID, name string) (domain.PlaylistView, error) {
-	name = strings.TrimSpace(name)
-	if err := validatePlaylistName(name); err != nil {
-		return domain.PlaylistView{}, err
+// UpdatePlaylist changes a playlist: its name if name is not nil.
+func (a *App) UpdatePlaylist(ctx context.Context, p domain.Principal, id domain.ID, name *string) (domain.PlaylistView, error) {
+	var newName string
+	if name != nil {
+		newName = strings.TrimSpace(*name)
+		if err := validatePlaylistName(newName); err != nil {
+			return domain.PlaylistView{}, err
+		}
 	}
 	return a.changePlaylist(ctx, p, id, func(q store.Q, pl *domain.Playlist, _ []store.PlaylistEntryRef) ([]store.PlaylistEntryRef, error) {
-		pl.Name = name
-		return nil, q.RenamePlaylist(ctx, pl.ID, name, a.now())
+		if name == nil {
+			return nil, nil
+		}
+		pl.Name = newName
+		return nil, q.RenamePlaylist(ctx, pl.ID, newName, a.now())
 	})
 }
 

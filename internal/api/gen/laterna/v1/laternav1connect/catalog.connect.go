@@ -93,10 +93,11 @@ type CatalogServiceClient interface {
 	// then by kind and title. They play like a movie (PlaybackService.StartPlayback), always from the
 	// start, and leave nothing in the history.
 	ListExtras(context.Context, *connect.Request[v1.ListExtrasRequest]) (*connect.Response[v1.ListExtrasResponse], error)
-	// ListGenres lists the genres of movies, series and albums, to filter lists.
+	// ListGenres lists the genres of movies, series, albums and books, to filter lists.
 	ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error)
-	// Search looks up movies, series, episodes, artists, albums and tracks by title, ignoring accents
-	// and case; each word may be just the beginning of a word.
+	// Search looks up movies, series, episodes, artists, albums, tracks, book series, books and photo
+	// albums by title, ignoring accents and case; each word may be just the beginning of a word.
+	// Photos are left out: their titles are file names.
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
 	// ListSimilar returns the movies and series closest to a movie or a series (an episode or a
 	// season stands for its series), closest first: genres, directors, writers, top-billed actors,
@@ -317,10 +318,11 @@ type CatalogServiceHandler interface {
 	// then by kind and title. They play like a movie (PlaybackService.StartPlayback), always from the
 	// start, and leave nothing in the history.
 	ListExtras(context.Context, *connect.Request[v1.ListExtrasRequest]) (*connect.Response[v1.ListExtrasResponse], error)
-	// ListGenres lists the genres of movies, series and albums, to filter lists.
+	// ListGenres lists the genres of movies, series, albums and books, to filter lists.
 	ListGenres(context.Context, *connect.Request[v1.ListGenresRequest]) (*connect.Response[v1.ListGenresResponse], error)
-	// Search looks up movies, series, episodes, artists, albums and tracks by title, ignoring accents
-	// and case; each word may be just the beginning of a word.
+	// Search looks up movies, series, episodes, artists, albums, tracks, book series, books and photo
+	// albums by title, ignoring accents and case; each word may be just the beginning of a word.
+	// Photos are left out: their titles are file names.
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
 	// ListSimilar returns the movies and series closest to a movie or a series (an episode or a
 	// season stands for its series), closest first: genres, directors, writers, top-billed actors,

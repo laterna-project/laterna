@@ -45,7 +45,7 @@ func TestDownloadsOverHTTP(t *testing.T) {
 		t.Fatalf("direct download: %v", direct)
 	}
 	// Prepared in the background, which can be over before CreateDownloads answers.
-	if remux.GetMethod() != laternav1.DownloadMethod_DOWNLOAD_METHOD_REMUX || remux.GetEstimatedSize() == 0 ||
+	if remux.GetMethod() != laternav1.DownloadMethod_DOWNLOAD_METHOD_REMUX || remux.GetEstimatedSizeBytes() == 0 ||
 		(remux.GetState() != laternav1.DownloadState_DOWNLOAD_STATE_READY && remux.GetUrl() != "") {
 		t.Fatalf("download to prepare: %v", remux)
 	}

@@ -16,6 +16,7 @@ service EventService {
   // again. After a disconnection, open the stream again and reload everything.
   rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_READ;
   }
 }
 

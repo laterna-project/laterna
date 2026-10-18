@@ -168,6 +168,8 @@ type App struct {
 	pushHTTP *http.Client
 	// upcoming is what Sonarr, Radarr and Lidarr expect in the coming days.
 	upcoming upcomingCache
+	// alerts are the channels the activity log is told to (alerts.go).
+	alerts alertChannels
 
 	// bus pushes events to subscribed clients; changes batches the item ones.
 	bus     *events.Bus[domain.Event]
@@ -287,6 +289,9 @@ func New(ctx context.Context, st *store.Store, opts Options) (*App, error) {
 	}
 	if err := a.loadOIDC(ctx); err != nil {
 		return nil, fmt.Errorf("app: %w", err)
+	}
+	if err := a.loadAlerts(ctx); err != nil {
+		return nil, err
 	}
 	if err := a.loadPushKeys(ctx); err != nil {
 		return nil, fmt.Errorf("app: push key: %w", err)

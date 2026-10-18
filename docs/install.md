@@ -6,8 +6,8 @@ Laterna is one binary plus FFmpeg. Pick the way that fits the machine:
 |---|---|---|---|
 | [Docker image](#docker) | yes | the container | pull the new tag |
 | [deb or rpm package](#debian-ubuntu-fedora-and-other-systemd-distributions) | yes | systemd | install the new package |
-| [Archive with FFmpeg](#archives) (`_ffmpeg`) | yes | up to you | replace the folder |
-| [Archive without FFmpeg](#archives) | no, bring FFmpeg 7.1 or later | up to you | replace the binary |
+| [Archive with FFmpeg](#archives) (`_ffmpeg`) | yes | on Windows, [`laterna service`](#as-a-windows-service); elsewhere up to you | replace the folder |
+| [Archive without FFmpeg](#archives) | no, bring FFmpeg 7.1 or later | on Windows, [`laterna service`](#as-a-windows-service); elsewhere up to you | replace the binary |
 
 Releases are on the [releases page](https://github.com/laterna-project/laterna/releases). Once the
 server runs, continue with the [first steps](../README.md#first-steps).
@@ -198,10 +198,68 @@ Data goes to `~/.local/share/laterna` and `~/.cache/laterna` unless configured o
 Unzip `laterna_X.Y.Z_windows_amd64_ffmpeg.zip` and run `laterna.exe`. Data goes to
 `%LOCALAPPDATA%\Laterna`.
 
-- The binaries are not signed. SmartScreen asks for confirmation the first time, and a machine
-  with Smart App Control turned on refuses to run them: use Docker there, or build from source.
-- Laterna does not install itself as a Windows service yet. To start it with the machine, create a
-  task in the Task Scheduler that runs `laterna.exe` at startup.
+The binaries are not signed. SmartScreen asks for confirmation the first time, and a machine with
+Smart App Control turned on refuses to run them: use Docker there, or build from source.
+
+#### As a Windows service
+
+Put the folder where it will stay, `C:\Program Files\Laterna` for example: the service runs
+`laterna.exe` from there. Then, from an administrator prompt, in that folder:
+
+```bat
+laterna service install
+laterna service start
+```
+
+The service starts with Windows, shortly after the other services, and restarts
+after a failure. It runs as `NT SERVICE\Laterna`, an account of its own, without a password and
+with the rights of an ordinary user: `install` gives it access to the program and to its folders,
+nothing else. It also adds a firewall rule for `laterna.exe` on private and domain networks; if
+Windows takes your network for a public one, other devices cannot reach the server until you mark
+it private.
+
+| Path | What |
+|---|---|
+| `%ProgramData%\Laterna\laterna.toml` | startup configuration, written by the first install, kept afterwards |
+| `%ProgramData%\Laterna\data` | database, logs (`data\log`), backups |
+| `%ProgramData%\Laterna\metadata` | downloaded images, extracted subtitles, thumbnails |
+| `%ProgramData%\Laterna\cache` | cache, safe to delete |
+
+`laterna service install -config <file>` makes the service read another file; the folders it does
+not name are still the ones above. Keep the options in that file rather than in `LATERNA_*`
+variables: the service only sees variables of the system, and only after a restart of Windows.
+
+| Command | What |
+|---|---|
+| `laterna service stop`, `laterna service start` | stop, start; restart after editing `laterna.toml` |
+| `laterna service uninstall` | stop and remove the service and its firewall rule; configuration and data stay |
+| `laterna backup -config "%ProgramData%\Laterna\laterna.toml"` | back up the database of the service, which can keep running; `restore` the same way, then restart the service |
+
+When the service does not start, the event log says why (Event Viewer, Windows Logs >
+Application, source Laterna), and the logs of the server are in `data\log`.
+
+**Access to your media.** The account reads what any user of the machine can read: a second disk
+or a folder such as `D:\Media` usually is, a folder in someone's profile (`C:\Users\…`) is not.
+Give it access to such a folder:
+
+```bat
+icacls "C:\Users\alice\Videos" /grant "NT SERVICE\Laterna:(OI)(CI)RX"
+```
+
+**Network shares.** Services do not see mapped drive letters: give libraries a UNC path
+(`\\nas\media`). The account of the service reaches the network as the computer itself, which a
+NAS does not know: in `services.msc`, open Laterna > Properties > Log On, choose an account the
+NAS knows, then give that account the folders of the service:
+`icacls "%ProgramData%\Laterna" /grant "alice:(OI)(CI)M"`.
+
+**FFmpeg.** With the `_ffmpeg` archive, the FFmpeg next to `laterna.exe` is used. Otherwise the
+service only searches the `PATH` of the system, not yours: name FFmpeg in `laterna.toml`.
+
+**Coming from a server started by hand.** It kept its data in `%LOCALAPPDATA%\Laterna`. To keep
+that library, copy its `data` and `metadata` folders into `%ProgramData%\Laterna` before the first
+start of the service; `install` reminds you when it finds them.
+
+**Upgrading** is stopping the service, replacing the files of the folder, and starting it again.
 
 ### macOS
 

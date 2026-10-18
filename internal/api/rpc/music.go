@@ -122,8 +122,12 @@ func (s *MusicService) ListTracks(ctx context.Context, req *connect.Request[late
 	if err != nil {
 		return nil, err
 	}
+	artist, err := parseOptionalID(m.GetArtistId(), "artist_id")
+	if err != nil {
+		return nil, err
+	}
 	page, err := s.app.ListTracks(ctx, principal(ctx), app.ListQuery{
-		LibraryID: lib, Sort: itemSortFromMsg(m.GetSort()), Reverse: m.GetReverse(),
+		LibraryID: lib, ArtistID: artist, Sort: itemSortFromMsg(m.GetSort()), Reverse: m.GetReverse(),
 		FavoritesOnly: m.GetFavoritesOnly(), PageSize: int(m.GetPageSize()), PageToken: m.GetPageToken(),
 	})
 	if err != nil {
@@ -145,19 +149,6 @@ func (s *MusicService) GetTrack(ctx context.Context, req *connect.Request[latern
 		return nil, err
 	}
 	return connect.NewResponse(&laternav1.GetTrackResponse{Track: trackMsg(ctx, v), Files: filesMsg(d.Files)}), nil
-}
-
-// ListArtistTracks returns all the tracks of an artist.
-func (s *MusicService) ListArtistTracks(ctx context.Context, req *connect.Request[laternav1.ListArtistTracksRequest]) (*connect.Response[laternav1.ListArtistTracksResponse], error) {
-	id, err := parseID(req.Msg.GetArtistId(), "artist_id")
-	if err != nil {
-		return nil, err
-	}
-	tracks, err := s.app.ArtistTracks(ctx, principal(ctx), id)
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&laternav1.ListArtistTracksResponse{Tracks: tracksMsg(ctx, tracks)}), nil
 }
 
 func tracksMsg(ctx context.Context, views []domain.ItemView) []*laternav1.Track {

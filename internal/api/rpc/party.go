@@ -110,7 +110,7 @@ func (s *PartyService) WatchParty(ctx context.Context, req *connect.Request[late
 		case ctx.Err() != nil, errors.Is(err, app.ErrSubscriptionClosed):
 			return nil
 		case errors.Is(err, context.DeadlineExceeded):
-			resp.Update = &laternav1.WatchPartyResponse_Heartbeat{Heartbeat: true}
+			resp.Update = &laternav1.WatchPartyResponse_Heartbeat{Heartbeat: &laternav1.Heartbeat{}}
 		case err != nil:
 			return err
 		case u.State != nil:
@@ -121,8 +121,7 @@ func (s *PartyService) WatchParty(ctx context.Context, req *connect.Request[late
 				MemberId: m.MemberID.String(), Name: m.Name, Text: m.Text, Reaction: m.Reaction, At: timestamppb.New(m.At),
 			}}
 		default:
-			resp.Update = &laternav1.WatchPartyResponse_Ended{Ended: render(ctx, u.Ended)}
-			resp.EndedText = textMsg(ctx, u.Ended)
+			resp.Update = &laternav1.WatchPartyResponse_Ended{Ended: &laternav1.PartyEnded{Reason: render(ctx, u.Ended), ReasonText: textMsg(ctx, u.Ended)}}
 		}
 		resp.ServerTime = timestamppb.Now()
 		if err := stream.Send(resp); err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	laternav1 "github.com/laterna-project/laterna/internal/api/gen/laterna/v1"
 	"github.com/laterna-project/laterna/internal/app"
@@ -28,7 +29,7 @@ func (s *AuthService) StartOidcLogin(ctx context.Context, req *connect.Request[l
 	}
 	return connect.NewResponse(&laternav1.StartOidcLoginResponse{
 		LoginId: start.LoginID, AuthorizationUrl: start.AuthURL,
-		Interval: durationpb.New(start.Interval), ExpiresIn: durationpb.New(start.ExpiresIn),
+		Interval: durationpb.New(start.Interval), ExpiresAt: timestamppb.New(start.ExpiresAt),
 	}), nil
 }
 

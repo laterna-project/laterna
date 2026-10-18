@@ -31,7 +31,7 @@ func TestPhotos(t *testing.T) {
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	lib, err := a.CreateLibrary(ctx, "Photos", domain.LibraryPhotos, []string{testRoot("Photos")}, "")
+	lib, err := a.CreateLibrary(ctx, "Photos", domain.LibraryPhotos, []string{testRoot("Photos")})
 	mustNil(t, err)
 	waitIdle(t, a)
 
@@ -148,7 +148,7 @@ func TestPhotoMoved(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
 	copyTree(t, testRoot("Photos"), root)
-	lib, err := a.CreateLibrary(ctx, "Photos", domain.LibraryPhotos, []string{root}, "")
+	lib, err := a.CreateLibrary(ctx, "Photos", domain.LibraryPhotos, []string{root})
 	mustNil(t, err)
 	waitIdle(t, a)
 	page, err := a.ListPhotos(ctx, p, PhotoQuery{})

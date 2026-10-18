@@ -165,7 +165,7 @@ func TestEvents(t *testing.T) {
 	otherSub := a.Subscribe(other)
 	defer otherSub.Close()
 
-	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{testRoot("Movies")}, "")
+	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{testRoot("Movies")})
 	mustNil(t, err)
 	next[domain.LibrariesChanged](t, adminSub)
 	if scanned := next[domain.LibraryScanned](t, adminSub); scanned.LibraryID != lib.ID || scanned.Added != 6 {

@@ -28,7 +28,7 @@ func TestMusic(t *testing.T) {
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	lib, err := a.CreateLibrary(ctx, "Music", domain.LibraryMusic, []string{testRoot("Music")}, "")
+	lib, err := a.CreateLibrary(ctx, "Music", domain.LibraryMusic, []string{testRoot("Music")})
 	mustNil(t, err)
 	waitIdle(t, a)
 
@@ -80,15 +80,35 @@ func TestMusic(t *testing.T) {
 	}
 
 	// Untagged file at the root.
-	loose, err := a.ArtistTracks(ctx, p, artists.Items[1].Item.ID)
+	loose, err := a.ListTracks(ctx, p, ListQuery{ArtistID: &artists.Items[1].Item.ID, Sort: domain.SortAlbum})
 	mustNil(t, err)
-	if len(loose) != 1 || loose[0].Item.Title != "Untagged" || loose[0].AlbumTitle != domain.UnknownAlbum {
+	if len(loose.Items) != 1 || loose.Items[0].Item.Title != "Untagged" || loose.Items[0].AlbumTitle != domain.UnknownAlbum {
 		t.Errorf("untagged file: %+v", loose)
 	}
-	all, err := a.ArtistTracks(ctx, p, artistID)
+	all, err := a.ListTracks(ctx, p, ListQuery{ArtistID: &artistID, Sort: domain.SortAlbum})
 	mustNil(t, err)
-	if got := titles(all); !slices.Equal(got, []string{"Track One", "Track Two", "First", "Second"}) {
+	if got := titles(all.Items); !slices.Equal(got, []string{"Track One", "Track Two", "First", "Second"}) || all.Total != 4 {
 		t.Errorf("all tracks of the artist: %v", got)
+	}
+	// Page by page in the same order; in another order; album order needs an artist.
+	firstPage, err := a.ListTracks(ctx, p, ListQuery{ArtistID: &artistID, Sort: domain.SortAlbum, PageSize: 3})
+	mustNil(t, err)
+	nextPage, err := a.ListTracks(ctx, p, ListQuery{ArtistID: &artistID, Sort: domain.SortAlbum, PageSize: 3, PageToken: firstPage.NextPageToken})
+	mustNil(t, err)
+	if firstPage.Total != 4 || firstPage.NextPageToken == "" || nextPage.NextPageToken != "" ||
+		!slices.Equal(titles(append(firstPage.Items, nextPage.Items...)), titles(all.Items)) {
+		t.Errorf("pages of the artist: %v then %v", titles(firstPage.Items), titles(nextPage.Items))
+	}
+	byTitle, err := a.ListTracks(ctx, p, ListQuery{ArtistID: &artistID})
+	mustNil(t, err)
+	if got := titles(byTitle.Items); !slices.Equal(got, []string{"First", "Second", "Track One", "Track Two"}) || byTitle.Total != 4 {
+		t.Errorf("tracks of the artist by title: %v", got)
+	}
+	if _, err := a.ListTracks(ctx, p, ListQuery{Sort: domain.SortAlbum}); domain.CodeOf(err) != "catalog.album_sort_without_artist" {
+		t.Errorf("album order without an artist: %v", err)
+	}
+	if _, err := a.ListMovies(ctx, p, ListQuery{Sort: domain.SortAlbum}); domain.CodeOf(err) != "catalog.unknown_sort" {
+		t.Errorf("album order of movies: %v", err)
 	}
 
 	// Search, library counts, genres.

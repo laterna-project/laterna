@@ -184,9 +184,9 @@ type CreateAccountRequest struct {
 	RequestQuota *int32 `protobuf:"varint,9,opt,name=request_quota,json=requestQuota,proto3,oneof" json:"request_quota,omitempty"`
 	// Highest bitrate of its playbacks from outside the local network (kbit/s, 500 to 1,000,000); 0
 	// means only the server's limit.
-	RemoteMaxBitrate int32 `protobuf:"varint,10,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3" json:"remote_max_bitrate,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	RemoteMaxBitrateKbps int32 `protobuf:"varint,10,opt,name=remote_max_bitrate_kbps,json=remoteMaxBitrateKbps,proto3" json:"remote_max_bitrate_kbps,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *CreateAccountRequest) Reset() {
@@ -282,9 +282,9 @@ func (x *CreateAccountRequest) GetRequestQuota() int32 {
 	return 0
 }
 
-func (x *CreateAccountRequest) GetRemoteMaxBitrate() int32 {
+func (x *CreateAccountRequest) GetRemoteMaxBitrateKbps() int32 {
 	if x != nil {
-		return x.RemoteMaxBitrate
+		return x.RemoteMaxBitrateKbps
 	}
 	return 0
 }
@@ -356,9 +356,9 @@ type UpdateAccountRequest struct {
 	// Requests in seven days, 0 for no limit; unset leaves it unchanged.
 	RequestQuota *int32 `protobuf:"varint,11,opt,name=request_quota,json=requestQuota,proto3,oneof" json:"request_quota,omitempty"`
 	// 0 for only the server's limit; unset leaves it unchanged.
-	RemoteMaxBitrate *int32 `protobuf:"varint,12,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3,oneof" json:"remote_max_bitrate,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	RemoteMaxBitrateKbps *int32 `protobuf:"varint,12,opt,name=remote_max_bitrate_kbps,json=remoteMaxBitrateKbps,proto3,oneof" json:"remote_max_bitrate_kbps,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *UpdateAccountRequest) Reset() {
@@ -468,9 +468,9 @@ func (x *UpdateAccountRequest) GetRequestQuota() int32 {
 	return 0
 }
 
-func (x *UpdateAccountRequest) GetRemoteMaxBitrate() int32 {
-	if x != nil && x.RemoteMaxBitrate != nil {
-		return *x.RemoteMaxBitrate
+func (x *UpdateAccountRequest) GetRemoteMaxBitrateKbps() int32 {
+	if x != nil && x.RemoteMaxBitrateKbps != nil {
+		return *x.RemoteMaxBitrateKbps
 	}
 	return 0
 }
@@ -611,7 +611,7 @@ const file_laterna_v1_account_proto_rawDesc = "" +
 	"\x0elast_active_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\flastActiveAt\"\x15\n" +
 	"\x13ListAccountsRequest\"N\n" +
 	"\x14ListAccountsResponse\x126\n" +
-	"\baccounts\x18\x01 \x03(\v2\x1a.laterna.v1.AccountSummaryR\baccounts\"\xc5\x03\n" +
+	"\baccounts\x18\x01 \x03(\v2\x1a.laterna.v1.AccountSummaryR\baccounts\"\xce\x03\n" +
 	"\x14CreateAccountRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x19\n" +
@@ -621,12 +621,12 @@ const file_laterna_v1_account_proto_rawDesc = "" +
 	"\x0edeny_downloads\x18\x06 \x01(\bR\rdenyDownloads\x12#\n" +
 	"\rdeny_requests\x18\a \x01(\bR\fdenyRequests\x122\n" +
 	"\x15auto_approve_requests\x18\b \x01(\bR\x13autoApproveRequests\x12(\n" +
-	"\rrequest_quota\x18\t \x01(\x05H\x00R\frequestQuota\x88\x01\x01\x12,\n" +
-	"\x12remote_max_bitrate\x18\n" +
-	" \x01(\x05R\x10remoteMaxBitrateB\x10\n" +
+	"\rrequest_quota\x18\t \x01(\x05H\x00R\frequestQuota\x88\x01\x01\x125\n" +
+	"\x17remote_max_bitrate_kbps\x18\n" +
+	" \x01(\x05R\x14remoteMaxBitrateKbpsB\x10\n" +
 	"\x0e_request_quota\"F\n" +
 	"\x15CreateAccountResponse\x12-\n" +
-	"\aaccount\x18\x01 \x01(\v2\x13.laterna.v1.AccountR\aaccount\"\xb2\x05\n" +
+	"\aaccount\x18\x01 \x01(\v2\x13.laterna.v1.AccountR\aaccount\"\xc0\x05\n" +
 	"\x14UpdateAccountRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1f\n" +
@@ -640,8 +640,8 @@ const file_laterna_v1_account_proto_rawDesc = "" +
 	"\rdeny_requests\x18\t \x01(\bH\x05R\fdenyRequests\x88\x01\x01\x127\n" +
 	"\x15auto_approve_requests\x18\n" +
 	" \x01(\bH\x06R\x13autoApproveRequests\x88\x01\x01\x12(\n" +
-	"\rrequest_quota\x18\v \x01(\x05H\aR\frequestQuota\x88\x01\x01\x121\n" +
-	"\x12remote_max_bitrate\x18\f \x01(\x05H\bR\x10remoteMaxBitrate\x88\x01\x01B\v\n" +
+	"\rrequest_quota\x18\v \x01(\x05H\aR\frequestQuota\x88\x01\x01\x12:\n" +
+	"\x17remote_max_bitrate_kbps\x18\f \x01(\x05H\bR\x14remoteMaxBitrateKbps\x88\x01\x01B\v\n" +
 	"\t_usernameB\v\n" +
 	"\t_passwordB\v\n" +
 	"\t_is_adminB\v\n" +
@@ -649,19 +649,19 @@ const file_laterna_v1_account_proto_rawDesc = "" +
 	"\x0f_deny_downloadsB\x10\n" +
 	"\x0e_deny_requestsB\x18\n" +
 	"\x16_auto_approve_requestsB\x10\n" +
-	"\x0e_request_quotaB\x15\n" +
-	"\x13_remote_max_bitrate\"F\n" +
+	"\x0e_request_quotaB\x1a\n" +
+	"\x18_remote_max_bitrate_kbps\"F\n" +
 	"\x15UpdateAccountResponse\x12-\n" +
 	"\aaccount\x18\x01 \x01(\v2\x13.laterna.v1.AccountR\aaccount\"5\n" +
 	"\x14DeleteAccountRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"\x17\n" +
-	"\x15DeleteAccountResponse2\x80\x03\n" +
+	"\x15DeleteAccountResponse2\x8c\x03\n" +
 	"\x0eAccountService\x12Z\n" +
-	"\fListAccounts\x12\x1f.laterna.v1.ListAccountsRequest\x1a .laterna.v1.ListAccountsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12Z\n" +
-	"\rCreateAccount\x12 .laterna.v1.CreateAccountRequest\x1a!.laterna.v1.CreateAccountResponse\"\x04\x88\xb5\x18\x04\x12Z\n" +
-	"\rUpdateAccount\x12 .laterna.v1.UpdateAccountRequest\x1a!.laterna.v1.UpdateAccountResponse\"\x04\x88\xb5\x18\x04\x12Z\n" +
-	"\rDeleteAccount\x12 .laterna.v1.DeleteAccountRequest\x1a!.laterna.v1.DeleteAccountResponse\"\x04\x88\xb5\x18\x04BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
+	"\fListAccounts\x12\x1f.laterna.v1.ListAccountsRequest\x1a .laterna.v1.ListAccountsResponse\"\a\x88\xb5\x18\x04\x90\x02\x01\x12^\n" +
+	"\rCreateAccount\x12 .laterna.v1.CreateAccountRequest\x1a!.laterna.v1.CreateAccountResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02\x12^\n" +
+	"\rUpdateAccount\x12 .laterna.v1.UpdateAccountRequest\x1a!.laterna.v1.UpdateAccountResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02\x12^\n" +
+	"\rDeleteAccount\x12 .laterna.v1.DeleteAccountRequest\x1a!.laterna.v1.DeleteAccountResponse\"\b\x88\xb5\x18\x04\x90\xb5\x18\x02BJZHgithub.com/laterna-project/laterna/internal/api/gen/laterna/v1;laternav1b\x06proto3"
 
 var (
 	file_laterna_v1_account_proto_rawDescOnce sync.Once

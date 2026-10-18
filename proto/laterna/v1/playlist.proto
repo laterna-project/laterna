@@ -22,8 +22,9 @@ service PlaylistService {
   }
   // CreatePlaylist creates a playlist (100 per profile at most).
   rpc CreatePlaylist(CreatePlaylistRequest) returns (CreatePlaylistResponse);
-  // RenamePlaylist renames a playlist.
-  rpc RenamePlaylist(RenamePlaylistRequest) returns (RenamePlaylistResponse);
+  // UpdatePlaylist changes a playlist: its name. The entries change with AddToPlaylist,
+  // RemoveFromPlaylist and MovePlaylistEntry.
+  rpc UpdatePlaylist(UpdatePlaylistRequest) returns (UpdatePlaylistResponse);
   // DeletePlaylist deletes a playlist.
   rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistResponse);
   // AddToPlaylist adds items (2,000 entries per playlist at most). A movie, an episode or a track
@@ -84,12 +85,13 @@ message CreatePlaylistResponse {
   Playlist playlist = 1;
 }
 
-message RenamePlaylistRequest {
+message UpdatePlaylistRequest {
   string playlist_id = 1;
-  string name = 2;
+  // Unset leaves it unchanged.
+  optional string name = 2;
 }
 
-message RenamePlaylistResponse {
+message UpdatePlaylistResponse {
   Playlist playlist = 1;
 }
 

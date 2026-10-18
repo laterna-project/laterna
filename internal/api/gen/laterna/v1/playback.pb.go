@@ -89,10 +89,10 @@ type BitrateLimitSource int32
 const (
 	// No limit.
 	BitrateLimitSource_BITRATE_LIMIT_SOURCE_UNSPECIFIED BitrateLimitSource = 0
-	// The client's (StartPlaybackRequest.max_bitrate).
+	// The client's (StartPlaybackRequest.max_bitrate_kbps).
 	BitrateLimitSource_BITRATE_LIMIT_SOURCE_CLIENT BitrateLimitSource = 1
-	// The server's for a connection from outside the local network: Settings.remote_max_bitrate or
-	// Account.remote_max_bitrate, the lower one.
+	// The server's for a connection from outside the local network:
+	// Settings.remote_max_bitrate_kbps or Account.remote_max_bitrate_kbps, the lower one.
 	BitrateLimitSource_BITRATE_LIMIT_SOURCE_REMOTE BitrateLimitSource = 2
 )
 
@@ -307,13 +307,13 @@ type StartPlaybackRequest struct {
 	// one, it is burned in if the device cannot render it. A client sets it when a playback starts,
 	// and leaves it out when it reopens one after a choice of the viewer.
 	ProfileSubtitle bool `protobuf:"varint,6,opt,name=profile_subtitle,json=profileSubtitle,proto3" json:"profile_subtitle,omitempty"`
-	// Highest bitrate of the stream, in kbit/s: the quality the viewer picked, or what the
-	// connection carries; 0 means no limit. Outside the local network the server may lower it
-	// (Settings.remote_max_bitrate, Account.remote_max_bitrate). A file above the limit has its video
-	// re-encoded at a lower bitrate, and its picture scaled down to fit it.
-	MaxBitrate    int32 `protobuf:"varint,7,opt,name=max_bitrate,json=maxBitrate,proto3" json:"max_bitrate,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Highest bitrate of the stream: the quality the viewer picked, or what the connection carries;
+	// 0 means no limit. Outside the local network the server may lower it
+	// (Settings.remote_max_bitrate_kbps, Account.remote_max_bitrate_kbps). A file above the limit
+	// has its video re-encoded at a lower bitrate, and its picture scaled down to fit it.
+	MaxBitrateKbps int32 `protobuf:"varint,7,opt,name=max_bitrate_kbps,json=maxBitrateKbps,proto3" json:"max_bitrate_kbps,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *StartPlaybackRequest) Reset() {
@@ -388,9 +388,9 @@ func (x *StartPlaybackRequest) GetProfileSubtitle() bool {
 	return false
 }
 
-func (x *StartPlaybackRequest) GetMaxBitrate() int32 {
+func (x *StartPlaybackRequest) GetMaxBitrateKbps() int32 {
 	if x != nil {
-		return x.MaxBitrate
+		return x.MaxBitrateKbps
 	}
 	return 0
 }
@@ -448,13 +448,13 @@ type StartPlaybackResponse struct {
 	MasterUrl string `protobuf:"bytes,22,opt,name=master_url,json=masterUrl,proto3" json:"master_url,omitempty"`
 	// Bitrate limit applied, in kbit/s: the lowest of the client's and, outside the local network,
 	// the server's; 0 means none. The file plays as it is when it stays below it.
-	BitrateLimit       int32              `protobuf:"varint,23,opt,name=bitrate_limit,json=bitrateLimit,proto3" json:"bitrate_limit,omitempty"`
+	BitrateLimitKbps   int32              `protobuf:"varint,23,opt,name=bitrate_limit_kbps,json=bitrateLimitKbps,proto3" json:"bitrate_limit_kbps,omitempty"`
 	BitrateLimitSource BitrateLimitSource `protobuf:"varint,24,opt,name=bitrate_limit_source,json=bitrateLimitSource,proto3,enum=laterna.v1.BitrateLimitSource" json:"bitrate_limit_source,omitempty"`
 	// Bitrate the re-encoded video aims at under that limit, in kbit/s; 0 if the video is copied or
 	// re-encoded without a limit.
-	VideoBitrate  int32 `protobuf:"varint,25,opt,name=video_bitrate,json=videoBitrate,proto3" json:"video_bitrate,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	VideoBitrateKbps int32 `protobuf:"varint,25,opt,name=video_bitrate_kbps,json=videoBitrateKbps,proto3" json:"video_bitrate_kbps,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *StartPlaybackResponse) Reset() {
@@ -641,9 +641,9 @@ func (x *StartPlaybackResponse) GetMasterUrl() string {
 	return ""
 }
 
-func (x *StartPlaybackResponse) GetBitrateLimit() int32 {
+func (x *StartPlaybackResponse) GetBitrateLimitKbps() int32 {
 	if x != nil {
-		return x.BitrateLimit
+		return x.BitrateLimitKbps
 	}
 	return 0
 }
@@ -655,9 +655,9 @@ func (x *StartPlaybackResponse) GetBitrateLimitSource() BitrateLimitSource {
 	return BitrateLimitSource_BITRATE_LIMIT_SOURCE_UNSPECIFIED
 }
 
-func (x *StartPlaybackResponse) GetVideoBitrate() int32 {
+func (x *StartPlaybackResponse) GetVideoBitrateKbps() int32 {
 	if x != nil {
-		return x.VideoBitrate
+		return x.VideoBitrateKbps
 	}
 	return 0
 }
@@ -859,7 +859,7 @@ type Font struct {
 	// Path, to append to the server's address: no authentication, and immutable (the content hash is
 	// part of it; a font shared by a whole series is loaded once).
 	Url           string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
-	Size          int64  `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
+	SizeBytes     int64  `protobuf:"varint,3,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -908,9 +908,9 @@ func (x *Font) GetUrl() string {
 	return ""
 }
 
-func (x *Font) GetSize() int64 {
+func (x *Font) GetSizeBytes() int64 {
 	if x != nil {
-		return x.Size
+		return x.SizeBytes
 	}
 	return 0
 }
@@ -1242,18 +1242,17 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\fVideoSupport\x12\x14\n" +
 	"\x05codec\x18\x01 \x01(\tR\x05codec\x12\"\n" +
 	"\rmax_bit_depth\x18\x02 \x01(\x05R\vmaxBitDepth\x12\x10\n" +
-	"\x03hdr\x18\x03 \x01(\bR\x03hdr\"\xd0\x02\n" +
+	"\x03hdr\x18\x03 \x01(\bR\x03hdr\"\xd9\x02\n" +
 	"\x14StartPlaybackRequest\x12\x17\n" +
 	"\aitem_id\x18\x01 \x01(\tR\x06itemId\x12\x17\n" +
 	"\afile_id\x18\x02 \x01(\tR\x06fileId\x121\n" +
 	"\x12audio_stream_index\x18\x03 \x01(\x05H\x00R\x10audioStreamIndex\x88\x01\x01\x121\n" +
 	"\x06device\x18\x04 \x01(\v2\x19.laterna.v1.DeviceProfileR\x06device\x12*\n" +
 	"\x0esubtitle_index\x18\x05 \x01(\x05H\x01R\rsubtitleIndex\x88\x01\x01\x12)\n" +
-	"\x10profile_subtitle\x18\x06 \x01(\bR\x0fprofileSubtitle\x12\x1f\n" +
-	"\vmax_bitrate\x18\a \x01(\x05R\n" +
-	"maxBitrateB\x15\n" +
+	"\x10profile_subtitle\x18\x06 \x01(\bR\x0fprofileSubtitle\x12(\n" +
+	"\x10max_bitrate_kbps\x18\a \x01(\x05R\x0emaxBitrateKbpsB\x15\n" +
 	"\x13_audio_stream_indexB\x11\n" +
-	"\x0f_subtitle_index\"\x80\t\n" +
+	"\x0f_subtitle_index\"\x92\t\n" +
 	"\x15StartPlaybackResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x122\n" +
@@ -1279,10 +1278,10 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\adecoder\x18\x15 \x01(\tR\adecoder\x124\n" +
 	"\bsegments\x18\x12 \x03(\v2\x18.laterna.v1.MediaSegmentR\bsegments\x12\x1d\n" +
 	"\n" +
-	"master_url\x18\x16 \x01(\tR\tmasterUrl\x12#\n" +
-	"\rbitrate_limit\x18\x17 \x01(\x05R\fbitrateLimit\x12P\n" +
-	"\x14bitrate_limit_source\x18\x18 \x01(\x0e2\x1e.laterna.v1.BitrateLimitSourceR\x12bitrateLimitSource\x12#\n" +
-	"\rvideo_bitrate\x18\x19 \x01(\x05R\fvideoBitrateB\x15\n" +
+	"master_url\x18\x16 \x01(\tR\tmasterUrl\x12,\n" +
+	"\x12bitrate_limit_kbps\x18\x17 \x01(\x05R\x10bitrateLimitKbps\x12P\n" +
+	"\x14bitrate_limit_source\x18\x18 \x01(\x0e2\x1e.laterna.v1.BitrateLimitSourceR\x12bitrateLimitSource\x12,\n" +
+	"\x12video_bitrate_kbps\x18\x19 \x01(\x05R\x10videoBitrateKbpsB\x15\n" +
 	"\x13_audio_stream_indexB\x18\n" +
 	"\x16_burned_subtitle_indexB\x11\n" +
 	"\x0f_subtitle_index\"\xca\x02\n" +
@@ -1301,11 +1300,12 @@ const file_laterna_v1_playback_proto_rawDesc = "" +
 	"\trendition\x18\v \x01(\tR\trendition\"8\n" +
 	"\fSubtitleFile\x12\x16\n" +
 	"\x06format\x18\x01 \x01(\tR\x06format\x12\x10\n" +
-	"\x03url\x18\x02 \x01(\tR\x03url\"B\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\"M\n" +
 	"\x04Font\x12\x14\n" +
 	"\x05names\x18\x01 \x03(\tR\x05names\x12\x10\n" +
-	"\x03url\x18\x02 \x01(\tR\x03url\x12\x12\n" +
-	"\x04size\x18\x03 \x01(\x03R\x04size\"\xac\x01\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\"\xac\x01\n" +
 	"\x15ReportProgressRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x125\n" +

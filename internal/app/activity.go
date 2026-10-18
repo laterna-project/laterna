@@ -19,15 +19,35 @@ const (
 	maxActivityLen     = 200
 )
 
-// record appends an entry to the activity log (timestamped by the server).
-func (a *App) record(ctx context.Context, e domain.Activity) {
+// record appends an entry to the activity log (timestamped by the server), and queues the alerts
+// it makes.
+func (a *App) record(ctx context.Context, e domain.Activity) { a.write(ctx, e, true) }
+
+// recordQuiet appends an entry that makes no alert: the failure of an alert, which would otherwise
+// make another one.
+func (a *App) recordQuiet(ctx context.Context, e domain.Activity) { a.write(ctx, e, false) }
+
+func (a *App) write(ctx context.Context, e domain.Activity, alerts bool) {
 	e.At = a.now()
 	a.metrics.activity.Inc(string(e.Kind))
 	// Detached context: the entry is written even if the request that caused it is over.
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
-	if err := a.store.Write(ctx, func(q store.Q) error { return q.AddActivity(ctx, e) }); err != nil {
+	queued := false
+	err := a.store.Write(ctx, func(q store.Q) error {
+		id, err := q.AddActivity(ctx, e)
+		if err != nil || !alerts {
+			return err
+		}
+		queued, err = a.queueAlerts(ctx, q, id, e)
+		return err
+	})
+	if err != nil {
 		a.log.WarnContext(ctx, "activity log: cannot write entry", "kind", e.Kind, "err", err)
+		return
+	}
+	if queued {
+		a.jobs.Kick()
 	}
 }
 

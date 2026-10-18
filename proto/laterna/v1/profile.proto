@@ -22,28 +22,28 @@ service ProfileService {
   // CreateProfile adds a profile to the account.
   rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // UpdateProfile changes a profile (name, PIN, kid profile).
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // DeleteProfile deletes a profile and its data (history, favorites).
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
   // SelectProfile picks the profile used by the current session.
   rpc SelectProfile(SelectProfileRequest) returns (SelectProfileResponse) {
     option (access) = ACCESS_ACCOUNT;
+    option (api_tokens) = API_TOKENS_NONE;
   }
-  // SetLanguage changes the language of the picked profile. Everyone sets their own, even from a
-  // restricted profile.
-  rpc SetLanguage(SetLanguageRequest) returns (SetLanguageResponse);
-  // SetSubtitlePreferences changes when playback starts with a subtitle, for the picked profile.
-  // Everyone sets their own, even from a restricted profile.
-  rpc SetSubtitlePreferences(SetSubtitlePreferencesRequest) returns (SetSubtitlePreferencesResponse);
-  // SetAudioPreferences changes the audio language playback starts with, for the picked profile.
-  // Everyone sets their own, even from a restricted profile.
-  rpc SetAudioPreferences(SetAudioPreferencesRequest) returns (SetAudioPreferencesResponse);
+  // UpdatePreferences changes the preferences of the picked profile: its language, when playback
+  // starts with a subtitle and in which language, the audio language playback starts with.
+  // Everyone sets their own, even from a restricted profile. The theme is set apart
+  // (ThemeService.SetMyTheme).
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
 }
 
 message Profile {
@@ -153,30 +153,18 @@ message SelectProfileResponse {
   Profile profile = 1;
 }
 
-message SetLanguageRequest {
-  // BCP 47 tag; empty means none.
-  string language = 1;
+// UpdatePreferencesRequest changes what it sets; unset leaves it unchanged. Languages are BCP 47
+// tags, as in Profile.
+message UpdatePreferencesRequest {
+  // Empty means none.
+  optional string language = 1;
+  optional SubtitleMode subtitle_mode = 2;
+  // Empty means the profile's language.
+  optional string subtitle_language = 3;
+  // Empty means the file's default stream.
+  optional string audio_language = 4;
 }
 
-message SetLanguageResponse {
-  Profile profile = 1;
-}
-
-message SetSubtitlePreferencesRequest {
-  SubtitleMode mode = 1;
-  // BCP 47 tag; empty means the profile's language.
-  string language = 2;
-}
-
-message SetSubtitlePreferencesResponse {
-  Profile profile = 1;
-}
-
-message SetAudioPreferencesRequest {
-  // BCP 47 tag; empty means the file's default stream.
-  string language = 1;
-}
-
-message SetAudioPreferencesResponse {
+message UpdatePreferencesResponse {
   Profile profile = 1;
 }

@@ -215,7 +215,7 @@ func (a *App) Authenticate(ctx context.Context, token, ip string) (domain.Princi
 	if account.Disabled {
 		return domain.Principal{}, domain.Unauthenticated("auth.account_disabled")
 	}
-	p := domain.Principal{SessionID: s.ID, Account: account}
+	p := domain.Principal{SessionID: s.ID, Account: account, APIToken: s.APIToken, ReadOnly: s.ReadOnly}
 	if s.ProfileID != nil {
 		profile, _, err := read.Profile(ctx, *s.ProfileID)
 		if err != nil {
@@ -224,8 +224,12 @@ func (a *App) Authenticate(ctx context.Context, token, ip string) (domain.Princi
 		p.Profile = &profile
 	}
 	if now.Sub(s.LastUsedAt) >= touchInterval || ip != s.LastIP {
+		expires := now.Add(sessionLifetime)
+		if s.APIToken {
+			expires = s.ExpiresAt // an API token does not expire, and is never extended
+		}
 		if err := a.store.Write(ctx, func(q store.Q) error {
-			return q.TouchSession(ctx, s.ID, now, now.Add(sessionLifetime), ip)
+			return q.TouchSession(ctx, s.ID, now, expires, ip)
 		}); err != nil {
 			// A valid session stays valid even if the timestamp could not be written.
 			a.log.WarnContext(ctx, "cannot update session", "session", s.ID, "err", err)

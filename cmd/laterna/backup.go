@@ -18,7 +18,7 @@ import (
 func backupCommand(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	_, dirs, err := loadConfig(fs, args)
+	_, dirs, err := loadConfig(fs, args, console)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func backupCommand(ctx context.Context, args []string, stdout, stderr io.Writer)
 func restoreCommand(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	_, dirs, err := loadConfig(fs, args)
+	_, dirs, err := loadConfig(fs, args, console)
 	if err != nil {
 		return err
 	}

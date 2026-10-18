@@ -12,13 +12,16 @@ const (
 	SortAdded    ItemSort = "added"
 	SortReleased ItemSort = "released"
 	SortRating   ItemSort = "rating"
+	// SortAlbum goes album by album, oldest first, each in disc order: the tracks of an artist only.
+	SortAlbum ItemSort = "album"
 )
 
-// Valid reports a known order.
+// Valid reports a known order of the lists of every kind (SortAlbum is not one).
 func (s ItemSort) Valid() bool {
 	switch s {
 	case SortTitle, SortAdded, SortReleased, SortRating:
 		return true
+	case SortAlbum:
 	}
 	return false
 }

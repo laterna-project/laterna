@@ -10,7 +10,8 @@ import (
 
 // backupFiles serves a database backup: GET /backups/{name}, so that it can be stored somewhere
 // safe. Only for administrators on an unrestricted profile, with the "Authorization: Bearer"
-// header: a backup holds everything, password hashes included.
+// header: a backup holds everything, password hashes included. A read-only API token reads no
+// backup; a full one can, for a backup script.
 func backupFiles(a *app.App, log *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p, ok := bearer(a, log, w, r)
@@ -19,6 +20,10 @@ func backupFiles(a *app.App, log *slog.Logger) http.Handler {
 		}
 		if !p.CanAdminister() {
 			writeError(w, r, http.StatusForbidden, domain.T("error.auth.admin_only"))
+			return
+		}
+		if p.APIToken && p.ReadOnly {
+			writeError(w, r, http.StatusForbidden, domain.T("error.auth.read_only_token"))
 			return
 		}
 		f, err := a.OpenBackup(r.PathValue("file"))
