@@ -46,7 +46,7 @@ the server up. `docker compose logs -f laterna` shows what it does.
   minor version yourself after reading its release notes. The server backs its database up before
   migrating it.
 - **These files:** `main` holds those of the latest release, and `git pull` brings the next
-  release's. `--branch v0.6.0` keeps those of one release; `develop` has the ones being written.
+  release's. `--branch v1.0.0` keeps those of one release; `develop` has the ones being written.
 - **Data:** the `config` volume holds the database, logs, images and backups: it is the one to
   keep. `cache` can be thrown away. `docker compose down` keeps both; `down -v` deletes them.
 

@@ -31,8 +31,9 @@ Versions follow [Semantic Versioning](https://semver.org/). What counts as the p
 - the on-disk layout that users touch (backup names, folders);
 - metric names.
 
-While the version is `0.x`, a minor version may change any of these, and the release notes say
-how to upgrade. Patch versions only fix. From `1.0` on, a breaking change needs a major version.
+Since `1.0`, a minor version only adds to these, a patch version only fixes, and a breaking
+change needs a major version. (Before `1.0`, a minor version could change any of them; the
+release notes of each `0.x` say how to upgrade.)
 
 Two things are stricter than SemVer asks:
 
@@ -49,18 +50,18 @@ tag for a release, and `git describe` output for anything else.
 ```sh
 # 1. Branch from develop. From here on, develop is open for the next version.
 git switch develop && git pull
-git switch -c release/0.2.0
-git push -u origin release/0.2.0
+git switch -c release/1.1.0
+git push -u origin release/1.1.0
 
-# 2. Stabilize: only fixes, each by pull request into release/0.2.0.
+# 2. Stabilize: only fixes, each by pull request into release/1.1.0.
 #    Optional release candidate, built and published as a pre-release:
-git tag -a v0.2.0-rc.1 -m "v0.2.0-rc.1" && git push origin v0.2.0-rc.1
+git tag -a v1.1.0-rc.1 -m "v1.1.0-rc.1" && git push origin v1.1.0-rc.1
 
 # 3. Release: merge into main with a merge commit, then tag main.
-gh pr create --base main --head release/0.2.0 --title "🔖 Release 0.2.0" --body ""
+gh pr create --base main --head release/1.1.0 --title "🔖 Release 1.1.0" --body ""
 gh pr merge --merge
 git switch main && git pull
-git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0
+git tag -a v1.1.0 -m "v1.1.0" && git push origin v1.1.0
 
 # 4. Bring the fixes back to develop.
 gh pr create --base develop --head main --title "🔀 Merge release 0.2.0 into develop" --body ""
@@ -92,8 +93,8 @@ To see what a release would contain without publishing anything, run the workflo
 
 ```sh
 git switch main && git pull
-git switch -c hotfix/0.2.1
-# fix, push, then the same steps 3 and 4 as a release, with v0.2.1
+git switch -c hotfix/1.1.1
+# fix, push, then the same steps 3 and 4 as a release, with v1.1.1
 ```
 
 ## Updating FFmpeg
@@ -119,12 +120,17 @@ pinned in [`packaging/web.lock`](../packaging/web.lock) by version and SHA-256. 
 own pull request:
 
 ```sh
-sh packaging/update-web.sh 0.2.0
+sh packaging/update-web.sh 0.10.0
 ```
 
 The script takes the SHA-256 from the release's `checksums.txt`. CI then builds the image with that
 client and its smoke test checks that the page and its script load. The weekly workflow says when
 a newer client is released.
+
+Laterna Web is generated from a tagged server release, so a release whose image needs a new client
+goes in this order: tag a release candidate on the release branch, generate and release the client
+from it, pin that client on the release branch, then tag the release. That is how 1.0.0 shipped with
+Laterna Web 0.10.0.
 
 ## Repository settings
 
