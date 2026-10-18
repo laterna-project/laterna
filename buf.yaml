@@ -8,8 +8,3 @@ breaking:
   # File level: a generated client must keep compiling and working.
   use:
     - FILE
-  # The contract 1.0 renamed and removed fields before laterna.v1 is frozen. Until the release that
-  # carries it is on main, the comparison would refuse it on every branch: remove these lines once
-  # it is out, and laterna.v1 only grows from then on.
-  ignore:
-    - proto/laterna/v1
