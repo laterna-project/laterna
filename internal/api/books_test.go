@@ -44,7 +44,7 @@ func libraryServer(t *testing.T, kind domain.LibraryKind, dir string) (string, s
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.CreateLibrary(ctx, dir, kind, []string{filepath.Join(testfixtures.Root(), dir)}, ""); err != nil {
+	if _, err := a.CreateLibrary(ctx, dir, kind, []string{filepath.Join(testfixtures.Root(), dir)}); err != nil {
 		t.Fatal(err)
 	}
 	for deadline := time.Now().Add(90 * time.Second); ; time.Sleep(20 * time.Millisecond) {

@@ -198,8 +198,8 @@ message Account {
   // At most this many requests in seven days; 0 for no limit. Administrators have none.
   int32 request_quota = 11;
   // Highest bitrate of its playbacks from outside the local network, in kbit/s; 0 means only the
-  // server's limit (Settings.remote_max_bitrate). The lower of the two applies.
-  int32 remote_max_bitrate = 12;
+  // server's limit (Settings.remote_max_bitrate_kbps). The lower of the two applies.
+  int32 remote_max_bitrate_kbps = 12;
 }
 
 // LibraryAccess says which libraries an account may browse. The others do not exist for it: lists,
@@ -460,12 +460,17 @@ message StartOidcLoginRequest {
 }
 
 message StartOidcLoginResponse {
+  reserved 4;
+  reserved "expires_in";
+
   // Secret ID of the login, to pass to PollOidcLogin.
   string login_id = 1;
   // URL to open in a browser.
   string authorization_url = 2;
+  // Minimum time between two polls.
   google.protobuf.Duration interval = 3;
-  google.protobuf.Duration expires_in = 4;
+  // Past it, the login is over: start again.
+  google.protobuf.Timestamp expires_at = 5;
 }
 
 enum OidcLoginState {

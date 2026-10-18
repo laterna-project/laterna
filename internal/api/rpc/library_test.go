@@ -35,7 +35,7 @@ func TestLibraryServiceOverHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	lib := created.Msg.GetLibrary()
-	if lib.GetKind() != laternav1.LibraryKind_LIBRARY_KIND_MOVIES || lib.GetLanguage() != "en-US" ||
+	if lib.GetKind() != laternav1.LibraryKind_LIBRARY_KIND_MOVIES ||
 		len(lib.GetPaths()) != 1 || lib.LastScanAt != nil {
 		t.Errorf("library created: %v", lib)
 	}

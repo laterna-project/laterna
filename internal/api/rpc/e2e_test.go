@@ -393,7 +393,7 @@ func TestCollectionsAndPlaylistsOverHTTP(t *testing.T) {
 	if _, err := playlists.AddToPlaylist(ctx, withToken(&laternav1.AddToPlaylistRequest{PlaylistId: id, ItemIds: []string{domain.NewID().String()}}, token)); code(err) != connect.CodeNotFound {
 		t.Errorf("unknown item: %v", err)
 	}
-	renamed, err := playlists.RenamePlaylist(ctx, withToken(&laternav1.RenamePlaylistRequest{PlaylistId: id, Name: "Friday"}, token))
+	renamed, err := playlists.UpdatePlaylist(ctx, withToken(&laternav1.UpdatePlaylistRequest{PlaylistId: id, Name: new("Friday")}, token))
 	if err != nil || renamed.Msg.GetPlaylist().GetName() != "Friday" {
 		t.Errorf("rename: %v %v", renamed, err)
 	}

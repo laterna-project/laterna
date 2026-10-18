@@ -362,8 +362,9 @@ type RequestableTitle struct {
 	RequestId string `protobuf:"bytes,9,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// Series: seasons, specials excluded.
 	SeasonCount int32 `protobuf:"varint,10,opt,name=season_count,json=seasonCount,proto3" json:"season_count,omitempty"`
-	// Network of a series, studio of a movie, artist of an album, author of a book.
-	Network string `protobuf:"bytes,11,opt,name=network,proto3" json:"network,omitempty"`
+	// Line under the title: network of a series, studio of a movie, artist of an album, author of a
+	// book.
+	Subtitle string `protobuf:"bytes,11,opt,name=subtitle,proto3" json:"subtitle,omitempty"`
 	// MusicBrainz ID of an artist or of an album's release group, OpenLibrary work ID of a book;
 	// empty for series and movies.
 	ExternalKey   string `protobuf:"bytes,12,opt,name=external_key,json=externalKey,proto3" json:"external_key,omitempty"`
@@ -471,9 +472,9 @@ func (x *RequestableTitle) GetSeasonCount() int32 {
 	return 0
 }
 
-func (x *RequestableTitle) GetNetwork() string {
+func (x *RequestableTitle) GetSubtitle() string {
 	if x != nil {
-		return x.Network
+		return x.Subtitle
 	}
 	return ""
 }
@@ -2216,10 +2217,10 @@ func (*DeleteRequestResponse) Descriptor() ([]byte, []int) {
 type RequestRootFolder struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Path  string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-	// Free space on the instance, in bytes; 0 if unknown.
-	FreeSpace     int64 `protobuf:"varint,2,opt,name=free_space,json=freeSpace,proto3" json:"free_space,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Free space on the instance; 0 if unknown.
+	FreeSpaceBytes int64 `protobuf:"varint,2,opt,name=free_space_bytes,json=freeSpaceBytes,proto3" json:"free_space_bytes,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RequestRootFolder) Reset() {
@@ -2259,9 +2260,9 @@ func (x *RequestRootFolder) GetPath() string {
 	return ""
 }
 
-func (x *RequestRootFolder) GetFreeSpace() int64 {
+func (x *RequestRootFolder) GetFreeSpaceBytes() int64 {
 	if x != nil {
-		return x.FreeSpace
+		return x.FreeSpaceBytes
 	}
 	return 0
 }
@@ -2802,7 +2803,7 @@ var File_laterna_v1_request_proto protoreflect.FileDescriptor
 const file_laterna_v1_request_proto_rawDesc = "" +
 	"\n" +
 	"\x18laterna/v1/request.proto\x12\n" +
-	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\x1a\x15laterna/v1/text.proto\"\x91\x03\n" +
+	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\x1a\x15laterna/v1/text.proto\"\x93\x03\n" +
 	"\x10RequestableTitle\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x1f\n" +
 	"\vexternal_id\x18\x02 \x01(\x03R\n" +
@@ -2817,8 +2818,8 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\t \x01(\tR\trequestId\x12!\n" +
 	"\fseason_count\x18\n" +
-	" \x01(\x05R\vseasonCount\x12\x18\n" +
-	"\anetwork\x18\v \x01(\tR\anetwork\x12!\n" +
+	" \x01(\x05R\vseasonCount\x12\x1a\n" +
+	"\bsubtitle\x18\v \x01(\tR\bsubtitle\x12!\n" +
 	"\fexternal_key\x18\f \x01(\tR\vexternalKey\"]\n" +
 	"\x18SearchRequestableRequest\x12+\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x17.laterna.v1.RequestKindR\x04kind\x12\x14\n" +
@@ -2961,11 +2962,10 @@ const file_laterna_v1_request_proto_rawDesc = "" +
 	"\x14DeleteRequestRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\"\x17\n" +
-	"\x15DeleteRequestResponse\"F\n" +
+	"\x15DeleteRequestResponse\"Q\n" +
 	"\x11RequestRootFolder\x12\x12\n" +
-	"\x04path\x18\x01 \x01(\tR\x04path\x12\x1d\n" +
-	"\n" +
-	"free_space\x18\x02 \x01(\x03R\tfreeSpace\"\x89\x01\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12(\n" +
+	"\x10free_space_bytes\x18\x02 \x01(\x03R\x0efreeSpaceBytes\"\x89\x01\n" +
 	"\x15RequestQualityProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +

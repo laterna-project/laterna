@@ -24,9 +24,9 @@ func TestCollectionsFromNFOAndByHand(t *testing.T) {
 		copyTree(t, filepath.Join(testfixtures.Root(), "Movies", name), dir)
 		writeText(t, filepath.Join(dir, "movie.nfo"), "<movie><title>"+name[:len(name)-7]+"</title>"+set+"</movie>")
 	}
-	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root})
 	mustNil(t, err)
-	_, err = a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")}, "")
+	_, err = a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")})
 	mustNil(t, err)
 	waitIdle(t, a)
 
@@ -107,7 +107,7 @@ func TestPlaylistsOfAProfile(t *testing.T) {
 	}
 	a, _, p, movies := moviesByTitle(t)
 	ctx := context.Background()
-	_, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")}, "")
+	_, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")})
 	mustNil(t, err)
 	waitIdle(t, a)
 	series, err := a.ListSeries(ctx, p, ListQuery{})
@@ -148,12 +148,15 @@ func TestPlaylistsOfAProfile(t *testing.T) {
 	if _, err := a.RemoveFromPlaylist(ctx, p, pl.ID, []domain.ID{domain.NewID()}); !isKind(err, domain.ErrNotFound) {
 		t.Errorf("unknown entry: %v", err)
 	}
-	renamed, err := a.RenamePlaylist(ctx, p, pl.ID, "Watch all")
+	renamed, err := a.UpdatePlaylist(ctx, p, pl.ID, new("Watch all"))
 	mustNil(t, err)
 	if renamed.Name != "Watch all" || renamed.EntryCount != 5 {
 		t.Errorf("renamed: %+v", renamed)
 	}
-	if _, err := a.RenamePlaylist(ctx, p, pl.ID, " "); !isKind(err, domain.ErrInvalid) {
+	if same, err := a.UpdatePlaylist(ctx, p, pl.ID, nil); err != nil || same.Name != "Watch all" {
+		t.Errorf("nothing changed: %+v %v", same, err)
+	}
+	if _, err := a.UpdatePlaylist(ctx, p, pl.ID, new(" ")); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("empty name: %v", err)
 	}
 

@@ -188,7 +188,7 @@ func filesMsg(files []app.FileVersion) []*laternav1.MediaFile {
 		f := fv.File
 		msg := &laternav1.MediaFile{
 			Id: f.ID.String(), Version: fv.Version, Part: clampInt32(fv.Part), Available: f.MissingSince == nil,
-			Container: f.Info.Container, Duration: durationMsg(f.Info.Duration), Size: f.Size, Bitrate: f.Info.Bitrate,
+			Container: f.Info.Container, Duration: durationMsg(f.Info.Duration), SizeBytes: f.Size, Bitrate: f.Info.Bitrate,
 		}
 		for _, s := range f.Info.Streams {
 			kind, ok := streamKinds[s.Kind]
@@ -233,6 +233,8 @@ func itemSortFromMsg(s laternav1.ItemSort) domain.ItemSort {
 		return domain.SortReleased
 	case laternav1.ItemSort_ITEM_SORT_RATING:
 		return domain.SortRating
+	case laternav1.ItemSort_ITEM_SORT_ALBUM:
+		return domain.SortAlbum
 	case laternav1.ItemSort_ITEM_SORT_UNSPECIFIED, laternav1.ItemSort_ITEM_SORT_TITLE:
 		return domain.SortTitle
 	}

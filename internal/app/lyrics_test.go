@@ -31,7 +31,7 @@ func TestLyrics(t *testing.T) {
 	copyFixture(t, "Music/Artist Test/Album Test (2020)/02 - Track Two.mp3", filepath.Join(album, "02 - Track Two.mp3"))
 	lrc := filepath.Join(album, "02 - Track Two.lrc")
 	mustNil(t, os.WriteFile(lrc, []byte("[ti:Track Two]\n[00:01.50]Caf\xe9 au lait\n[00:00.50]Intro\n"), 0o600))
-	lib, err := a.CreateLibrary(ctx, "Music", domain.LibraryMusic, []string{filepath.Dir(filepath.Dir(album))}, "")
+	lib, err := a.CreateLibrary(ctx, "Music", domain.LibraryMusic, []string{filepath.Dir(filepath.Dir(album))})
 	mustNil(t, err)
 	waitIdle(t, a)
 

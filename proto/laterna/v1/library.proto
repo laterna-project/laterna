@@ -72,13 +72,14 @@ enum LibraryKind {
 }
 
 message Library {
+  reserved 5;
+  reserved "language";
+
   string id = 1;
   string name = 2;
   LibraryKind kind = 3;
   // Absolute folders, as the server sees them.
   repeated string paths = 4;
-  // Language of the metadata (BCP 47, "en-US").
-  string language = 5;
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
   // End of the last successful scan; unset if the library was never scanned.
@@ -122,12 +123,13 @@ message ListLibrariesResponse {
 }
 
 message CreateLibraryRequest {
+  reserved 4;
+  reserved "language";
+
   string name = 1;
   LibraryKind kind = 2;
   // At least one absolute, existing folder that overlaps no other library.
   repeated string paths = 3;
-  // Empty means "en-US".
-  string language = 4;
 }
 
 message CreateLibraryResponse {
@@ -135,11 +137,13 @@ message CreateLibraryResponse {
 }
 
 message UpdateLibraryRequest {
+  reserved 4;
+  reserved "language";
+
   string library_id = 1;
   optional string name = 2;
   // New full list of folders; empty leaves it unchanged (a library always has at least one folder).
   repeated string paths = 3;
-  optional string language = 4;
 }
 
 message UpdateLibraryResponse {

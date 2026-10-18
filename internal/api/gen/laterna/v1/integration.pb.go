@@ -111,7 +111,7 @@ type Integration struct {
 	// unset if the instance answers.
 	ErrorText *Text `protobuf:"bytes,13,opt,name=error_text,json=errorText,proto3" json:"error_text,omitempty"`
 	// The instance writes Kodi metadata and takes a webhook and a refresh (Sonarr, Radarr, Lidarr):
-	// the fields above and ConfigureIntegration apply. False for LazyLibrarian.
+	// the fields above and ConfigureIntegration apply. False for LazyLibrarian and Bazarr.
 	ManagesMetadata bool `protobuf:"varint,14,opt,name=manages_metadata,json=managesMetadata,proto3" json:"manages_metadata,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache

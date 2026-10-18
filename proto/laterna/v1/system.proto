@@ -195,8 +195,8 @@ message Settings {
   // (StartDeviceLoginResponse.verification_url).
   string web_url = 14;
   // Highest bitrate of a playback from outside the local network, in kbit/s (500 to 1,000,000); 0
-  // means no limit. An account may have a lower one (Account.remote_max_bitrate).
-  int32 remote_max_bitrate = 15;
+  // means no limit. An account may have a lower one (Account.remote_max_bitrate_kbps).
+  int32 remote_max_bitrate_kbps = 15;
   // Networks counted as local ("192.168.1.0/24", "fd00::/8"; 32 at most), whose playbacks are never
   // limited by the server. Empty means the private, loopback and link-local ranges. The client
   // address is the one seen by the server, or given by a trusted proxy (server.trusted_proxies):
@@ -233,7 +233,7 @@ message UpdateSettingsRequest {
   optional string language = 13;
   optional string web_url = 14;
   // 0 means no limit.
-  optional int32 remote_max_bitrate = 15;
+  optional int32 remote_max_bitrate_kbps = 15;
   // An empty list means the private ranges.
   StringList local_networks = 16;
 }
@@ -341,7 +341,7 @@ message ListLogsResponse {
 message LogFile {
   // Name to pass to GET /logs/{name} ("laterna_20260930.log").
   string name = 1;
-  int64 size = 2;
+  int64 size_bytes = 2;
   google.protobuf.Timestamp modified_at = 3;
 }
 

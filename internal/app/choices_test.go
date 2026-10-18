@@ -15,7 +15,7 @@ func TestSeriesChoices(t *testing.T) {
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	lib, err := a.CreateLibrary(ctx, "Anime", domain.LibraryShows, []string{testRoot("Anime")}, "")
+	lib, err := a.CreateLibrary(ctx, "Anime", domain.LibraryShows, []string{testRoot("Anime")})
 	mustNil(t, err)
 	waitIdle(t, a)
 	anime := itemByKey(t, a, lib, "series:Anime Test")
@@ -45,7 +45,7 @@ func TestSeriesChoices(t *testing.T) {
 
 	// Nothing chosen: the file's default audio, and French subtitles under audio in another
 	// language.
-	prof, err := a.SetSubtitlePreferences(ctx, p, domain.SubtitleAuto, "fr")
+	prof, err := a.UpdatePreferences(ctx, p, subtitlePreferences(domain.SubtitleAuto, "fr"))
 	mustNil(t, err)
 	p.Profile = &prof
 	info := play(p, 1, -1)
@@ -53,16 +53,16 @@ func TestSeriesChoices(t *testing.T) {
 	stop(p, info)
 
 	// The profile prefers French audio: French, and no subtitle under audio in its language.
-	prof, err = a.SetAudioPreferences(ctx, p, "fr-FR")
+	prof, err = a.UpdatePreferences(ctx, p, PreferenceChanges{AudioLanguage: new("fr-FR")})
 	mustNil(t, err)
-	if prof.AudioLanguage != "fr-FR" {
-		t.Errorf("audio language: %q", prof.AudioLanguage)
+	if prof.AudioLanguage != "fr-FR" || prof.SubtitleLanguage != "fr" || prof.SubtitleMode != domain.SubtitleAuto {
+		t.Errorf("audio language, subtitles kept: %+v", prof)
 	}
 	p.Profile = &prof
 	info = play(p, 1, -1)
 	check("profile's audio language", info, french, -1)
 	stop(p, info)
-	if _, err := a.SetAudioPreferences(ctx, p, "not a language!"); !isKind(err, domain.ErrInvalid) {
+	if _, err := a.UpdatePreferences(ctx, p, PreferenceChanges{AudioLanguage: new("not a language!")}); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("invalid language: %v", err)
 	}
 
@@ -91,4 +91,9 @@ func TestSeriesChoices(t *testing.T) {
 	info = play(tom, 2, -1)
 	check("another profile", info, japanese, -1)
 	stop(tom, info)
+}
+
+// subtitlePreferences changes when playback starts with a subtitle, and in which language.
+func subtitlePreferences(mode domain.SubtitleMode, language string) PreferenceChanges {
+	return PreferenceChanges{SubtitleMode: &mode, SubtitleLanguage: &language}
 }

@@ -1,6 +1,6 @@
 -- name: InsertLibrary :exec
-INSERT INTO libraries (id, name, name_key, kind, language, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO libraries (id, name, name_key, kind, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: GetLibrary :one
 SELECT * FROM libraries WHERE id = ?;
@@ -15,7 +15,7 @@ ORDER BY position = 0, position,
 UPDATE libraries SET position = ? WHERE id = ?;
 
 -- name: UpdateLibrary :exec
-UPDATE libraries SET name = ?, name_key = ?, language = ?, updated_at = ? WHERE id = ?;
+UPDATE libraries SET name = ?, name_key = ?, updated_at = ? WHERE id = ?;
 
 -- name: SetLibraryScanned :exec
 UPDATE libraries SET last_scan_at = ? WHERE id = ?;

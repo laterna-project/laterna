@@ -33,7 +33,7 @@ func subtitledMovie(t *testing.T) (*App, domain.Principal, domain.Item, domain.M
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	_, err = a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
+	_, err = a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root})
 	mustNil(t, err)
 	waitIdle(t, a)
 	page, err := a.ListMovies(ctx, p, ListQuery{PageSize: 10})
@@ -283,7 +283,7 @@ func TestPlaybackPicksProfileSubtitle(t *testing.T) {
 	}
 	prefer := func(mode domain.SubtitleMode, lang string) {
 		t.Helper()
-		profile, err := a.SetSubtitlePreferences(ctx, p, mode, lang)
+		profile, err := a.UpdatePreferences(ctx, p, subtitlePreferences(mode, lang))
 		mustNil(t, err)
 		p.Profile = &profile
 	}
@@ -328,10 +328,10 @@ func TestPlaybackPicksProfileSubtitle(t *testing.T) {
 		t.Errorf("German PGS: %d, burned %v, %s", picked(info), info.Burned, info.Method)
 	}
 
-	if _, err := a.SetSubtitlePreferences(ctx, p, "sometimes", ""); !isKind(err, domain.ErrInvalid) {
+	if _, err := a.UpdatePreferences(ctx, p, subtitlePreferences("sometimes", "")); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("unknown mode: %v", err)
 	}
-	if _, err := a.SetSubtitlePreferences(ctx, p, domain.SubtitleAuto, "not a tag!"); !isKind(err, domain.ErrInvalid) {
+	if _, err := a.UpdatePreferences(ctx, p, subtitlePreferences(domain.SubtitleAuto, "not a tag!")); !isKind(err, domain.ErrInvalid) {
 		t.Errorf("bad language: %v", err)
 	}
 }

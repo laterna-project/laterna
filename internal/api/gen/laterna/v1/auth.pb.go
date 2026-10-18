@@ -237,10 +237,10 @@ type Account struct {
 	// At most this many requests in seven days; 0 for no limit. Administrators have none.
 	RequestQuota int32 `protobuf:"varint,11,opt,name=request_quota,json=requestQuota,proto3" json:"request_quota,omitempty"`
 	// Highest bitrate of its playbacks from outside the local network, in kbit/s; 0 means only the
-	// server's limit (Settings.remote_max_bitrate). The lower of the two applies.
-	RemoteMaxBitrate int32 `protobuf:"varint,12,opt,name=remote_max_bitrate,json=remoteMaxBitrate,proto3" json:"remote_max_bitrate,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// server's limit (Settings.remote_max_bitrate_kbps). The lower of the two applies.
+	RemoteMaxBitrateKbps int32 `protobuf:"varint,12,opt,name=remote_max_bitrate_kbps,json=remoteMaxBitrateKbps,proto3" json:"remote_max_bitrate_kbps,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Account) Reset() {
@@ -350,9 +350,9 @@ func (x *Account) GetRequestQuota() int32 {
 	return 0
 }
 
-func (x *Account) GetRemoteMaxBitrate() int32 {
+func (x *Account) GetRemoteMaxBitrateKbps() int32 {
 	if x != nil {
-		return x.RemoteMaxBitrate
+		return x.RemoteMaxBitrateKbps
 	}
 	return 0
 }
@@ -2719,11 +2719,13 @@ type StartOidcLoginResponse struct {
 	// Secret ID of the login, to pass to PollOidcLogin.
 	LoginId string `protobuf:"bytes,1,opt,name=login_id,json=loginId,proto3" json:"login_id,omitempty"`
 	// URL to open in a browser.
-	AuthorizationUrl string               `protobuf:"bytes,2,opt,name=authorization_url,json=authorizationUrl,proto3" json:"authorization_url,omitempty"`
-	Interval         *durationpb.Duration `protobuf:"bytes,3,opt,name=interval,proto3" json:"interval,omitempty"`
-	ExpiresIn        *durationpb.Duration `protobuf:"bytes,4,opt,name=expires_in,json=expiresIn,proto3" json:"expires_in,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	AuthorizationUrl string `protobuf:"bytes,2,opt,name=authorization_url,json=authorizationUrl,proto3" json:"authorization_url,omitempty"`
+	// Minimum time between two polls.
+	Interval *durationpb.Duration `protobuf:"bytes,3,opt,name=interval,proto3" json:"interval,omitempty"`
+	// Past it, the login is over: start again.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StartOidcLoginResponse) Reset() {
@@ -2777,9 +2779,9 @@ func (x *StartOidcLoginResponse) GetInterval() *durationpb.Duration {
 	return nil
 }
 
-func (x *StartOidcLoginResponse) GetExpiresIn() *durationpb.Duration {
+func (x *StartOidcLoginResponse) GetExpiresAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.ExpiresIn
+		return x.ExpiresAt
 	}
 	return nil
 }
@@ -2917,7 +2919,7 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06client\x18\x02 \x01(\tR\x06client\x12%\n" +
 	"\x0eclient_version\x18\x03 \x01(\tR\rclientVersion\x12\x1a\n" +
-	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xec\x03\n" +
+	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xf5\x03\n" +
 	"\aAccount\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x19\n" +
@@ -2931,8 +2933,8 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\rdeny_requests\x18\t \x01(\bR\fdenyRequests\x122\n" +
 	"\x15auto_approve_requests\x18\n" +
 	" \x01(\bR\x13autoApproveRequests\x12#\n" +
-	"\rrequest_quota\x18\v \x01(\x05R\frequestQuota\x12,\n" +
-	"\x12remote_max_bitrate\x18\f \x01(\x05R\x10remoteMaxBitrate\"B\n" +
+	"\rrequest_quota\x18\v \x01(\x05R\frequestQuota\x125\n" +
+	"\x17remote_max_bitrate_kbps\x18\f \x01(\x05R\x14remoteMaxBitrateKbps\"B\n" +
 	"\rLibraryAccess\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1f\n" +
 	"\vlibrary_ids\x18\x02 \x03(\tR\n" +
@@ -3078,13 +3080,14 @@ const file_laterna_v1_auth_proto_rawDesc = "" +
 	"\asession\x18\x01 \x01(\v2\x13.laterna.v1.SessionR\asession\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"C\n" +
 	"\x15StartOidcLoginRequest\x12*\n" +
-	"\x06device\x18\x01 \x01(\v2\x12.laterna.v1.DeviceR\x06device\"\xd1\x01\n" +
+	"\x06device\x18\x01 \x01(\v2\x12.laterna.v1.DeviceR\x06device\"\xe4\x01\n" +
 	"\x16StartOidcLoginResponse\x12\x19\n" +
 	"\blogin_id\x18\x01 \x01(\tR\aloginId\x12+\n" +
 	"\x11authorization_url\x18\x02 \x01(\tR\x10authorizationUrl\x125\n" +
-	"\binterval\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\binterval\x128\n" +
+	"\binterval\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\binterval\x129\n" +
 	"\n" +
-	"expires_in\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\texpiresIn\"1\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAtJ\x04\b\x04\x10\x05R\n" +
+	"expires_in\"1\n" +
 	"\x14PollOidcLoginRequest\x12\x19\n" +
 	"\blogin_id\x18\x01 \x01(\tR\aloginId\"\xdd\x01\n" +
 	"\x15PollOidcLoginResponse\x120\n" +
@@ -3244,7 +3247,7 @@ var file_laterna_v1_auth_proto_depIdxs = []int32{
 	5,  // 34: laterna.v1.FinishPasskeyLoginResponse.session:type_name -> laterna.v1.Session
 	2,  // 35: laterna.v1.StartOidcLoginRequest.device:type_name -> laterna.v1.Device
 	57, // 36: laterna.v1.StartOidcLoginResponse.interval:type_name -> google.protobuf.Duration
-	57, // 37: laterna.v1.StartOidcLoginResponse.expires_in:type_name -> google.protobuf.Duration
+	54, // 37: laterna.v1.StartOidcLoginResponse.expires_at:type_name -> google.protobuf.Timestamp
 	1,  // 38: laterna.v1.PollOidcLoginResponse.state:type_name -> laterna.v1.OidcLoginState
 	5,  // 39: laterna.v1.PollOidcLoginResponse.session:type_name -> laterna.v1.Session
 	58, // 40: laterna.v1.PollOidcLoginResponse.message_text:type_name -> laterna.v1.Text

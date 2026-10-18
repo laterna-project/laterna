@@ -228,7 +228,6 @@ type Library struct {
 	Name       string
 	NameKey    string
 	Kind       string
-	Language   string
 	CreatedAt  int64
 	UpdatedAt  int64
 	LastScanAt sql.NullInt64

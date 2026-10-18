@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -15,12 +14,7 @@ import (
 	"github.com/laterna-project/laterna/internal/store"
 )
 
-const (
-	maxLibraryNameLen = 60
-	defaultLanguage   = "en-US"
-)
-
-var languageTag = regexp.MustCompile(`^[a-z]{2,3}(-[A-Z]{2})?$`)
+const maxLibraryNameLen = 60
 
 // LibraryInfo is a library and its item counts.
 type LibraryInfo struct {
@@ -30,9 +24,8 @@ type LibraryInfo struct {
 
 // LibraryChanges describes a change to a library; a nil field is left alone.
 type LibraryChanges struct {
-	Name     *string
-	Paths    []string
-	Language *string
+	Name  *string
+	Paths []string
 }
 
 // Libraries lists the libraries with their item counts.
@@ -55,7 +48,7 @@ func (a *App) Libraries(ctx context.Context) ([]LibraryInfo, error) {
 
 // CreateLibrary creates a library and starts its first scan. Administrators only (checked by the
 // API layer from the contract).
-func (a *App) CreateLibrary(ctx context.Context, name string, kind domain.LibraryKind, paths []string, language string) (domain.Library, error) {
+func (a *App) CreateLibrary(ctx context.Context, name string, kind domain.LibraryKind, paths []string) (domain.Library, error) {
 	name = strings.TrimSpace(name)
 	if err := validateLibraryName(name); err != nil {
 		return domain.Library{}, err
@@ -63,14 +56,8 @@ func (a *App) CreateLibrary(ctx context.Context, name string, kind domain.Librar
 	if !kind.Valid() {
 		return domain.Library{}, domain.Invalid("library.unknown_kind")
 	}
-	if language == "" {
-		language = defaultLanguage
-	}
-	if !languageTag.MatchString(language) {
-		return domain.Library{}, domain.Invalid("library.invalid_language", "language", language)
-	}
 	now := a.now()
-	lib := domain.Library{ID: domain.NewID(), Name: name, Kind: kind, Language: language, CreatedAt: now, UpdatedAt: now}
+	lib := domain.Library{ID: domain.NewID(), Name: name, Kind: kind, CreatedAt: now, UpdatedAt: now}
 	err := a.store.Write(ctx, func(q store.Q) error {
 		var err error
 		if lib.Paths, err = a.checkPaths(ctx, q, paths, lib.ID); err != nil {
@@ -112,12 +99,6 @@ func (a *App) UpdateLibrary(ctx context.Context, id domain.ID, ch LibraryChanges
 				return err
 			}
 			lib.Name = name
-		}
-		if ch.Language != nil {
-			if !languageTag.MatchString(*ch.Language) {
-				return domain.Invalid("library.invalid_language", "language", *ch.Language)
-			}
-			lib.Language = *ch.Language
 		}
 		rescan := false
 		if ch.Paths != nil {

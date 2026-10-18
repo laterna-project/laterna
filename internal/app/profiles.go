@@ -135,75 +135,56 @@ func (a *App) UpdateProfile(ctx context.Context, p domain.Principal, id domain.I
 	return profile, err
 }
 
-// SetLanguage changes the language of the picked profile. Everyone sets their own, including a
-// restricted profile, which can change nothing else.
-func (a *App) SetLanguage(ctx context.Context, p domain.Principal, language string) (domain.Profile, error) {
-	if p.Profile == nil {
-		return domain.Profile{}, domain.Precondition("profile.required")
-	}
-	language, err := profileLanguage(language)
-	if err != nil {
-		return domain.Profile{}, err
-	}
-	var profile domain.Profile
-	err = a.store.Write(ctx, func(q store.Q) error {
-		var pinHash string
-		var err error
-		if profile, pinHash, err = q.Profile(ctx, p.Profile.ID); err != nil {
-			return err
-		}
-		profile.Language, profile.UpdatedAt = language, a.now()
-		return q.UpdateProfile(ctx, profile, pinHash)
-	})
-	return profile, err
+// PreferenceChanges are the preferences of a profile to change; a nil field is left alone.
+// Languages are BCP 47 tags; an empty one means none.
+type PreferenceChanges struct {
+	Language         *string
+	SubtitleMode     *domain.SubtitleMode
+	SubtitleLanguage *string
+	AudioLanguage    *string
 }
 
-// SetSubtitlePreferences changes when playback starts with a subtitle, and in which language, for
-// the picked profile. Everyone sets their own, including a restricted profile.
-func (a *App) SetSubtitlePreferences(ctx context.Context, p domain.Principal, mode domain.SubtitleMode, language string) (domain.Profile, error) {
+// UpdatePreferences changes the preferences of the picked profile: its language, when playback
+// starts with a subtitle and in which language, the audio language playback starts with. Everyone
+// sets their own, including a restricted profile, which can change nothing else.
+func (a *App) UpdatePreferences(ctx context.Context, p domain.Principal, ch PreferenceChanges) (domain.Profile, error) {
 	if p.Profile == nil {
 		return domain.Profile{}, domain.Precondition("profile.required")
 	}
-	switch mode {
-	case domain.SubtitleAuto, domain.SubtitleAlways, domain.SubtitleForced, domain.SubtitleOff:
-	default:
-		return domain.Profile{}, domain.Invalid("profile.invalid_subtitle_mode", "mode", string(mode))
+	if ch.SubtitleMode != nil {
+		switch *ch.SubtitleMode {
+		case domain.SubtitleAuto, domain.SubtitleAlways, domain.SubtitleForced, domain.SubtitleOff:
+		default:
+			return domain.Profile{}, domain.Invalid("profile.invalid_subtitle_mode", "mode", string(*ch.SubtitleMode))
+		}
 	}
-	language, err := profileLanguage(language)
-	if err != nil {
-		return domain.Profile{}, err
+	languages := []*string{ch.Language, ch.SubtitleLanguage, ch.AudioLanguage}
+	for i, l := range languages {
+		if l == nil {
+			continue
+		}
+		tag, err := profileLanguage(*l)
+		if err != nil {
+			return domain.Profile{}, err
+		}
+		languages[i] = &tag
 	}
 	var profile domain.Profile
-	err = a.store.Write(ctx, func(q store.Q) error {
+	err := a.store.Write(ctx, func(q store.Q) error {
 		var pinHash string
 		var err error
 		if profile, pinHash, err = q.Profile(ctx, p.Profile.ID); err != nil {
 			return err
 		}
-		profile.SubtitleMode, profile.SubtitleLanguage, profile.UpdatedAt = mode, language, a.now()
-		return q.UpdateProfile(ctx, profile, pinHash)
-	})
-	return profile, err
-}
-
-// SetAudioPreferences changes the audio language playback starts with, for the picked profile.
-// Everyone sets their own, including a restricted profile.
-func (a *App) SetAudioPreferences(ctx context.Context, p domain.Principal, language string) (domain.Profile, error) {
-	if p.Profile == nil {
-		return domain.Profile{}, domain.Precondition("profile.required")
-	}
-	language, err := profileLanguage(language)
-	if err != nil {
-		return domain.Profile{}, err
-	}
-	var profile domain.Profile
-	err = a.store.Write(ctx, func(q store.Q) error {
-		var pinHash string
-		var err error
-		if profile, pinHash, err = q.Profile(ctx, p.Profile.ID); err != nil {
-			return err
+		for i, field := range []*string{&profile.Language, &profile.SubtitleLanguage, &profile.AudioLanguage} {
+			if languages[i] != nil {
+				*field = *languages[i]
+			}
 		}
-		profile.AudioLanguage, profile.UpdatedAt = language, a.now()
+		if ch.SubtitleMode != nil {
+			profile.SubtitleMode = *ch.SubtitleMode
+		}
+		profile.UpdatedAt = a.now()
 		return q.UpdateProfile(ctx, profile, pinHash)
 	})
 	return profile, err

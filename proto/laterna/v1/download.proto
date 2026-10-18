@@ -105,9 +105,9 @@ message Download {
   DownloadMethod method = 8;
   // Progress of the preparation, from 0 to 1.
   double progress = 9;
-  // Expected size, then the real one once ready (bytes).
-  int64 estimated_size = 10;
-  int64 size = 11;
+  // Expected size, then the real one once ready.
+  int64 estimated_size_bytes = 10;
+  int64 size_bytes = 11;
   // Path of the file, to append to the server's address; empty until it is ready.
   string url = 12;
   // Suggested name to save it under ("Show - S01E02 - Title.mp4").
@@ -121,7 +121,8 @@ message Download {
   // until they are extracted (file just added).
   repeated SubtitleTrack subtitles = 17;
   repeated Font fonts = 18;
-  // Why the preparation failed (DOWNLOAD_STATE_FAILED).
+  // Why the preparation failed (DOWNLOAD_STATE_FAILED), in the language of the request; error_text
+  // is the same for translation ("download.failed", param "reason": the error of FFmpeg).
   string error = 19;
   google.protobuf.Timestamp created_at = 20;
   google.protobuf.Timestamp ready_at = 21;
@@ -132,6 +133,7 @@ message Download {
   optional int32 audio_stream_index = 24;
   // The reasons, for translation (as in StartPlaybackResponse.reason_texts).
   repeated Text reason_texts = 25;
+  Text error_text = 26;
 }
 
 message CreateDownloadsRequest {

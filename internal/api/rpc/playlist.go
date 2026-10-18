@@ -79,17 +79,17 @@ func (s *PlaylistService) CreatePlaylist(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&laternav1.CreatePlaylistResponse{Playlist: playlistMsg(p)}), nil
 }
 
-// RenamePlaylist renames a playlist.
-func (s *PlaylistService) RenamePlaylist(ctx context.Context, req *connect.Request[laternav1.RenamePlaylistRequest]) (*connect.Response[laternav1.RenamePlaylistResponse], error) {
+// UpdatePlaylist changes a playlist.
+func (s *PlaylistService) UpdatePlaylist(ctx context.Context, req *connect.Request[laternav1.UpdatePlaylistRequest]) (*connect.Response[laternav1.UpdatePlaylistResponse], error) {
 	id, err := parseID(req.Msg.GetPlaylistId(), "playlist_id")
 	if err != nil {
 		return nil, err
 	}
-	p, err := s.app.RenamePlaylist(ctx, principal(ctx), id, req.Msg.GetName())
+	p, err := s.app.UpdatePlaylist(ctx, principal(ctx), id, req.Msg.Name)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&laternav1.RenamePlaylistResponse{Playlist: playlistMsg(p)}), nil
+	return connect.NewResponse(&laternav1.UpdatePlaylistResponse{Playlist: playlistMsg(p)}), nil
 }
 
 // DeletePlaylist deletes a playlist.

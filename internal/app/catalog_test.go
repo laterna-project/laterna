@@ -18,9 +18,9 @@ func catalogApp(t *testing.T) (*App, domain.Principal, domain.Library, domain.Li
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Movies")}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Movies")})
 	mustNil(t, err)
-	shows, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{filepath.Join(testfixtures.Root(), "Shows")}, "")
+	shows, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{filepath.Join(testfixtures.Root(), "Shows")})
 	mustNil(t, err)
 	waitIdle(t, a)
 	return a, p, films, shows
@@ -107,10 +107,6 @@ func TestCatalogSeries(t *testing.T) {
 	if len(page.Items) != 1 || page.Items[0].EpisodeCount != 4 || page.Items[0].UnplayedCount != 4 {
 		t.Fatalf("series: %+v", page.Items)
 	}
-	played := true
-	if _, err := a.ListSeries(ctx, p, ListQuery{Played: &played}); !isKind(err, domain.ErrInvalid) {
-		t.Errorf("played filter on series: %v", err)
-	}
 	series := page.Items[0].Item
 	view, details, seasons, err := a.Series(ctx, p, series.ID)
 	mustNil(t, err)
@@ -133,14 +129,34 @@ func TestCatalogSeries(t *testing.T) {
 		t.Errorf("episode details: %+v %+v %v", ep, d, err)
 	}
 
+	// The played filter: a series is played once none of its episodes is left.
+	filtered := func(played bool) int {
+		t.Helper()
+		page, err := a.ListSeries(ctx, p, ListQuery{Played: &played})
+		mustNil(t, err)
+		if len(page.Items) != page.Total {
+			t.Errorf("played %v: %d items, total %d", played, len(page.Items), page.Total)
+		}
+		return page.Total
+	}
+	if filtered(true) != 0 || filtered(false) != 1 {
+		t.Error("series played before any episode")
+	}
+
 	// The whole series played, then season 1 marked unplayed again.
 	mustNil(t, a.SetPlayed(ctx, p, series.ID, true))
 	if v, _, _, _ := a.Series(ctx, p, series.ID); !v.UserData.Played || v.UnplayedCount != 0 {
 		t.Errorf("series played: %+v", v)
 	}
+	if filtered(true) != 1 || filtered(false) != 0 {
+		t.Error("series played: filter")
+	}
 	mustNil(t, a.SetPlayed(ctx, p, seasons[0].Item.ID, false))
 	if v, _, s, _ := a.Series(ctx, p, series.ID); v.UserData.Played || v.UnplayedCount != 3 || len(s) != 2 || !s[1].UserData.Played {
 		t.Errorf("season 1 unplayed again: %+v", v)
+	}
+	if filtered(true) != 0 || filtered(false) != 1 {
+		t.Error("season 1 unplayed again: filter")
 	}
 }
 

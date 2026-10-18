@@ -42,9 +42,9 @@ const (
 	// PlaylistServiceCreatePlaylistProcedure is the fully-qualified name of the PlaylistService's
 	// CreatePlaylist RPC.
 	PlaylistServiceCreatePlaylistProcedure = "/laterna.v1.PlaylistService/CreatePlaylist"
-	// PlaylistServiceRenamePlaylistProcedure is the fully-qualified name of the PlaylistService's
-	// RenamePlaylist RPC.
-	PlaylistServiceRenamePlaylistProcedure = "/laterna.v1.PlaylistService/RenamePlaylist"
+	// PlaylistServiceUpdatePlaylistProcedure is the fully-qualified name of the PlaylistService's
+	// UpdatePlaylist RPC.
+	PlaylistServiceUpdatePlaylistProcedure = "/laterna.v1.PlaylistService/UpdatePlaylist"
 	// PlaylistServiceDeletePlaylistProcedure is the fully-qualified name of the PlaylistService's
 	// DeletePlaylist RPC.
 	PlaylistServiceDeletePlaylistProcedure = "/laterna.v1.PlaylistService/DeletePlaylist"
@@ -67,8 +67,9 @@ type PlaylistServiceClient interface {
 	GetPlaylist(context.Context, *connect.Request[v1.GetPlaylistRequest]) (*connect.Response[v1.GetPlaylistResponse], error)
 	// CreatePlaylist creates a playlist (100 per profile at most).
 	CreatePlaylist(context.Context, *connect.Request[v1.CreatePlaylistRequest]) (*connect.Response[v1.CreatePlaylistResponse], error)
-	// RenamePlaylist renames a playlist.
-	RenamePlaylist(context.Context, *connect.Request[v1.RenamePlaylistRequest]) (*connect.Response[v1.RenamePlaylistResponse], error)
+	// UpdatePlaylist changes a playlist: its name. The entries change with AddToPlaylist,
+	// RemoveFromPlaylist and MovePlaylistEntry.
+	UpdatePlaylist(context.Context, *connect.Request[v1.UpdatePlaylistRequest]) (*connect.Response[v1.UpdatePlaylistResponse], error)
 	// DeletePlaylist deletes a playlist.
 	DeletePlaylist(context.Context, *connect.Request[v1.DeletePlaylistRequest]) (*connect.Response[v1.DeletePlaylistResponse], error)
 	// AddToPlaylist adds items (2,000 entries per playlist at most). A movie, an episode or a track
@@ -112,10 +113,10 @@ func NewPlaylistServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(playlistServiceMethods.ByName("CreatePlaylist")),
 			connect.WithClientOptions(opts...),
 		),
-		renamePlaylist: connect.NewClient[v1.RenamePlaylistRequest, v1.RenamePlaylistResponse](
+		updatePlaylist: connect.NewClient[v1.UpdatePlaylistRequest, v1.UpdatePlaylistResponse](
 			httpClient,
-			baseURL+PlaylistServiceRenamePlaylistProcedure,
-			connect.WithSchema(playlistServiceMethods.ByName("RenamePlaylist")),
+			baseURL+PlaylistServiceUpdatePlaylistProcedure,
+			connect.WithSchema(playlistServiceMethods.ByName("UpdatePlaylist")),
 			connect.WithClientOptions(opts...),
 		),
 		deletePlaylist: connect.NewClient[v1.DeletePlaylistRequest, v1.DeletePlaylistResponse](
@@ -150,7 +151,7 @@ type playlistServiceClient struct {
 	listPlaylists      *connect.Client[v1.ListPlaylistsRequest, v1.ListPlaylistsResponse]
 	getPlaylist        *connect.Client[v1.GetPlaylistRequest, v1.GetPlaylistResponse]
 	createPlaylist     *connect.Client[v1.CreatePlaylistRequest, v1.CreatePlaylistResponse]
-	renamePlaylist     *connect.Client[v1.RenamePlaylistRequest, v1.RenamePlaylistResponse]
+	updatePlaylist     *connect.Client[v1.UpdatePlaylistRequest, v1.UpdatePlaylistResponse]
 	deletePlaylist     *connect.Client[v1.DeletePlaylistRequest, v1.DeletePlaylistResponse]
 	addToPlaylist      *connect.Client[v1.AddToPlaylistRequest, v1.AddToPlaylistResponse]
 	removeFromPlaylist *connect.Client[v1.RemoveFromPlaylistRequest, v1.RemoveFromPlaylistResponse]
@@ -172,9 +173,9 @@ func (c *playlistServiceClient) CreatePlaylist(ctx context.Context, req *connect
 	return c.createPlaylist.CallUnary(ctx, req)
 }
 
-// RenamePlaylist calls laterna.v1.PlaylistService.RenamePlaylist.
-func (c *playlistServiceClient) RenamePlaylist(ctx context.Context, req *connect.Request[v1.RenamePlaylistRequest]) (*connect.Response[v1.RenamePlaylistResponse], error) {
-	return c.renamePlaylist.CallUnary(ctx, req)
+// UpdatePlaylist calls laterna.v1.PlaylistService.UpdatePlaylist.
+func (c *playlistServiceClient) UpdatePlaylist(ctx context.Context, req *connect.Request[v1.UpdatePlaylistRequest]) (*connect.Response[v1.UpdatePlaylistResponse], error) {
+	return c.updatePlaylist.CallUnary(ctx, req)
 }
 
 // DeletePlaylist calls laterna.v1.PlaylistService.DeletePlaylist.
@@ -205,8 +206,9 @@ type PlaylistServiceHandler interface {
 	GetPlaylist(context.Context, *connect.Request[v1.GetPlaylistRequest]) (*connect.Response[v1.GetPlaylistResponse], error)
 	// CreatePlaylist creates a playlist (100 per profile at most).
 	CreatePlaylist(context.Context, *connect.Request[v1.CreatePlaylistRequest]) (*connect.Response[v1.CreatePlaylistResponse], error)
-	// RenamePlaylist renames a playlist.
-	RenamePlaylist(context.Context, *connect.Request[v1.RenamePlaylistRequest]) (*connect.Response[v1.RenamePlaylistResponse], error)
+	// UpdatePlaylist changes a playlist: its name. The entries change with AddToPlaylist,
+	// RemoveFromPlaylist and MovePlaylistEntry.
+	UpdatePlaylist(context.Context, *connect.Request[v1.UpdatePlaylistRequest]) (*connect.Response[v1.UpdatePlaylistResponse], error)
 	// DeletePlaylist deletes a playlist.
 	DeletePlaylist(context.Context, *connect.Request[v1.DeletePlaylistRequest]) (*connect.Response[v1.DeletePlaylistResponse], error)
 	// AddToPlaylist adds items (2,000 entries per playlist at most). A movie, an episode or a track
@@ -246,10 +248,10 @@ func NewPlaylistServiceHandler(svc PlaylistServiceHandler, opts ...connect.Handl
 		connect.WithSchema(playlistServiceMethods.ByName("CreatePlaylist")),
 		connect.WithHandlerOptions(opts...),
 	)
-	playlistServiceRenamePlaylistHandler := connect.NewUnaryHandler(
-		PlaylistServiceRenamePlaylistProcedure,
-		svc.RenamePlaylist,
-		connect.WithSchema(playlistServiceMethods.ByName("RenamePlaylist")),
+	playlistServiceUpdatePlaylistHandler := connect.NewUnaryHandler(
+		PlaylistServiceUpdatePlaylistProcedure,
+		svc.UpdatePlaylist,
+		connect.WithSchema(playlistServiceMethods.ByName("UpdatePlaylist")),
 		connect.WithHandlerOptions(opts...),
 	)
 	playlistServiceDeletePlaylistHandler := connect.NewUnaryHandler(
@@ -284,8 +286,8 @@ func NewPlaylistServiceHandler(svc PlaylistServiceHandler, opts ...connect.Handl
 			playlistServiceGetPlaylistHandler.ServeHTTP(w, r)
 		case PlaylistServiceCreatePlaylistProcedure:
 			playlistServiceCreatePlaylistHandler.ServeHTTP(w, r)
-		case PlaylistServiceRenamePlaylistProcedure:
-			playlistServiceRenamePlaylistHandler.ServeHTTP(w, r)
+		case PlaylistServiceUpdatePlaylistProcedure:
+			playlistServiceUpdatePlaylistHandler.ServeHTTP(w, r)
 		case PlaylistServiceDeletePlaylistProcedure:
 			playlistServiceDeletePlaylistHandler.ServeHTTP(w, r)
 		case PlaylistServiceAddToPlaylistProcedure:
@@ -315,8 +317,8 @@ func (UnimplementedPlaylistServiceHandler) CreatePlaylist(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.PlaylistService.CreatePlaylist is not implemented"))
 }
 
-func (UnimplementedPlaylistServiceHandler) RenamePlaylist(context.Context, *connect.Request[v1.RenamePlaylistRequest]) (*connect.Response[v1.RenamePlaylistResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.PlaylistService.RenamePlaylist is not implemented"))
+func (UnimplementedPlaylistServiceHandler) UpdatePlaylist(context.Context, *connect.Request[v1.UpdatePlaylistRequest]) (*connect.Response[v1.UpdatePlaylistResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.PlaylistService.UpdatePlaylist is not implemented"))
 }
 
 func (UnimplementedPlaylistServiceHandler) DeletePlaylist(context.Context, *connect.Request[v1.DeletePlaylistRequest]) (*connect.Response[v1.DeletePlaylistResponse], error) {

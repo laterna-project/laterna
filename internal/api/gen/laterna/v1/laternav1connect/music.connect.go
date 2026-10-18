@@ -46,9 +46,6 @@ const (
 	MusicServiceListTracksProcedure = "/laterna.v1.MusicService/ListTracks"
 	// MusicServiceGetTrackProcedure is the fully-qualified name of the MusicService's GetTrack RPC.
 	MusicServiceGetTrackProcedure = "/laterna.v1.MusicService/GetTrack"
-	// MusicServiceListArtistTracksProcedure is the fully-qualified name of the MusicService's
-	// ListArtistTracks RPC.
-	MusicServiceListArtistTracksProcedure = "/laterna.v1.MusicService/ListArtistTracks"
 	// MusicServiceGetLyricsProcedure is the fully-qualified name of the MusicService's GetLyrics RPC.
 	MusicServiceGetLyricsProcedure = "/laterna.v1.MusicService/GetLyrics"
 )
@@ -63,13 +60,11 @@ type MusicServiceClient interface {
 	ListAlbums(context.Context, *connect.Request[v1.ListAlbumsRequest]) (*connect.Response[v1.ListAlbumsResponse], error)
 	// GetAlbum returns the details of an album and its present tracks, in disc order.
 	GetAlbum(context.Context, *connect.Request[v1.GetAlbumRequest]) (*connect.Response[v1.GetAlbumResponse], error)
-	// ListTracks returns a page of tracks (all of them, or the favorites).
+	// ListTracks returns a page of tracks: all of them, the favorites, or those of an artist. Those
+	// of an artist in ITEM_SORT_ALBUM order are what plays the artist, album by album.
 	ListTracks(context.Context, *connect.Request[v1.ListTracksRequest]) (*connect.Response[v1.ListTracksResponse], error)
 	// GetTrack returns a track and its files.
 	GetTrack(context.Context, *connect.Request[v1.GetTrackRequest]) (*connect.Response[v1.GetTrackResponse], error)
-	// ListArtistTracks returns all the present tracks of an artist, album by album (oldest first):
-	// enough to play everything, or shuffle everything.
-	ListArtistTracks(context.Context, *connect.Request[v1.ListArtistTracksRequest]) (*connect.Response[v1.ListArtistTracksResponse], error)
 	// GetLyrics returns the lyrics of a track (Track.has_lyrics): from a .lrc file next to it, timed
 	// line by line, otherwise from its tags. NOT_FOUND (music.no_lyrics) if it has none.
 	GetLyrics(context.Context, *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error)
@@ -128,13 +123,6 @@ func NewMusicServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
-		listArtistTracks: connect.NewClient[v1.ListArtistTracksRequest, v1.ListArtistTracksResponse](
-			httpClient,
-			baseURL+MusicServiceListArtistTracksProcedure,
-			connect.WithSchema(musicServiceMethods.ByName("ListArtistTracks")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
 		getLyrics: connect.NewClient[v1.GetLyricsRequest, v1.GetLyricsResponse](
 			httpClient,
 			baseURL+MusicServiceGetLyricsProcedure,
@@ -147,14 +135,13 @@ func NewMusicServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // musicServiceClient implements MusicServiceClient.
 type musicServiceClient struct {
-	listArtists      *connect.Client[v1.ListArtistsRequest, v1.ListArtistsResponse]
-	getArtist        *connect.Client[v1.GetArtistRequest, v1.GetArtistResponse]
-	listAlbums       *connect.Client[v1.ListAlbumsRequest, v1.ListAlbumsResponse]
-	getAlbum         *connect.Client[v1.GetAlbumRequest, v1.GetAlbumResponse]
-	listTracks       *connect.Client[v1.ListTracksRequest, v1.ListTracksResponse]
-	getTrack         *connect.Client[v1.GetTrackRequest, v1.GetTrackResponse]
-	listArtistTracks *connect.Client[v1.ListArtistTracksRequest, v1.ListArtistTracksResponse]
-	getLyrics        *connect.Client[v1.GetLyricsRequest, v1.GetLyricsResponse]
+	listArtists *connect.Client[v1.ListArtistsRequest, v1.ListArtistsResponse]
+	getArtist   *connect.Client[v1.GetArtistRequest, v1.GetArtistResponse]
+	listAlbums  *connect.Client[v1.ListAlbumsRequest, v1.ListAlbumsResponse]
+	getAlbum    *connect.Client[v1.GetAlbumRequest, v1.GetAlbumResponse]
+	listTracks  *connect.Client[v1.ListTracksRequest, v1.ListTracksResponse]
+	getTrack    *connect.Client[v1.GetTrackRequest, v1.GetTrackResponse]
+	getLyrics   *connect.Client[v1.GetLyricsRequest, v1.GetLyricsResponse]
 }
 
 // ListArtists calls laterna.v1.MusicService.ListArtists.
@@ -187,11 +174,6 @@ func (c *musicServiceClient) GetTrack(ctx context.Context, req *connect.Request[
 	return c.getTrack.CallUnary(ctx, req)
 }
 
-// ListArtistTracks calls laterna.v1.MusicService.ListArtistTracks.
-func (c *musicServiceClient) ListArtistTracks(ctx context.Context, req *connect.Request[v1.ListArtistTracksRequest]) (*connect.Response[v1.ListArtistTracksResponse], error) {
-	return c.listArtistTracks.CallUnary(ctx, req)
-}
-
 // GetLyrics calls laterna.v1.MusicService.GetLyrics.
 func (c *musicServiceClient) GetLyrics(ctx context.Context, req *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error) {
 	return c.getLyrics.CallUnary(ctx, req)
@@ -207,13 +189,11 @@ type MusicServiceHandler interface {
 	ListAlbums(context.Context, *connect.Request[v1.ListAlbumsRequest]) (*connect.Response[v1.ListAlbumsResponse], error)
 	// GetAlbum returns the details of an album and its present tracks, in disc order.
 	GetAlbum(context.Context, *connect.Request[v1.GetAlbumRequest]) (*connect.Response[v1.GetAlbumResponse], error)
-	// ListTracks returns a page of tracks (all of them, or the favorites).
+	// ListTracks returns a page of tracks: all of them, the favorites, or those of an artist. Those
+	// of an artist in ITEM_SORT_ALBUM order are what plays the artist, album by album.
 	ListTracks(context.Context, *connect.Request[v1.ListTracksRequest]) (*connect.Response[v1.ListTracksResponse], error)
 	// GetTrack returns a track and its files.
 	GetTrack(context.Context, *connect.Request[v1.GetTrackRequest]) (*connect.Response[v1.GetTrackResponse], error)
-	// ListArtistTracks returns all the present tracks of an artist, album by album (oldest first):
-	// enough to play everything, or shuffle everything.
-	ListArtistTracks(context.Context, *connect.Request[v1.ListArtistTracksRequest]) (*connect.Response[v1.ListArtistTracksResponse], error)
 	// GetLyrics returns the lyrics of a track (Track.has_lyrics): from a .lrc file next to it, timed
 	// line by line, otherwise from its tags. NOT_FOUND (music.no_lyrics) if it has none.
 	GetLyrics(context.Context, *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error)
@@ -268,13 +248,6 @@ func NewMusicServiceHandler(svc MusicServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	musicServiceListArtistTracksHandler := connect.NewUnaryHandler(
-		MusicServiceListArtistTracksProcedure,
-		svc.ListArtistTracks,
-		connect.WithSchema(musicServiceMethods.ByName("ListArtistTracks")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
 	musicServiceGetLyricsHandler := connect.NewUnaryHandler(
 		MusicServiceGetLyricsProcedure,
 		svc.GetLyrics,
@@ -296,8 +269,6 @@ func NewMusicServiceHandler(svc MusicServiceHandler, opts ...connect.HandlerOpti
 			musicServiceListTracksHandler.ServeHTTP(w, r)
 		case MusicServiceGetTrackProcedure:
 			musicServiceGetTrackHandler.ServeHTTP(w, r)
-		case MusicServiceListArtistTracksProcedure:
-			musicServiceListArtistTracksHandler.ServeHTTP(w, r)
 		case MusicServiceGetLyricsProcedure:
 			musicServiceGetLyricsHandler.ServeHTTP(w, r)
 		default:
@@ -331,10 +302,6 @@ func (UnimplementedMusicServiceHandler) ListTracks(context.Context, *connect.Req
 
 func (UnimplementedMusicServiceHandler) GetTrack(context.Context, *connect.Request[v1.GetTrackRequest]) (*connect.Response[v1.GetTrackResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.MusicService.GetTrack is not implemented"))
-}
-
-func (UnimplementedMusicServiceHandler) ListArtistTracks(context.Context, *connect.Request[v1.ListArtistTracksRequest]) (*connect.Response[v1.ListArtistTracksResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("laterna.v1.MusicService.ListArtistTracks is not implemented"))
 }
 
 func (UnimplementedMusicServiceHandler) GetLyrics(context.Context, *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error) {

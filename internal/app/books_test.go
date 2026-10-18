@@ -31,7 +31,7 @@ func TestBooks(t *testing.T) {
 	a, _ := startMediaApp(t)
 	_, p := setupAdmin(t, a)
 	ctx := context.Background()
-	lib, err := a.CreateLibrary(ctx, "Books", domain.LibraryBooks, []string{testRoot("Books")}, "")
+	lib, err := a.CreateLibrary(ctx, "Books", domain.LibraryBooks, []string{testRoot("Books")})
 	mustNil(t, err)
 	waitIdle(t, a)
 

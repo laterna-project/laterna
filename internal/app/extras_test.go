@@ -49,9 +49,9 @@ func TestExtras(t *testing.T) {
 	copyFixture(t, "Movies/Stream Dump (2018)/Stream Dump (2018).mkv", filepath.Join(movies, "Lost (2001)", "Lost.2001.BluRay-SCENE.mkv"))
 	// A trailer at the root, before its movie: taken for a movie until the movie comes.
 	copyFixture(t, "Movies/Versions (2017)/Versions (2017) - 1080p.mp4", filepath.Join(movies, "Second Movie (2021)-trailer.mp4"))
-	movieLib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{movies}, "")
+	movieLib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{movies})
 	mustNil(t, err)
-	showLib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{shows}, "")
+	showLib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{shows})
 	mustNil(t, err)
 	waitIdle(t, a)
 	page, err := a.ListMovies(ctx, p, ListQuery{PageSize: 10})

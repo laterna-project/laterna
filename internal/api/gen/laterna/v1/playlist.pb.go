@@ -498,28 +498,29 @@ func (x *CreatePlaylistResponse) GetPlaylist() *Playlist {
 	return nil
 }
 
-type RenamePlaylistRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PlaylistId    string                 `protobuf:"bytes,1,opt,name=playlist_id,json=playlistId,proto3" json:"playlist_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+type UpdatePlaylistRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	PlaylistId string                 `protobuf:"bytes,1,opt,name=playlist_id,json=playlistId,proto3" json:"playlist_id,omitempty"`
+	// Unset leaves it unchanged.
+	Name          *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RenamePlaylistRequest) Reset() {
-	*x = RenamePlaylistRequest{}
+func (x *UpdatePlaylistRequest) Reset() {
+	*x = UpdatePlaylistRequest{}
 	mi := &file_laterna_v1_playlist_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RenamePlaylistRequest) String() string {
+func (x *UpdatePlaylistRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RenamePlaylistRequest) ProtoMessage() {}
+func (*UpdatePlaylistRequest) ProtoMessage() {}
 
-func (x *RenamePlaylistRequest) ProtoReflect() protoreflect.Message {
+func (x *UpdatePlaylistRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_laterna_v1_playlist_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -531,46 +532,46 @@ func (x *RenamePlaylistRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RenamePlaylistRequest.ProtoReflect.Descriptor instead.
-func (*RenamePlaylistRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use UpdatePlaylistRequest.ProtoReflect.Descriptor instead.
+func (*UpdatePlaylistRequest) Descriptor() ([]byte, []int) {
 	return file_laterna_v1_playlist_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *RenamePlaylistRequest) GetPlaylistId() string {
+func (x *UpdatePlaylistRequest) GetPlaylistId() string {
 	if x != nil {
 		return x.PlaylistId
 	}
 	return ""
 }
 
-func (x *RenamePlaylistRequest) GetName() string {
-	if x != nil {
-		return x.Name
+func (x *UpdatePlaylistRequest) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
 	}
 	return ""
 }
 
-type RenamePlaylistResponse struct {
+type UpdatePlaylistResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Playlist      *Playlist              `protobuf:"bytes,1,opt,name=playlist,proto3" json:"playlist,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RenamePlaylistResponse) Reset() {
-	*x = RenamePlaylistResponse{}
+func (x *UpdatePlaylistResponse) Reset() {
+	*x = UpdatePlaylistResponse{}
 	mi := &file_laterna_v1_playlist_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RenamePlaylistResponse) String() string {
+func (x *UpdatePlaylistResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RenamePlaylistResponse) ProtoMessage() {}
+func (*UpdatePlaylistResponse) ProtoMessage() {}
 
-func (x *RenamePlaylistResponse) ProtoReflect() protoreflect.Message {
+func (x *UpdatePlaylistResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_laterna_v1_playlist_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -582,12 +583,12 @@ func (x *RenamePlaylistResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RenamePlaylistResponse.ProtoReflect.Descriptor instead.
-func (*RenamePlaylistResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use UpdatePlaylistResponse.ProtoReflect.Descriptor instead.
+func (*UpdatePlaylistResponse) Descriptor() ([]byte, []int) {
 	return file_laterna_v1_playlist_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *RenamePlaylistResponse) GetPlaylist() *Playlist {
+func (x *UpdatePlaylistResponse) GetPlaylist() *Playlist {
 	if x != nil {
 		return x.Playlist
 	}
@@ -1017,12 +1018,13 @@ const file_laterna_v1_playlist_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x19\n" +
 	"\bitem_ids\x18\x02 \x03(\tR\aitemIds\"J\n" +
 	"\x16CreatePlaylistResponse\x120\n" +
-	"\bplaylist\x18\x01 \x01(\v2\x14.laterna.v1.PlaylistR\bplaylist\"L\n" +
-	"\x15RenamePlaylistRequest\x12\x1f\n" +
+	"\bplaylist\x18\x01 \x01(\v2\x14.laterna.v1.PlaylistR\bplaylist\"Z\n" +
+	"\x15UpdatePlaylistRequest\x12\x1f\n" +
 	"\vplaylist_id\x18\x01 \x01(\tR\n" +
-	"playlistId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"J\n" +
-	"\x16RenamePlaylistResponse\x120\n" +
+	"playlistId\x12\x17\n" +
+	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01B\a\n" +
+	"\x05_name\"J\n" +
+	"\x16UpdatePlaylistResponse\x120\n" +
 	"\bplaylist\x18\x01 \x01(\v2\x14.laterna.v1.PlaylistR\bplaylist\"8\n" +
 	"\x15DeletePlaylistRequest\x12\x1f\n" +
 	"\vplaylist_id\x18\x01 \x01(\tR\n" +
@@ -1053,7 +1055,7 @@ const file_laterna_v1_playlist_proto_rawDesc = "" +
 	"\rListPlaylists\x12 .laterna.v1.ListPlaylistsRequest\x1a!.laterna.v1.ListPlaylistsResponse\"\x03\x90\x02\x01\x12S\n" +
 	"\vGetPlaylist\x12\x1e.laterna.v1.GetPlaylistRequest\x1a\x1f.laterna.v1.GetPlaylistResponse\"\x03\x90\x02\x01\x12W\n" +
 	"\x0eCreatePlaylist\x12!.laterna.v1.CreatePlaylistRequest\x1a\".laterna.v1.CreatePlaylistResponse\x12W\n" +
-	"\x0eRenamePlaylist\x12!.laterna.v1.RenamePlaylistRequest\x1a\".laterna.v1.RenamePlaylistResponse\x12W\n" +
+	"\x0eUpdatePlaylist\x12!.laterna.v1.UpdatePlaylistRequest\x1a\".laterna.v1.UpdatePlaylistResponse\x12W\n" +
 	"\x0eDeletePlaylist\x12!.laterna.v1.DeletePlaylistRequest\x1a\".laterna.v1.DeletePlaylistResponse\x12T\n" +
 	"\rAddToPlaylist\x12 .laterna.v1.AddToPlaylistRequest\x1a!.laterna.v1.AddToPlaylistResponse\x12c\n" +
 	"\x12RemoveFromPlaylist\x12%.laterna.v1.RemoveFromPlaylistRequest\x1a&.laterna.v1.RemoveFromPlaylistResponse\x12`\n" +
@@ -1081,8 +1083,8 @@ var file_laterna_v1_playlist_proto_goTypes = []any{
 	(*GetPlaylistResponse)(nil),        // 5: laterna.v1.GetPlaylistResponse
 	(*CreatePlaylistRequest)(nil),      // 6: laterna.v1.CreatePlaylistRequest
 	(*CreatePlaylistResponse)(nil),     // 7: laterna.v1.CreatePlaylistResponse
-	(*RenamePlaylistRequest)(nil),      // 8: laterna.v1.RenamePlaylistRequest
-	(*RenamePlaylistResponse)(nil),     // 9: laterna.v1.RenamePlaylistResponse
+	(*UpdatePlaylistRequest)(nil),      // 8: laterna.v1.UpdatePlaylistRequest
+	(*UpdatePlaylistResponse)(nil),     // 9: laterna.v1.UpdatePlaylistResponse
 	(*DeletePlaylistRequest)(nil),      // 10: laterna.v1.DeletePlaylistRequest
 	(*DeletePlaylistResponse)(nil),     // 11: laterna.v1.DeletePlaylistResponse
 	(*AddToPlaylistRequest)(nil),       // 12: laterna.v1.AddToPlaylistRequest
@@ -1110,14 +1112,14 @@ var file_laterna_v1_playlist_proto_depIdxs = []int32{
 	0,  // 8: laterna.v1.GetPlaylistResponse.playlist:type_name -> laterna.v1.Playlist
 	1,  // 9: laterna.v1.GetPlaylistResponse.entries:type_name -> laterna.v1.PlaylistEntry
 	0,  // 10: laterna.v1.CreatePlaylistResponse.playlist:type_name -> laterna.v1.Playlist
-	0,  // 11: laterna.v1.RenamePlaylistResponse.playlist:type_name -> laterna.v1.Playlist
+	0,  // 11: laterna.v1.UpdatePlaylistResponse.playlist:type_name -> laterna.v1.Playlist
 	0,  // 12: laterna.v1.AddToPlaylistResponse.playlist:type_name -> laterna.v1.Playlist
 	0,  // 13: laterna.v1.RemoveFromPlaylistResponse.playlist:type_name -> laterna.v1.Playlist
 	0,  // 14: laterna.v1.MovePlaylistEntryResponse.playlist:type_name -> laterna.v1.Playlist
 	2,  // 15: laterna.v1.PlaylistService.ListPlaylists:input_type -> laterna.v1.ListPlaylistsRequest
 	4,  // 16: laterna.v1.PlaylistService.GetPlaylist:input_type -> laterna.v1.GetPlaylistRequest
 	6,  // 17: laterna.v1.PlaylistService.CreatePlaylist:input_type -> laterna.v1.CreatePlaylistRequest
-	8,  // 18: laterna.v1.PlaylistService.RenamePlaylist:input_type -> laterna.v1.RenamePlaylistRequest
+	8,  // 18: laterna.v1.PlaylistService.UpdatePlaylist:input_type -> laterna.v1.UpdatePlaylistRequest
 	10, // 19: laterna.v1.PlaylistService.DeletePlaylist:input_type -> laterna.v1.DeletePlaylistRequest
 	12, // 20: laterna.v1.PlaylistService.AddToPlaylist:input_type -> laterna.v1.AddToPlaylistRequest
 	14, // 21: laterna.v1.PlaylistService.RemoveFromPlaylist:input_type -> laterna.v1.RemoveFromPlaylistRequest
@@ -1125,7 +1127,7 @@ var file_laterna_v1_playlist_proto_depIdxs = []int32{
 	3,  // 23: laterna.v1.PlaylistService.ListPlaylists:output_type -> laterna.v1.ListPlaylistsResponse
 	5,  // 24: laterna.v1.PlaylistService.GetPlaylist:output_type -> laterna.v1.GetPlaylistResponse
 	7,  // 25: laterna.v1.PlaylistService.CreatePlaylist:output_type -> laterna.v1.CreatePlaylistResponse
-	9,  // 26: laterna.v1.PlaylistService.RenamePlaylist:output_type -> laterna.v1.RenamePlaylistResponse
+	9,  // 26: laterna.v1.PlaylistService.UpdatePlaylist:output_type -> laterna.v1.UpdatePlaylistResponse
 	11, // 27: laterna.v1.PlaylistService.DeletePlaylist:output_type -> laterna.v1.DeletePlaylistResponse
 	13, // 28: laterna.v1.PlaylistService.AddToPlaylist:output_type -> laterna.v1.AddToPlaylistResponse
 	15, // 29: laterna.v1.PlaylistService.RemoveFromPlaylist:output_type -> laterna.v1.RemoveFromPlaylistResponse
@@ -1148,6 +1150,7 @@ func file_laterna_v1_playlist_proto_init() {
 		(*PlaylistEntry_Episode)(nil),
 		(*PlaylistEntry_Track)(nil),
 	}
+	file_laterna_v1_playlist_proto_msgTypes[8].OneofWrappers = []any{}
 	file_laterna_v1_playlist_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

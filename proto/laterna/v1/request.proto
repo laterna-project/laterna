@@ -202,8 +202,9 @@ message RequestableTitle {
   string request_id = 9;
   // Series: seasons, specials excluded.
   int32 season_count = 10;
-  // Network of a series, studio of a movie, artist of an album, author of a book.
-  string network = 11;
+  // Line under the title: network of a series, studio of a movie, artist of an album, author of a
+  // book.
+  string subtitle = 11;
   // MusicBrainz ID of an artist or of an album's release group, OpenLibrary work ID of a book;
   // empty for series and movies.
   string external_key = 12;
@@ -430,8 +431,8 @@ message DeleteRequestResponse {}
 
 message RequestRootFolder {
   string path = 1;
-  // Free space on the instance, in bytes; 0 if unknown.
-  int64 free_space = 2;
+  // Free space on the instance; 0 if unknown.
+  int64 free_space_bytes = 2;
 }
 
 message RequestQualityProfile {

@@ -100,7 +100,7 @@ func historyEntryMsg(ctx context.Context, p domain.Play, view *domain.ItemView) 
 	msg := &laternav1.HistoryEntry{
 		Id: p.ID.String(), Kind: historyKinds[p.Kind], Title: p.Title, Subtitle: p.Subtitle,
 		StartedAt: timestamppb.New(p.StartedAt), EndedAt: timestamppb.New(p.EndedAt),
-		Watched: durationpb.New(p.Watched), Position: durationpb.New(p.Position), Completed: p.Completed,
+		Watched: durationpb.New(p.Watched), Position: durationpb.New(p.Position), Finished: p.Completed,
 		Device: p.Device, Offline: p.Offline,
 	}
 	if view != nil {

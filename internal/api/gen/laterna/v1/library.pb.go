@@ -147,9 +147,7 @@ type Library struct {
 	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Kind  LibraryKind            `protobuf:"varint,3,opt,name=kind,proto3,enum=laterna.v1.LibraryKind" json:"kind,omitempty"`
 	// Absolute folders, as the server sees them.
-	Paths []string `protobuf:"bytes,4,rep,name=paths,proto3" json:"paths,omitempty"`
-	// Language of the metadata (BCP 47, "en-US").
-	Language  string                 `protobuf:"bytes,5,opt,name=language,proto3" json:"language,omitempty"`
+	Paths     []string               `protobuf:"bytes,4,rep,name=paths,proto3" json:"paths,omitempty"`
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// End of the last successful scan; unset if the library was never scanned.
@@ -214,13 +212,6 @@ func (x *Library) GetPaths() []string {
 		return x.Paths
 	}
 	return nil
-}
-
-func (x *Library) GetLanguage() string {
-	if x != nil {
-		return x.Language
-	}
-	return ""
 }
 
 func (x *Library) GetCreatedAt() *timestamppb.Timestamp {
@@ -596,9 +587,7 @@ type CreateLibraryRequest struct {
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Kind  LibraryKind            `protobuf:"varint,2,opt,name=kind,proto3,enum=laterna.v1.LibraryKind" json:"kind,omitempty"`
 	// At least one absolute, existing folder that overlaps no other library.
-	Paths []string `protobuf:"bytes,3,rep,name=paths,proto3" json:"paths,omitempty"`
-	// Empty means "en-US".
-	Language      string `protobuf:"bytes,4,opt,name=language,proto3" json:"language,omitempty"`
+	Paths         []string `protobuf:"bytes,3,rep,name=paths,proto3" json:"paths,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -654,13 +643,6 @@ func (x *CreateLibraryRequest) GetPaths() []string {
 	return nil
 }
 
-func (x *CreateLibraryRequest) GetLanguage() string {
-	if x != nil {
-		return x.Language
-	}
-	return ""
-}
-
 type CreateLibraryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Library       *Library               `protobuf:"bytes,1,opt,name=library,proto3" json:"library,omitempty"`
@@ -711,7 +693,6 @@ type UpdateLibraryRequest struct {
 	Name      *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	// New full list of folders; empty leaves it unchanged (a library always has at least one folder).
 	Paths         []string `protobuf:"bytes,3,rep,name=paths,proto3" json:"paths,omitempty"`
-	Language      *string  `protobuf:"bytes,4,opt,name=language,proto3,oneof" json:"language,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -765,13 +746,6 @@ func (x *UpdateLibraryRequest) GetPaths() []string {
 		return x.Paths
 	}
 	return nil
-}
-
-func (x *UpdateLibraryRequest) GetLanguage() string {
-	if x != nil && x.Language != nil {
-		return *x.Language
-	}
-	return ""
 }
 
 type UpdateLibraryResponse struct {
@@ -1337,19 +1311,18 @@ var File_laterna_v1_library_proto protoreflect.FileDescriptor
 const file_laterna_v1_library_proto_rawDesc = "" +
 	"\n" +
 	"\x18laterna/v1/library.proto\x12\n" +
-	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\"\xc0\x02\n" +
+	"laterna.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/options.proto\"\xb4\x02\n" +
 	"\aLibrary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12+\n" +
 	"\x04kind\x18\x03 \x01(\x0e2\x17.laterna.v1.LibraryKindR\x04kind\x12\x14\n" +
-	"\x05paths\x18\x04 \x03(\tR\x05paths\x12\x1a\n" +
-	"\blanguage\x18\x05 \x01(\tR\blanguage\x129\n" +
+	"\x05paths\x18\x04 \x03(\tR\x05paths\x129\n" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12<\n" +
 	"\flast_scan_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastScanAt\"\xae\x02\n" +
+	"lastScanAtJ\x04\b\x05\x10\x06R\blanguage\"\xae\x02\n" +
 	"\n" +
 	"ItemCounts\x12\x16\n" +
 	"\x06movies\x18\x01 \x01(\x05R\x06movies\x12\x16\n" +
@@ -1375,22 +1348,19 @@ const file_laterna_v1_library_proto_rawDesc = "" +
 	"\tlibraries\x18\x01 \x03(\v2\x1a.laterna.v1.LibrarySummaryR\tlibraries\"\x16\n" +
 	"\x14ListLibrariesRequest\"Q\n" +
 	"\x15ListLibrariesResponse\x128\n" +
-	"\tlibraries\x18\x01 \x03(\v2\x1a.laterna.v1.LibrarySummaryR\tlibraries\"\x89\x01\n" +
+	"\tlibraries\x18\x01 \x03(\v2\x1a.laterna.v1.LibrarySummaryR\tlibraries\"}\n" +
 	"\x14CreateLibraryRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12+\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x17.laterna.v1.LibraryKindR\x04kind\x12\x14\n" +
-	"\x05paths\x18\x03 \x03(\tR\x05paths\x12\x1a\n" +
-	"\blanguage\x18\x04 \x01(\tR\blanguage\"F\n" +
+	"\x05paths\x18\x03 \x03(\tR\x05pathsJ\x04\b\x04\x10\x05R\blanguage\"F\n" +
 	"\x15CreateLibraryResponse\x12-\n" +
-	"\alibrary\x18\x01 \x01(\v2\x13.laterna.v1.LibraryR\alibrary\"\x9b\x01\n" +
+	"\alibrary\x18\x01 \x01(\v2\x13.laterna.v1.LibraryR\alibrary\"}\n" +
 	"\x14UpdateLibraryRequest\x12\x1d\n" +
 	"\n" +
 	"library_id\x18\x01 \x01(\tR\tlibraryId\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x14\n" +
-	"\x05paths\x18\x03 \x03(\tR\x05paths\x12\x1f\n" +
-	"\blanguage\x18\x04 \x01(\tH\x01R\blanguage\x88\x01\x01B\a\n" +
-	"\x05_nameB\v\n" +
-	"\t_language\"F\n" +
+	"\x05paths\x18\x03 \x03(\tR\x05pathsB\a\n" +
+	"\x05_nameJ\x04\b\x04\x10\x05R\blanguage\"F\n" +
 	"\x15UpdateLibraryResponse\x12-\n" +
 	"\alibrary\x18\x01 \x01(\v2\x13.laterna.v1.LibraryR\alibrary\"5\n" +
 	"\x14DeleteLibraryRequest\x12\x1d\n" +

@@ -63,12 +63,12 @@ func TestMusicServiceOverHTTP(t *testing.T) {
 	if err != nil || len(got.Msg.GetFiles()) != 1 || got.Msg.GetFiles()[0].GetVersion() != "FLAC" {
 		t.Errorf("track details: %v %v", got, err)
 	}
-	all, err := music.ListArtistTracks(ctx, withToken(&laternav1.ListArtistTracksRequest{ArtistId: artist.GetId()}, token))
-	if err != nil || len(all.Msg.GetTracks()) != 4 {
+	all, err := music.ListTracks(ctx, withToken(&laternav1.ListTracksRequest{ArtistId: artist.GetId(), Sort: laternav1.ItemSort_ITEM_SORT_ALBUM}, token))
+	if err != nil || len(all.Msg.GetTracks()) != 4 || all.Msg.GetTotalSize() != 4 {
 		t.Errorf("tracks of the artist: %v %v", all, err)
 	}
 	// An album is not an artist.
-	if _, err := music.ListArtistTracks(ctx, withToken(&laternav1.ListArtistTracksRequest{ArtistId: second.GetId()}, token)); code(err) != connect.CodeNotFound {
+	if _, err := music.ListTracks(ctx, withToken(&laternav1.ListTracksRequest{ArtistId: second.GetId(), Sort: laternav1.ItemSort_ITEM_SORT_ALBUM}, token)); code(err) != connect.CodeNotFound {
 		t.Errorf("album taken for an artist: %v", err)
 	}
 

@@ -178,9 +178,9 @@ func TestLibraryAccessAndParentalControl(t *testing.T) {
 		copyTree(t, filepath.Join(testfixtures.Root(), "Movies", name), dir)
 		writeText(t, filepath.Join(dir, "movie.nfo"), "<movie><title>"+name[:len(name)-7]+"</title><mpaa>"+mpaa+"</mpaa></movie>")
 	}
-	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root})
 	mustNil(t, err)
-	series, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")}, "")
+	series, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{testRoot("Shows")})
 	mustNil(t, err)
 	waitIdle(t, a)
 

@@ -21,7 +21,7 @@ func accountMsg(a domain.Account) *laternav1.Account {
 		Id: a.ID.String(), Username: a.Username, IsAdmin: a.IsAdmin, CreatedAt: timestamppb.New(a.CreatedAt),
 		Disabled: a.Disabled, Libraries: libs, Parental: parentalMsg(a.Parental), DenyDownloads: a.DenyDownloads,
 		DenyRequests: a.DenyRequests, AutoApproveRequests: a.AutoApproveRequests, RequestQuota: clampInt32(a.RequestQuota),
-		RemoteMaxBitrate: clampInt32(a.RemoteMaxBitrate),
+		RemoteMaxBitrateKbps: clampInt32(a.RemoteMaxBitrate),
 	}
 }
 
@@ -124,7 +124,7 @@ func parseID(s, what string) (domain.ID, error) {
 
 func libraryMsg(l domain.Library) *laternav1.Library {
 	msg := &laternav1.Library{
-		Id: l.ID.String(), Name: l.Name, Kind: libraryKindMsg(l.Kind), Paths: l.Paths, Language: l.Language,
+		Id: l.ID.String(), Name: l.Name, Kind: libraryKindMsg(l.Kind), Paths: l.Paths,
 		CreatedAt: timestamppb.New(l.CreatedAt), UpdatedAt: timestamppb.New(l.UpdatedAt),
 	}
 	if l.LastScanAt != nil {

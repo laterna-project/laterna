@@ -57,3 +57,13 @@ type Download struct {
 	UpdatedAt time.Time
 	ReadyAt   *time.Time
 }
+
+// Failure is why the preparation failed, as a text: the error itself is a technical diagnostic,
+// in English. Nil unless it failed.
+func (d Download) Failure() *Text {
+	if d.Error == "" {
+		return nil
+	}
+	t := T("download.failed", "reason", d.Error)
+	return &t
+}

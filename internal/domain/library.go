@@ -25,8 +25,6 @@ type Library struct {
 	Name  string
 	Kind  LibraryKind
 	Paths []string
-	// Language of the metadata (BCP 47, "en-US").
-	Language string
 	// Position is the rank given by the administrator (1, 2, 3...). 0 means none: the library comes
 	// after the ranked ones, by kind then by name.
 	Position   int

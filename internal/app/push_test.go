@@ -77,7 +77,7 @@ func TestPushNotifications(t *testing.T) {
 	}
 
 	// Each profile reads in its own language, on its own devices.
-	_, err = a.SetLanguage(ctx, lea, "fr")
+	_, err = a.UpdatePreferences(ctx, lea, PreferenceChanges{Language: new("fr")})
 	mustNil(t, err)
 	send(lea, "Suzume")
 	if got := push.Messages(tablet); len(got) != 1 || json.Unmarshal([]byte(got[0]), &msg) != nil || msg.Body != "Suzume est disponible" {

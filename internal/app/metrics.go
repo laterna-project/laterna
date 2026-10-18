@@ -65,7 +65,7 @@ func (a *App) initMetrics(ctx context.Context) error {
 	reg.GaugeFunc("laterna_playbacks_active", "Active playbacks, by method.", []string{"method"}, func(_ context.Context, emit func(float64, ...string)) {
 		counts := map[string]int{}
 		for _, p := range a.Playbacks() {
-			counts[p.Method]++
+			counts[string(p.Method)]++
 		}
 		for method, n := range counts {
 			emit(float64(n), method)

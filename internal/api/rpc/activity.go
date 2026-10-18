@@ -112,10 +112,10 @@ func (s *ActivityService) ListPlaybacks(context.Context, *connect.Request[latern
 	for _, p := range s.app.Playbacks() {
 		resp.Playbacks = append(resp.Playbacks, &laternav1.ActivePlayback{
 			Id: p.ID.String(), AccountId: p.AccountID.String(), Username: p.Username, ProfileId: p.ProfileID.String(),
-			ProfileName: p.ProfileName, Device: p.Device, ItemId: p.ItemID.String(), Title: p.Title, Method: p.Method,
-			CopyVideo: p.CopyVideo, CopyAudio: p.CopyAudio, Encoder: p.Encoder, ToneMap: p.ToneMap, Gpu: p.GPU, Decoder: p.Decoder,
+			ProfileName: p.ProfileName, Device: p.Device, ItemId: p.ItemID.String(), Title: p.Title, Method: playbackMethods[p.Method],
+			VideoTranscoded: !p.CopyVideo, AudioTranscoded: !p.CopyAudio, VideoEncoder: p.Encoder, ToneMapping: p.ToneMap, Gpu: p.GPU, Decoder: p.Decoder,
 			StartedAt: timestamppb.New(p.StartedAt), Position: durationpb.New(p.Position), Duration: durationpb.New(p.Duration),
-			Transcoding: p.Transcoding, Remote: p.Remote, BitrateLimit: clampInt32(p.BitrateLimit), Address: p.Address,
+			Transcoding: p.Transcoding, Remote: p.Remote, BitrateLimitKbps: clampInt32(p.BitrateLimit), Ip: p.Address,
 		})
 	}
 	return connect.NewResponse(resp), nil

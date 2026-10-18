@@ -62,11 +62,11 @@ func TestJellyfinImport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Movies")}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Movies")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{filepath.Join(testfixtures.Root(), "Shows")}, ""); err != nil {
+	if _, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{filepath.Join(testfixtures.Root(), "Shows")}); err != nil {
 		t.Fatal(err)
 	}
 	for deadline := time.Now().Add(120 * time.Second); ; time.Sleep(20 * time.Millisecond) {
@@ -215,7 +215,7 @@ func TestJellyfinImport(t *testing.T) {
 	var titles []string
 	for _, e := range hist.Msg.GetEntries() {
 		titles = append(titles, e.GetTitle())
-		if e.GetTitle() == "Big Test Movie" && (e.GetWatched().AsDuration() != 100*time.Minute || e.GetDevice() != "Jellyfin" || !e.GetCompleted()) {
+		if e.GetTitle() == "Big Test Movie" && (e.GetWatched().AsDuration() != 100*time.Minute || e.GetDevice() != "Jellyfin" || !e.GetFinished()) {
 			t.Errorf("play of the movie: %v", e)
 		}
 	}

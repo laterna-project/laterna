@@ -55,8 +55,8 @@ message HistoryEntry {
   // Time actually watched. position is where playback stopped.
   google.protobuf.Duration watched = 10;
   google.protobuf.Duration position = 11;
-  // Played up to the end credits.
-  bool completed = 12;
+  // Played up to the end credits (as OfflinePlay.finished).
+  bool finished = 12;
   // Device that played it.
   string device = 13;
   // Played offline and reported later (watched is then the position reached).
