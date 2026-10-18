@@ -11,18 +11,23 @@ import (
 
 const claimJob = `-- name: ClaimJob :one
 UPDATE jobs
-SET state = 'running', attempts = attempts + 1, updated_at = ?
-WHERE id = (SELECT j.id FROM jobs j
-            WHERE j.class = ? AND j.state = 'pending' AND j.run_after <= ?
-            ORDER BY j.priority DESC, j.id
+SET state = 'running', attempts = attempts + 1, updated_at = ?1
+WHERE id = (SELECT c.id
+            FROM (SELECT p.id, p.priority FROM jobs p
+                  WHERE p.class = ?2 AND p.state = 'pending' AND p.run_after <= ?1
+                  ORDER BY p.priority DESC, p.id
+                  LIMIT (SELECT count(*) FROM jobs x WHERE x.class = ?2 AND x.state = 'running') + 1) c
+            JOIN jobs j ON j.id = c.id
+            WHERE NOT EXISTS (SELECT 1 FROM jobs r
+                              WHERE r.class = ?2 AND r.state = 'running' AND r.kind = j.kind AND r.target = j.target)
+            ORDER BY c.priority DESC, c.id
             LIMIT 1)
 RETURNING id, kind, target, attempts
 `
 
 type ClaimJobParams struct {
-	UpdatedAt int64
-	Class     string
-	RunAfter  int64
+	Now   int64
+	Class string
 }
 
 type ClaimJobRow struct {
@@ -32,8 +37,13 @@ type ClaimJobRow struct {
 	Attempts int64
 }
 
+// The next ready job of a class, except one whose twin (same kind and target, so same class) is
+// running: the same job never runs twice at once, the waiting one runs after it. Only the first
+// candidates are looked at, so that a long queue costs no more: each running job holds back at most
+// one waiting twin (jobs_pending), so one candidate more than there are running jobs always
+// includes the first one that can run.
 func (q *Queries) ClaimJob(ctx context.Context, arg ClaimJobParams) (ClaimJobRow, error) {
-	row := q.db.QueryRowContext(ctx, claimJob, arg.UpdatedAt, arg.Class, arg.RunAfter)
+	row := q.db.QueryRowContext(ctx, claimJob, arg.Now, arg.Class)
 	var i ClaimJobRow
 	err := row.Scan(
 		&i.ID,
@@ -142,9 +152,17 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) error {
 }
 
 const nextJobTime = `-- name: NextJobTime :one
-SELECT CAST(coalesce(min(run_after), 0) AS INTEGER) AS next FROM jobs WHERE class = ? AND state = 'pending'
+SELECT CAST(coalesce(min(c.run_after), 0) AS INTEGER) AS next
+FROM (SELECT p.id, p.run_after FROM jobs p
+      WHERE p.class = ?1 AND p.state = 'pending'
+      ORDER BY p.run_after
+      LIMIT (SELECT count(*) FROM jobs x WHERE x.class = ?1 AND x.state = 'running') + 1) c
+JOIN jobs j ON j.id = c.id
+WHERE NOT EXISTS (SELECT 1 FROM jobs r
+                  WHERE r.class = ?1 AND r.state = 'running' AND r.kind = j.kind AND r.target = j.target)
 `
 
+// The deadline of the next waiting job of a class that can run (see ClaimJob).
 func (q *Queries) NextJobTime(ctx context.Context, class string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, nextJobTime, class)
 	var next int64

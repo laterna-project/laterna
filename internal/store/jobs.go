@@ -38,9 +38,11 @@ func (q Q) EnqueueJob(ctx context.Context, r JobRequest, now time.Time) error {
 	})
 }
 
-// ClaimJob claims the next ready job of a class; ok is false if there is none.
+// ClaimJob claims the next ready job of a class; ok is false if there is none. A job whose twin
+// (same kind and target) is running is not ready: it waits for the twin to finish, so that the same
+// job never runs twice at once and the one asked for during a run starts after it.
 func (q Q) ClaimJob(ctx context.Context, class string, now time.Time) (Job, bool, error) {
-	r, err := q.q.ClaimJob(ctx, sqlc.ClaimJobParams{UpdatedAt: toMillis(now), Class: class, RunAfter: toMillis(now)})
+	r, err := q.q.ClaimJob(ctx, sqlc.ClaimJobParams{Now: toMillis(now), Class: class})
 	if IsNotFound(err) {
 		return Job{}, false, nil
 	}
@@ -83,7 +85,8 @@ func (q Q) RequeueRunningJobs(ctx context.Context, now time.Time) error {
 	return q.q.DeleteRunningJobs(ctx)
 }
 
-// NextJobTime returns the deadline of the next waiting job of a class (zero if there is none).
+// NextJobTime returns the deadline of the next waiting job of a class (zero if there is none),
+// leaving out those held back by a running twin.
 func (q Q) NextJobTime(ctx context.Context, class string) (time.Time, error) {
 	ms, err := q.q.NextJobTime(ctx, class)
 	if err != nil || ms == 0 {

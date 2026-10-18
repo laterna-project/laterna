@@ -72,8 +72,9 @@ survive a restart, be deduplicated and stay out of the way of playback. The queu
 the same SQLite database (`internal/jobs`), written for exactly these needs.
 
 - Jobs are idempotent and deduplicated by `(kind, target)` among pending jobs: asking again only
-  raises the priority. A job may wait while another one on the same target runs, because the
-  target may have changed in the meantime.
+  raises the priority. Asking while the same job runs queues one more run, because the target may
+  have changed in the meantime; that run starts once the first one is over, never alongside it
+  (two runs of the same job would race on the same files and rows).
 - Each kind belongs to a **class** with its own worker count, so one kind of work cannot starve
   another:
 
