@@ -42,24 +42,29 @@ func TestJobsQueue(t *testing.T) {
 	if !ok || first.Target != "a" || first.Attempts != 1 {
 		t.Fatalf("first job: %+v %v (highest priority, deduplicated)", first, ok)
 	}
-	// While "a" is running, a new request for "a" can wait next to it.
+	// While "a" is running, a new request for "a" waits next to it, and only runs once the first run
+	// is over: the same job never runs twice at once.
 	enqueue("file.analyze", "a", 0, now)
 	second, _ := claim()
-	third, _ := claim()
-	if second.Target != "b" || third.Target != "a" {
-		t.Fatalf("order: %q then %q", second.Target, third.Target)
+	if second.Target != "b" {
+		t.Fatalf("second job: %q", second.Target)
 	}
-	if _, ok := claim(); ok {
-		t.Fatal("the future job must not be ready")
+	if j, ok := claim(); ok {
+		t.Fatalf("%q claimed: the twin of a running job and the future job must wait", j.Target)
 	}
+	// Held back, the twin is not due either: the next deadline is that of the future job.
 	if next, _ := st.Read().NextJobTime(ctx, "io"); !next.Equal(now.Add(time.Hour)) {
 		t.Errorf("next deadline: %v", next)
+	}
+	mustWrite(t, st, func(q Q) error { return q.CompleteJob(ctx, first.ID) })
+	third, _ := claim()
+	if third.Target != "a" {
+		t.Fatalf("after the first run of \"a\": %q", third.Target)
 	}
 
 	// Retry after a failure: the waiting twin does the work and the retry is removed.
 	enqueue("file.analyze", "b", 0, now)
 	mustWrite(t, st, func(q Q) error { return q.RetryJob(ctx, second.ID, now.Add(time.Minute), "boom", now) })
-	mustWrite(t, st, func(q Q) error { return q.CompleteJob(ctx, first.ID) })
 	mustWrite(t, st, func(q Q) error { return q.FailJob(ctx, third.ID, "unrecoverable", now) })
 
 	counts, err := st.Read().CountJobs(ctx)
@@ -81,6 +86,65 @@ func TestJobsQueue(t *testing.T) {
 	again, ok := claim()
 	if !ok || again.Target != running.Target || again.Attempts != 2 {
 		t.Errorf("after requeue: %+v %v", again, ok)
+	}
+}
+
+// Several running jobs, each with a twin waiting ahead of every other job (higher priority, earlier
+// deadline): the twins are skipped and the first job that can run is found, by ClaimJob as by
+// NextJobTime. A job of another kind on the same target is not a twin.
+func TestJobsHeldBackByRunningTwins(t *testing.T) {
+	st, _ := openTemp(t)
+	ctx := context.Background()
+	enqueue := func(kind, target string, prio int, at time.Time) {
+		t.Helper()
+		mustWrite(t, st, func(q Q) error {
+			return q.EnqueueJob(ctx, JobRequest{Kind: kind, Target: target, Class: "io", Priority: prio, RunAfter: at}, t0)
+		})
+	}
+	claim := func(now time.Time) (Job, bool) {
+		t.Helper()
+		var j Job
+		var ok bool
+		mustWrite(t, st, func(q Q) error {
+			var err error
+			j, ok, err = q.ClaimJob(ctx, "io", now)
+			return err
+		})
+		return j, ok
+	}
+
+	running := map[string]Job{}
+	for _, target := range []string{"x", "y", "z"} {
+		enqueue("item.metadata", target, 5, t0)
+		j, ok := claim(t0)
+		if !ok || j.Target != target {
+			t.Fatalf("claim of %q: %+v %v", target, j, ok)
+		}
+		running[target] = j
+	}
+	for target := range running {
+		enqueue("item.metadata", target, 5, t0.Add(-time.Minute))
+	}
+	later := t0.Add(time.Second)
+	enqueue("file.analyze", "x", 0, later)
+
+	if next, err := st.Read().NextJobTime(ctx, "io"); err != nil || !next.Equal(later) {
+		t.Errorf("next deadline: %v %v, want %v", next, err, later)
+	}
+	if j, ok := claim(later); !ok || j.Kind != "file.analyze" {
+		t.Fatalf("claimed %+v %v, want the analysis", j, ok)
+	}
+	if j, ok := claim(later); ok {
+		t.Fatalf("%+v claimed while its twin runs", j)
+	}
+	if next, err := st.Read().NextJobTime(ctx, "io"); err != nil || !next.IsZero() {
+		t.Errorf("next deadline: %v %v, want none", next, err)
+	}
+
+	// The run of "y" ends: its twin can go.
+	mustWrite(t, st, func(q Q) error { return q.CompleteJob(ctx, running["y"].ID) })
+	if j, ok := claim(later); !ok || j.Kind != "item.metadata" || j.Target != "y" || j.ID == running["y"].ID {
+		t.Errorf("after the run of \"y\": %+v %v", j, ok)
 	}
 }
 

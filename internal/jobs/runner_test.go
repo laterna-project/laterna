@@ -181,6 +181,46 @@ func TestConcurrencyPerClass(t *testing.T) {
 	}
 }
 
+// A job asked for again while it runs waits for that run to end, even with a worker free: two runs
+// on the same target would race (an album refreshed twice at once lost its cover). It then runs
+// once more, to see what changed in the meantime.
+func TestSameJobNeverRunsTwiceAtOnce(t *testing.T) {
+	r, st := newRunner(t)
+	r.Class("io", 2)
+	started, release := make(chan struct{}, 2), make(chan struct{})
+	var runs atomic.Int32
+	r.Register("refresh", "io", func(ctx context.Context, _ string) error {
+		started <- struct{}{}
+		select {
+		case <-release:
+		case <-ctx.Done(): // test failed: the runner stops
+			return ctx.Err()
+		}
+		runs.Add(1)
+		return nil
+	})
+	start(t, r)
+	enqueue(t, r, st, "refresh", "album")
+	<-started
+	enqueue(t, r, st, "refresh", "album")
+	select {
+	case <-started:
+		t.Fatal("the same job runs twice at once")
+	case <-time.After(100 * time.Millisecond):
+	}
+	release <- struct{}{}
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the job asked for during the first run never ran")
+	}
+	release <- struct{}{}
+	eventually(t, func() bool { return len(states(t, st)) == 0 })
+	if n := runs.Load(); n != 2 {
+		t.Errorf("%d runs, want 2", n)
+	}
+}
+
 func TestInterruptedJobsResumeAtStart(t *testing.T) {
 	r, st := newRunner(t)
 	r.Class("io", 1)
