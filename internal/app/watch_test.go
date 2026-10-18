@@ -37,7 +37,7 @@ func TestWatchLibraries(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
 	copyTree(t, filepath.Join(testRoot("Movies"), "Big Test Movie (2020)"), filepath.Join(root, "Big Test Movie (2020)"))
-	_, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
+	_, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root})
 	mustNil(t, err)
 	waitIdle(t, a)
 	waitMovies(t, a, p, 1)

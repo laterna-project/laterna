@@ -38,7 +38,7 @@ func TestParties(t *testing.T) {
 	a, c := startMediaApp(t)
 	_, chloe := setupAdmin(t, a)
 	ctx := context.Background()
-	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{testRoot("Movies")}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{testRoot("Movies")})
 	mustNil(t, err)
 	waitIdle(t, a)
 	_, err = a.CreateAccount(ctx, chloe, NewAccount{Username: "Léa", Password: "a-password"})

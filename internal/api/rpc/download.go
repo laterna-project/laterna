@@ -54,11 +54,14 @@ func downloadMsg(ctx context.Context, v app.DownloadView) *laternav1.Download {
 	d, plan := v.Download, v.Plan
 	msg := &laternav1.Download{
 		Id: d.ID.String(), FileId: d.FileID.String(), Quality: downloadQualityMsgs[d.Quality], State: downloadStates[d.State],
-		Method: downloadMethods[plan.Method], Progress: d.Progress, EstimatedSize: d.Estimate, Size: d.Size,
+		Method: downloadMethods[plan.Method], Progress: d.Progress, EstimatedSizeBytes: d.Estimate, SizeBytes: d.Size,
 		FileName: v.FileName, VideoTranscoded: plan.Method == playback.Transcode && !plan.CopyVideo,
 		AudioTranscoded: (plan.Method == playback.Transcode || plan.Method == playback.Convert) && !plan.CopyAudio,
-		Reasons:         renderAll(ctx, plan.Reasons), ReasonTexts: textsMsg(ctx, plan.Reasons), Error: d.Error, CreatedAt: timestamppb.New(d.CreatedAt), Duration: durationMsg(v.Item.Item.Runtime),
+		Reasons:         renderAll(ctx, plan.Reasons), ReasonTexts: textsMsg(ctx, plan.Reasons), CreatedAt: timestamppb.New(d.CreatedAt), Duration: durationMsg(v.Item.Item.Runtime),
 		Fonts: fonts(v.Fonts),
+	}
+	if f := d.Failure(); f != nil {
+		msg.Error, msg.ErrorText = render(ctx, *f), textMsg(ctx, *f)
 	}
 	switch v.Item.Item.Kind {
 	case domain.ItemMovie:

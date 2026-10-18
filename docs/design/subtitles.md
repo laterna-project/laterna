@@ -147,7 +147,7 @@ playback starts, and `StartPlaybackResponse.subtitle_index` says which one was p
 
 ## The audio a playback starts with
 
-`Profile.audio_language` (a BCP 47 tag, `ProfileService.SetAudioPreferences`) is the language of
+`Profile.audio_language` (a BCP 47 tag, `ProfileService.UpdatePreferences`) is the language of
 the audio a playback starts with when the request names no stream: "ja" for anime in the
 original, "fr" for the dub. Among the streams in that language: a main one before a commentary
 (its title says so), the file's default, the one with the most channels, then the file's order

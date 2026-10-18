@@ -13,7 +13,7 @@ import (
 // taken.
 func (q Q) CreateLibrary(ctx context.Context, l domain.Library) error {
 	if err := translate(q.q.InsertLibrary(ctx, sqlc.InsertLibraryParams{
-		ID: l.ID, Name: l.Name, NameKey: NameKey(l.Name), Kind: string(l.Kind), Language: l.Language,
+		ID: l.ID, Name: l.Name, NameKey: NameKey(l.Name), Kind: string(l.Kind),
 		CreatedAt: toMillis(l.CreatedAt), UpdatedAt: toMillis(l.UpdatedAt),
 	})); err != nil {
 		return err
@@ -21,10 +21,10 @@ func (q Q) CreateLibrary(ctx context.Context, l domain.Library) error {
 	return q.setLibraryPaths(ctx, l.ID, l.Paths)
 }
 
-// UpdateLibrary rewrites the name, language and folders of a library.
+// UpdateLibrary rewrites the name and folders of a library.
 func (q Q) UpdateLibrary(ctx context.Context, l domain.Library) error {
 	if err := translate(q.q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{
-		Name: l.Name, NameKey: NameKey(l.Name), Language: l.Language, UpdatedAt: toMillis(l.UpdatedAt), ID: l.ID,
+		Name: l.Name, NameKey: NameKey(l.Name), UpdatedAt: toMillis(l.UpdatedAt), ID: l.ID,
 	})); err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (q Q) SetLibraryOrder(ctx context.Context, ids []domain.ID) error {
 
 func libraryFromRow(r sqlc.Library, paths []string) domain.Library {
 	l := domain.Library{
-		ID: r.ID, Name: r.Name, Kind: domain.LibraryKind(r.Kind), Paths: paths, Language: r.Language, Position: int(r.Position),
+		ID: r.ID, Name: r.Name, Kind: domain.LibraryKind(r.Kind), Paths: paths, Position: int(r.Position),
 		CreatedAt: fromMillis(r.CreatedAt), UpdatedAt: fromMillis(r.UpdatedAt), LastScanAt: optTime(r.LastScanAt),
 	}
 	if l.Paths == nil {

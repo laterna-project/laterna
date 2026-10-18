@@ -60,12 +60,13 @@ service CatalogService {
   rpc ListExtras(ListExtrasRequest) returns (ListExtrasResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // ListGenres lists the genres of movies, series and albums, to filter lists.
+  // ListGenres lists the genres of movies, series, albums and books, to filter lists.
   rpc ListGenres(ListGenresRequest) returns (ListGenresResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Search looks up movies, series, episodes, artists, albums and tracks by title, ignoring accents
-  // and case; each word may be just the beginning of a word.
+  // Search looks up movies, series, episodes, artists, albums, tracks, book series, books and photo
+  // albums by title, ignoring accents and case; each word may be just the beginning of a word.
+  // Photos are left out: their titles are file names.
   rpc Search(SearchRequest) returns (SearchResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -577,7 +578,7 @@ message MediaFile {
   // File format ("mkv", "mp4"...).
   string container = 5;
   google.protobuf.Duration duration = 6;
-  int64 size = 7;
+  int64 size_bytes = 7;
   // Overall bitrate in bit/s.
   int64 bitrate = 8;
   repeated MediaStream streams = 9;
@@ -700,6 +701,9 @@ enum ItemSort {
   ITEM_SORT_RELEASED = 3;
   // Best rated first.
   ITEM_SORT_RATING = 4;
+  // Album by album, oldest first, each in disc order: the tracks of an artist as they play
+  // (MusicService.ListTracks with artist_id, nothing else).
+  ITEM_SORT_ALBUM = 5;
 }
 
 message ListMoviesRequest {
@@ -746,6 +750,9 @@ message ListSeriesRequest {
   // 1 to 200; 0 means 50.
   int32 page_size = 6;
   string page_token = 7;
+  // Keep only the series whose present episodes are all played (true), or those with an episode
+  // left to play (false); unset means all.
+  optional bool played = 8;
 }
 
 message ListSeriesResponse {
@@ -829,7 +836,7 @@ message ListGenresRequest {
 
 message Genre {
   string name = 1;
-  // Movies, series and albums with this genre.
+  // Movies, series, albums and books with this genre.
   int32 count = 2;
 }
 
@@ -858,7 +865,7 @@ message SearchResult {
 }
 
 message SearchResponse {
-  // Movies, series, artists and albums first, then episodes and tracks; each group by relevance.
+  // Episodes and tracks after everything else; each group by relevance.
   repeated SearchResult results = 1;
 }
 

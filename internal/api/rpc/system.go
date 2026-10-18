@@ -42,7 +42,7 @@ func settingsMsg(st domain.Settings) *laternav1.Settings {
 		ScanInterval: durationpb.New(st.ScanInterval), MissingGrace: durationpb.New(st.MissingGrace),
 		Trickplay: st.Trickplay, WatchLibraries: st.WatchLibraries, DetectSegments: st.DetectSegments,
 		MaxTranscodes: clampInt32(st.MaxTranscodes), BackupKeep: clampInt32(st.BackupKeep), PublicUrl: st.PublicURL, WebUrl: st.WebURL, PasskeyRpId: st.PasskeyRPID, PasskeyOrigins: st.PasskeyOrigins,
-		RemoteMaxBitrate: clampInt32(st.RemoteMaxBitrate), LocalNetworks: prefixes(st.LocalNetworks),
+		RemoteMaxBitrateKbps: clampInt32(st.RemoteMaxBitrate), LocalNetworks: prefixes(st.LocalNetworks),
 	}
 }
 
@@ -79,8 +79,8 @@ func (s *SystemService) UpdateSettings(ctx context.Context, req *connect.Request
 		origins := m.GetPasskeyOrigins().GetValues()
 		ch.PasskeyOrigins = &origins
 	}
-	if m.RemoteMaxBitrate != nil {
-		n := int(m.GetRemoteMaxBitrate())
+	if m.RemoteMaxBitrateKbps != nil {
+		n := int(m.GetRemoteMaxBitrateKbps())
 		ch.RemoteMaxBitrate = &n
 	}
 	if m.GetLocalNetworks() != nil {
@@ -205,7 +205,7 @@ func (s *SystemService) ListLogFiles(context.Context, *connect.Request[laternav1
 	}
 	resp := &laternav1.ListLogFilesResponse{}
 	for _, f := range files {
-		resp.Files = append(resp.Files, &laternav1.LogFile{Name: f.Name, Size: f.Size, ModifiedAt: timestamppb.New(f.ModTime)})
+		resp.Files = append(resp.Files, &laternav1.LogFile{Name: f.Name, SizeBytes: f.Size, ModifiedAt: timestamppb.New(f.ModTime)})
 	}
 	return connect.NewResponse(resp), nil
 }

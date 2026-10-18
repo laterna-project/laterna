@@ -72,7 +72,7 @@ message CreateAccountRequest {
   optional int32 request_quota = 9;
   // Highest bitrate of its playbacks from outside the local network (kbit/s, 500 to 1,000,000); 0
   // means only the server's limit.
-  int32 remote_max_bitrate = 10;
+  int32 remote_max_bitrate_kbps = 10;
 }
 
 message CreateAccountResponse {
@@ -101,7 +101,7 @@ message UpdateAccountRequest {
   // Requests in seven days, 0 for no limit; unset leaves it unchanged.
   optional int32 request_quota = 11;
   // 0 for only the server's limit; unset leaves it unchanged.
-  optional int32 remote_max_bitrate = 12;
+  optional int32 remote_max_bitrate_kbps = 12;
 }
 
 message UpdateAccountResponse {

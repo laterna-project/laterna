@@ -860,10 +860,7 @@ type WatchPartyResponse struct {
 	//	*WatchPartyResponse_Message
 	//	*WatchPartyResponse_Ended
 	//	*WatchPartyResponse_Heartbeat
-	Update isWatchPartyResponse_Update `protobuf_oneof:"update"`
-	// With ended: the reason, for translation ("party.ended.left", "party.ended.removed",
-	// "party.ended.by_host").
-	EndedText     *Text `protobuf:"bytes,6,opt,name=ended_text,json=endedText,proto3" json:"ended_text,omitempty"`
+	Update        isWatchPartyResponse_Update `protobuf_oneof:"update"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -930,27 +927,20 @@ func (x *WatchPartyResponse) GetMessage() *PartyMessage {
 	return nil
 }
 
-func (x *WatchPartyResponse) GetEnded() string {
+func (x *WatchPartyResponse) GetEnded() *PartyEnded {
 	if x != nil {
 		if x, ok := x.Update.(*WatchPartyResponse_Ended); ok {
 			return x.Ended
 		}
 	}
-	return ""
+	return nil
 }
 
-func (x *WatchPartyResponse) GetHeartbeat() bool {
+func (x *WatchPartyResponse) GetHeartbeat() *Heartbeat {
 	if x != nil {
 		if x, ok := x.Update.(*WatchPartyResponse_Heartbeat); ok {
 			return x.Heartbeat
 		}
-	}
-	return false
-}
-
-func (x *WatchPartyResponse) GetEndedText() *Text {
-	if x != nil {
-		return x.EndedText
 	}
 	return nil
 }
@@ -968,14 +958,13 @@ type WatchPartyResponse_Message struct {
 }
 
 type WatchPartyResponse_Ended struct {
-	// End of the group for the caller (group ended, removed by the host): the reason, in the
-	// language of the request.
-	Ended string `protobuf:"bytes,4,opt,name=ended,proto3,oneof"`
+	// End of the group for the caller (group ended, removed by the host).
+	Ended *PartyEnded `protobuf:"bytes,7,opt,name=ended,proto3,oneof"`
 }
 
 type WatchPartyResponse_Heartbeat struct {
 	// Keep-alive (every 30 s without anything else sent).
-	Heartbeat bool `protobuf:"varint,5,opt,name=heartbeat,proto3,oneof"`
+	Heartbeat *Heartbeat `protobuf:"bytes,8,opt,name=heartbeat,proto3,oneof"`
 }
 
 func (*WatchPartyResponse_State) isWatchPartyResponse_Update() {}
@@ -985,6 +974,61 @@ func (*WatchPartyResponse_Message) isWatchPartyResponse_Update() {}
 func (*WatchPartyResponse_Ended) isWatchPartyResponse_Update() {}
 
 func (*WatchPartyResponse_Heartbeat) isWatchPartyResponse_Update() {}
+
+// PartyEnded says why the group ended for the caller.
+type PartyEnded struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// In the language of the request.
+	Reason string `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The same, for translation ("party.ended.left", "party.ended.removed", "party.ended.by_host").
+	ReasonText    *Text `protobuf:"bytes,2,opt,name=reason_text,json=reasonText,proto3" json:"reason_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PartyEnded) Reset() {
+	*x = PartyEnded{}
+	mi := &file_laterna_v1_party_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PartyEnded) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PartyEnded) ProtoMessage() {}
+
+func (x *PartyEnded) ProtoReflect() protoreflect.Message {
+	mi := &file_laterna_v1_party_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PartyEnded.ProtoReflect.Descriptor instead.
+func (*PartyEnded) Descriptor() ([]byte, []int) {
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *PartyEnded) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *PartyEnded) GetReasonText() *Text {
+	if x != nil {
+		return x.ReasonText
+	}
+	return nil
+}
 
 // PartyQueue replaces the queue.
 type PartyQueue struct {
@@ -998,7 +1042,7 @@ type PartyQueue struct {
 
 func (x *PartyQueue) Reset() {
 	*x = PartyQueue{}
-	mi := &file_laterna_v1_party_proto_msgTypes[13]
+	mi := &file_laterna_v1_party_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1010,7 +1054,7 @@ func (x *PartyQueue) String() string {
 func (*PartyQueue) ProtoMessage() {}
 
 func (x *PartyQueue) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[13]
+	mi := &file_laterna_v1_party_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1023,7 +1067,7 @@ func (x *PartyQueue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PartyQueue.ProtoReflect.Descriptor instead.
 func (*PartyQueue) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{13}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PartyQueue) GetItemIds() []string {
@@ -1058,7 +1102,7 @@ type ControlPartyRequest struct {
 
 func (x *ControlPartyRequest) Reset() {
 	*x = ControlPartyRequest{}
-	mi := &file_laterna_v1_party_proto_msgTypes[14]
+	mi := &file_laterna_v1_party_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1070,7 +1114,7 @@ func (x *ControlPartyRequest) String() string {
 func (*ControlPartyRequest) ProtoMessage() {}
 
 func (x *ControlPartyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[14]
+	mi := &file_laterna_v1_party_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1083,7 +1127,7 @@ func (x *ControlPartyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ControlPartyRequest.ProtoReflect.Descriptor instead.
 func (*ControlPartyRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{14}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ControlPartyRequest) GetPartyId() string {
@@ -1205,7 +1249,7 @@ type ControlPartyResponse struct {
 
 func (x *ControlPartyResponse) Reset() {
 	*x = ControlPartyResponse{}
-	mi := &file_laterna_v1_party_proto_msgTypes[15]
+	mi := &file_laterna_v1_party_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1217,7 +1261,7 @@ func (x *ControlPartyResponse) String() string {
 func (*ControlPartyResponse) ProtoMessage() {}
 
 func (x *ControlPartyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[15]
+	mi := &file_laterna_v1_party_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1230,7 +1274,7 @@ func (x *ControlPartyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ControlPartyResponse.ProtoReflect.Descriptor instead.
 func (*ControlPartyResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{15}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ControlPartyResponse) GetState() *PartyState {
@@ -1253,7 +1297,7 @@ type ReportPartyStatusRequest struct {
 
 func (x *ReportPartyStatusRequest) Reset() {
 	*x = ReportPartyStatusRequest{}
-	mi := &file_laterna_v1_party_proto_msgTypes[16]
+	mi := &file_laterna_v1_party_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1265,7 +1309,7 @@ func (x *ReportPartyStatusRequest) String() string {
 func (*ReportPartyStatusRequest) ProtoMessage() {}
 
 func (x *ReportPartyStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[16]
+	mi := &file_laterna_v1_party_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1278,7 +1322,7 @@ func (x *ReportPartyStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportPartyStatusRequest.ProtoReflect.Descriptor instead.
 func (*ReportPartyStatusRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{16}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ReportPartyStatusRequest) GetPartyId() string {
@@ -1317,7 +1361,7 @@ type ReportPartyStatusResponse struct {
 
 func (x *ReportPartyStatusResponse) Reset() {
 	*x = ReportPartyStatusResponse{}
-	mi := &file_laterna_v1_party_proto_msgTypes[17]
+	mi := &file_laterna_v1_party_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1329,7 +1373,7 @@ func (x *ReportPartyStatusResponse) String() string {
 func (*ReportPartyStatusResponse) ProtoMessage() {}
 
 func (x *ReportPartyStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[17]
+	mi := &file_laterna_v1_party_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1342,7 +1386,7 @@ func (x *ReportPartyStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportPartyStatusResponse.ProtoReflect.Descriptor instead.
 func (*ReportPartyStatusResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{17}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{18}
 }
 
 type SendPartyMessageRequest struct {
@@ -1357,7 +1401,7 @@ type SendPartyMessageRequest struct {
 
 func (x *SendPartyMessageRequest) Reset() {
 	*x = SendPartyMessageRequest{}
-	mi := &file_laterna_v1_party_proto_msgTypes[18]
+	mi := &file_laterna_v1_party_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1369,7 +1413,7 @@ func (x *SendPartyMessageRequest) String() string {
 func (*SendPartyMessageRequest) ProtoMessage() {}
 
 func (x *SendPartyMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[18]
+	mi := &file_laterna_v1_party_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1382,7 +1426,7 @@ func (x *SendPartyMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendPartyMessageRequest.ProtoReflect.Descriptor instead.
 func (*SendPartyMessageRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{18}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SendPartyMessageRequest) GetPartyId() string {
@@ -1414,7 +1458,7 @@ type SendPartyMessageResponse struct {
 
 func (x *SendPartyMessageResponse) Reset() {
 	*x = SendPartyMessageResponse{}
-	mi := &file_laterna_v1_party_proto_msgTypes[19]
+	mi := &file_laterna_v1_party_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1426,7 +1470,7 @@ func (x *SendPartyMessageResponse) String() string {
 func (*SendPartyMessageResponse) ProtoMessage() {}
 
 func (x *SendPartyMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[19]
+	mi := &file_laterna_v1_party_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1439,7 +1483,7 @@ func (x *SendPartyMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendPartyMessageResponse.ProtoReflect.Descriptor instead.
 func (*SendPartyMessageResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{19}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{20}
 }
 
 type LeavePartyRequest struct {
@@ -1451,7 +1495,7 @@ type LeavePartyRequest struct {
 
 func (x *LeavePartyRequest) Reset() {
 	*x = LeavePartyRequest{}
-	mi := &file_laterna_v1_party_proto_msgTypes[20]
+	mi := &file_laterna_v1_party_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1463,7 +1507,7 @@ func (x *LeavePartyRequest) String() string {
 func (*LeavePartyRequest) ProtoMessage() {}
 
 func (x *LeavePartyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[20]
+	mi := &file_laterna_v1_party_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1476,7 +1520,7 @@ func (x *LeavePartyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeavePartyRequest.ProtoReflect.Descriptor instead.
 func (*LeavePartyRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{20}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *LeavePartyRequest) GetPartyId() string {
@@ -1494,7 +1538,7 @@ type LeavePartyResponse struct {
 
 func (x *LeavePartyResponse) Reset() {
 	*x = LeavePartyResponse{}
-	mi := &file_laterna_v1_party_proto_msgTypes[21]
+	mi := &file_laterna_v1_party_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1506,7 +1550,7 @@ func (x *LeavePartyResponse) String() string {
 func (*LeavePartyResponse) ProtoMessage() {}
 
 func (x *LeavePartyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[21]
+	mi := &file_laterna_v1_party_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1519,7 +1563,7 @@ func (x *LeavePartyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeavePartyResponse.ProtoReflect.Descriptor instead.
 func (*LeavePartyResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{21}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{22}
 }
 
 type KickPartyMemberRequest struct {
@@ -1532,7 +1576,7 @@ type KickPartyMemberRequest struct {
 
 func (x *KickPartyMemberRequest) Reset() {
 	*x = KickPartyMemberRequest{}
-	mi := &file_laterna_v1_party_proto_msgTypes[22]
+	mi := &file_laterna_v1_party_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1544,7 +1588,7 @@ func (x *KickPartyMemberRequest) String() string {
 func (*KickPartyMemberRequest) ProtoMessage() {}
 
 func (x *KickPartyMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[22]
+	mi := &file_laterna_v1_party_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1557,7 +1601,7 @@ func (x *KickPartyMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KickPartyMemberRequest.ProtoReflect.Descriptor instead.
 func (*KickPartyMemberRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{22}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *KickPartyMemberRequest) GetPartyId() string {
@@ -1582,7 +1626,7 @@ type KickPartyMemberResponse struct {
 
 func (x *KickPartyMemberResponse) Reset() {
 	*x = KickPartyMemberResponse{}
-	mi := &file_laterna_v1_party_proto_msgTypes[23]
+	mi := &file_laterna_v1_party_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1594,7 +1638,7 @@ func (x *KickPartyMemberResponse) String() string {
 func (*KickPartyMemberResponse) ProtoMessage() {}
 
 func (x *KickPartyMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[23]
+	mi := &file_laterna_v1_party_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1607,7 +1651,7 @@ func (x *KickPartyMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KickPartyMemberResponse.ProtoReflect.Descriptor instead.
 func (*KickPartyMemberResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{23}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{24}
 }
 
 type EndPartyRequest struct {
@@ -1619,7 +1663,7 @@ type EndPartyRequest struct {
 
 func (x *EndPartyRequest) Reset() {
 	*x = EndPartyRequest{}
-	mi := &file_laterna_v1_party_proto_msgTypes[24]
+	mi := &file_laterna_v1_party_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1631,7 +1675,7 @@ func (x *EndPartyRequest) String() string {
 func (*EndPartyRequest) ProtoMessage() {}
 
 func (x *EndPartyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[24]
+	mi := &file_laterna_v1_party_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1644,7 +1688,7 @@ func (x *EndPartyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndPartyRequest.ProtoReflect.Descriptor instead.
 func (*EndPartyRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{24}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *EndPartyRequest) GetPartyId() string {
@@ -1662,7 +1706,7 @@ type EndPartyResponse struct {
 
 func (x *EndPartyResponse) Reset() {
 	*x = EndPartyResponse{}
-	mi := &file_laterna_v1_party_proto_msgTypes[25]
+	mi := &file_laterna_v1_party_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1674,7 +1718,7 @@ func (x *EndPartyResponse) String() string {
 func (*EndPartyResponse) ProtoMessage() {}
 
 func (x *EndPartyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[25]
+	mi := &file_laterna_v1_party_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1687,7 +1731,7 @@ func (x *EndPartyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndPartyResponse.ProtoReflect.Descriptor instead.
 func (*EndPartyResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{25}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{26}
 }
 
 type GetServerTimeRequest struct {
@@ -1698,7 +1742,7 @@ type GetServerTimeRequest struct {
 
 func (x *GetServerTimeRequest) Reset() {
 	*x = GetServerTimeRequest{}
-	mi := &file_laterna_v1_party_proto_msgTypes[26]
+	mi := &file_laterna_v1_party_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1710,7 +1754,7 @@ func (x *GetServerTimeRequest) String() string {
 func (*GetServerTimeRequest) ProtoMessage() {}
 
 func (x *GetServerTimeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[26]
+	mi := &file_laterna_v1_party_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1723,7 +1767,7 @@ func (x *GetServerTimeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServerTimeRequest.ProtoReflect.Descriptor instead.
 func (*GetServerTimeRequest) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{26}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{27}
 }
 
 type GetServerTimeResponse struct {
@@ -1735,7 +1779,7 @@ type GetServerTimeResponse struct {
 
 func (x *GetServerTimeResponse) Reset() {
 	*x = GetServerTimeResponse{}
-	mi := &file_laterna_v1_party_proto_msgTypes[27]
+	mi := &file_laterna_v1_party_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1747,7 +1791,7 @@ func (x *GetServerTimeResponse) String() string {
 func (*GetServerTimeResponse) ProtoMessage() {}
 
 func (x *GetServerTimeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_laterna_v1_party_proto_msgTypes[27]
+	mi := &file_laterna_v1_party_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1760,7 +1804,7 @@ func (x *GetServerTimeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServerTimeResponse.ProtoReflect.Descriptor instead.
 func (*GetServerTimeResponse) Descriptor() ([]byte, []int) {
-	return file_laterna_v1_party_proto_rawDescGZIP(), []int{27}
+	return file_laterna_v1_party_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetServerTimeResponse) GetNow() *timestamppb.Timestamp {
@@ -1775,7 +1819,7 @@ var File_laterna_v1_party_proto protoreflect.FileDescriptor
 const file_laterna_v1_party_proto_rawDesc = "" +
 	"\n" +
 	"\x16laterna/v1/party.proto\x12\n" +
-	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/catalog.proto\x1a\x15laterna/v1/text.proto\"\x91\x01\n" +
+	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/catalog.proto\x1a\x17laterna/v1/events.proto\x1a\x15laterna/v1/text.proto\"\x91\x01\n" +
 	"\vPartyMember\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -1825,17 +1869,21 @@ const file_laterna_v1_party_proto_rawDesc = "" +
 	"\x10GetPartyResponse\x12'\n" +
 	"\x05party\x18\x01 \x01(\v2\x11.laterna.v1.PartyR\x05party\".\n" +
 	"\x11WatchPartyRequest\x12\x19\n" +
-	"\bparty_id\x18\x01 \x01(\tR\apartyId\"\xaa\x02\n" +
+	"\bparty_id\x18\x01 \x01(\tR\apartyId\"\xc6\x02\n" +
 	"\x12WatchPartyResponse\x12;\n" +
 	"\vserver_time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"serverTime\x12.\n" +
 	"\x05state\x18\x02 \x01(\v2\x16.laterna.v1.PartyStateH\x00R\x05state\x124\n" +
-	"\amessage\x18\x03 \x01(\v2\x18.laterna.v1.PartyMessageH\x00R\amessage\x12\x16\n" +
-	"\x05ended\x18\x04 \x01(\tH\x00R\x05ended\x12\x1e\n" +
-	"\theartbeat\x18\x05 \x01(\bH\x00R\theartbeat\x12/\n" +
+	"\amessage\x18\x03 \x01(\v2\x18.laterna.v1.PartyMessageH\x00R\amessage\x12.\n" +
+	"\x05ended\x18\a \x01(\v2\x16.laterna.v1.PartyEndedH\x00R\x05ended\x125\n" +
+	"\theartbeat\x18\b \x01(\v2\x15.laterna.v1.HeartbeatH\x00R\theartbeatB\b\n" +
+	"\x06updateJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\n" +
+	"ended_text\"W\n" +
 	"\n" +
-	"ended_text\x18\x06 \x01(\v2\x10.laterna.v1.TextR\tendedTextB\b\n" +
-	"\x06update\"=\n" +
+	"PartyEnded\x12\x16\n" +
+	"\x06reason\x18\x01 \x01(\tR\x06reason\x121\n" +
+	"\vreason_text\x18\x02 \x01(\v2\x10.laterna.v1.TextR\n" +
+	"reasonText\"=\n" +
 	"\n" +
 	"PartyQueue\x12\x19\n" +
 	"\bitem_ids\x18\x01 \x03(\tR\aitemIds\x12\x14\n" +
@@ -1910,7 +1958,7 @@ func file_laterna_v1_party_proto_rawDescGZIP() []byte {
 }
 
 var file_laterna_v1_party_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_laterna_v1_party_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_laterna_v1_party_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_laterna_v1_party_proto_goTypes = []any{
 	(PartyStatus)(0),                  // 0: laterna.v1.PartyStatus
 	(*PartyMember)(nil),               // 1: laterna.v1.PartyMember
@@ -1926,78 +1974,82 @@ var file_laterna_v1_party_proto_goTypes = []any{
 	(*GetPartyResponse)(nil),          // 11: laterna.v1.GetPartyResponse
 	(*WatchPartyRequest)(nil),         // 12: laterna.v1.WatchPartyRequest
 	(*WatchPartyResponse)(nil),        // 13: laterna.v1.WatchPartyResponse
-	(*PartyQueue)(nil),                // 14: laterna.v1.PartyQueue
-	(*ControlPartyRequest)(nil),       // 15: laterna.v1.ControlPartyRequest
-	(*ControlPartyResponse)(nil),      // 16: laterna.v1.ControlPartyResponse
-	(*ReportPartyStatusRequest)(nil),  // 17: laterna.v1.ReportPartyStatusRequest
-	(*ReportPartyStatusResponse)(nil), // 18: laterna.v1.ReportPartyStatusResponse
-	(*SendPartyMessageRequest)(nil),   // 19: laterna.v1.SendPartyMessageRequest
-	(*SendPartyMessageResponse)(nil),  // 20: laterna.v1.SendPartyMessageResponse
-	(*LeavePartyRequest)(nil),         // 21: laterna.v1.LeavePartyRequest
-	(*LeavePartyResponse)(nil),        // 22: laterna.v1.LeavePartyResponse
-	(*KickPartyMemberRequest)(nil),    // 23: laterna.v1.KickPartyMemberRequest
-	(*KickPartyMemberResponse)(nil),   // 24: laterna.v1.KickPartyMemberResponse
-	(*EndPartyRequest)(nil),           // 25: laterna.v1.EndPartyRequest
-	(*EndPartyResponse)(nil),          // 26: laterna.v1.EndPartyResponse
-	(*GetServerTimeRequest)(nil),      // 27: laterna.v1.GetServerTimeRequest
-	(*GetServerTimeResponse)(nil),     // 28: laterna.v1.GetServerTimeResponse
-	(*durationpb.Duration)(nil),       // 29: google.protobuf.Duration
-	(*timestamppb.Timestamp)(nil),     // 30: google.protobuf.Timestamp
-	(*MovieSummary)(nil),              // 31: laterna.v1.MovieSummary
-	(*Episode)(nil),                   // 32: laterna.v1.Episode
-	(*Track)(nil),                     // 33: laterna.v1.Track
-	(*Text)(nil),                      // 34: laterna.v1.Text
+	(*PartyEnded)(nil),                // 14: laterna.v1.PartyEnded
+	(*PartyQueue)(nil),                // 15: laterna.v1.PartyQueue
+	(*ControlPartyRequest)(nil),       // 16: laterna.v1.ControlPartyRequest
+	(*ControlPartyResponse)(nil),      // 17: laterna.v1.ControlPartyResponse
+	(*ReportPartyStatusRequest)(nil),  // 18: laterna.v1.ReportPartyStatusRequest
+	(*ReportPartyStatusResponse)(nil), // 19: laterna.v1.ReportPartyStatusResponse
+	(*SendPartyMessageRequest)(nil),   // 20: laterna.v1.SendPartyMessageRequest
+	(*SendPartyMessageResponse)(nil),  // 21: laterna.v1.SendPartyMessageResponse
+	(*LeavePartyRequest)(nil),         // 22: laterna.v1.LeavePartyRequest
+	(*LeavePartyResponse)(nil),        // 23: laterna.v1.LeavePartyResponse
+	(*KickPartyMemberRequest)(nil),    // 24: laterna.v1.KickPartyMemberRequest
+	(*KickPartyMemberResponse)(nil),   // 25: laterna.v1.KickPartyMemberResponse
+	(*EndPartyRequest)(nil),           // 26: laterna.v1.EndPartyRequest
+	(*EndPartyResponse)(nil),          // 27: laterna.v1.EndPartyResponse
+	(*GetServerTimeRequest)(nil),      // 28: laterna.v1.GetServerTimeRequest
+	(*GetServerTimeResponse)(nil),     // 29: laterna.v1.GetServerTimeResponse
+	(*durationpb.Duration)(nil),       // 30: google.protobuf.Duration
+	(*timestamppb.Timestamp)(nil),     // 31: google.protobuf.Timestamp
+	(*MovieSummary)(nil),              // 32: laterna.v1.MovieSummary
+	(*Episode)(nil),                   // 33: laterna.v1.Episode
+	(*Track)(nil),                     // 34: laterna.v1.Track
+	(*Heartbeat)(nil),                 // 35: laterna.v1.Heartbeat
+	(*Text)(nil),                      // 36: laterna.v1.Text
 }
 var file_laterna_v1_party_proto_depIdxs = []int32{
 	0,  // 0: laterna.v1.PartyState.status:type_name -> laterna.v1.PartyStatus
 	0,  // 1: laterna.v1.PartyState.resume:type_name -> laterna.v1.PartyStatus
-	29, // 2: laterna.v1.PartyState.position:type_name -> google.protobuf.Duration
-	30, // 3: laterna.v1.PartyState.at:type_name -> google.protobuf.Timestamp
+	30, // 2: laterna.v1.PartyState.position:type_name -> google.protobuf.Duration
+	31, // 3: laterna.v1.PartyState.at:type_name -> google.protobuf.Timestamp
 	1,  // 4: laterna.v1.PartyState.members:type_name -> laterna.v1.PartyMember
-	31, // 5: laterna.v1.PartyItem.movie:type_name -> laterna.v1.MovieSummary
-	32, // 6: laterna.v1.PartyItem.episode:type_name -> laterna.v1.Episode
-	33, // 7: laterna.v1.PartyItem.track:type_name -> laterna.v1.Track
+	32, // 5: laterna.v1.PartyItem.movie:type_name -> laterna.v1.MovieSummary
+	33, // 6: laterna.v1.PartyItem.episode:type_name -> laterna.v1.Episode
+	34, // 7: laterna.v1.PartyItem.track:type_name -> laterna.v1.Track
 	3,  // 8: laterna.v1.Party.items:type_name -> laterna.v1.PartyItem
 	2,  // 9: laterna.v1.Party.state:type_name -> laterna.v1.PartyState
-	30, // 10: laterna.v1.PartyMessage.at:type_name -> google.protobuf.Timestamp
+	31, // 10: laterna.v1.PartyMessage.at:type_name -> google.protobuf.Timestamp
 	4,  // 11: laterna.v1.CreatePartyResponse.party:type_name -> laterna.v1.Party
 	4,  // 12: laterna.v1.JoinPartyResponse.party:type_name -> laterna.v1.Party
 	4,  // 13: laterna.v1.GetPartyResponse.party:type_name -> laterna.v1.Party
-	30, // 14: laterna.v1.WatchPartyResponse.server_time:type_name -> google.protobuf.Timestamp
+	31, // 14: laterna.v1.WatchPartyResponse.server_time:type_name -> google.protobuf.Timestamp
 	2,  // 15: laterna.v1.WatchPartyResponse.state:type_name -> laterna.v1.PartyState
 	5,  // 16: laterna.v1.WatchPartyResponse.message:type_name -> laterna.v1.PartyMessage
-	34, // 17: laterna.v1.WatchPartyResponse.ended_text:type_name -> laterna.v1.Text
-	29, // 18: laterna.v1.ControlPartyRequest.seek:type_name -> google.protobuf.Duration
-	14, // 19: laterna.v1.ControlPartyRequest.queue:type_name -> laterna.v1.PartyQueue
-	2,  // 20: laterna.v1.ControlPartyResponse.state:type_name -> laterna.v1.PartyState
-	30, // 21: laterna.v1.GetServerTimeResponse.now:type_name -> google.protobuf.Timestamp
-	6,  // 22: laterna.v1.PartyService.CreateParty:input_type -> laterna.v1.CreatePartyRequest
-	8,  // 23: laterna.v1.PartyService.JoinParty:input_type -> laterna.v1.JoinPartyRequest
-	10, // 24: laterna.v1.PartyService.GetParty:input_type -> laterna.v1.GetPartyRequest
-	12, // 25: laterna.v1.PartyService.WatchParty:input_type -> laterna.v1.WatchPartyRequest
-	15, // 26: laterna.v1.PartyService.ControlParty:input_type -> laterna.v1.ControlPartyRequest
-	17, // 27: laterna.v1.PartyService.ReportPartyStatus:input_type -> laterna.v1.ReportPartyStatusRequest
-	19, // 28: laterna.v1.PartyService.SendPartyMessage:input_type -> laterna.v1.SendPartyMessageRequest
-	21, // 29: laterna.v1.PartyService.LeaveParty:input_type -> laterna.v1.LeavePartyRequest
-	23, // 30: laterna.v1.PartyService.KickPartyMember:input_type -> laterna.v1.KickPartyMemberRequest
-	25, // 31: laterna.v1.PartyService.EndParty:input_type -> laterna.v1.EndPartyRequest
-	27, // 32: laterna.v1.PartyService.GetServerTime:input_type -> laterna.v1.GetServerTimeRequest
-	7,  // 33: laterna.v1.PartyService.CreateParty:output_type -> laterna.v1.CreatePartyResponse
-	9,  // 34: laterna.v1.PartyService.JoinParty:output_type -> laterna.v1.JoinPartyResponse
-	11, // 35: laterna.v1.PartyService.GetParty:output_type -> laterna.v1.GetPartyResponse
-	13, // 36: laterna.v1.PartyService.WatchParty:output_type -> laterna.v1.WatchPartyResponse
-	16, // 37: laterna.v1.PartyService.ControlParty:output_type -> laterna.v1.ControlPartyResponse
-	18, // 38: laterna.v1.PartyService.ReportPartyStatus:output_type -> laterna.v1.ReportPartyStatusResponse
-	20, // 39: laterna.v1.PartyService.SendPartyMessage:output_type -> laterna.v1.SendPartyMessageResponse
-	22, // 40: laterna.v1.PartyService.LeaveParty:output_type -> laterna.v1.LeavePartyResponse
-	24, // 41: laterna.v1.PartyService.KickPartyMember:output_type -> laterna.v1.KickPartyMemberResponse
-	26, // 42: laterna.v1.PartyService.EndParty:output_type -> laterna.v1.EndPartyResponse
-	28, // 43: laterna.v1.PartyService.GetServerTime:output_type -> laterna.v1.GetServerTimeResponse
-	33, // [33:44] is the sub-list for method output_type
-	22, // [22:33] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	14, // 17: laterna.v1.WatchPartyResponse.ended:type_name -> laterna.v1.PartyEnded
+	35, // 18: laterna.v1.WatchPartyResponse.heartbeat:type_name -> laterna.v1.Heartbeat
+	36, // 19: laterna.v1.PartyEnded.reason_text:type_name -> laterna.v1.Text
+	30, // 20: laterna.v1.ControlPartyRequest.seek:type_name -> google.protobuf.Duration
+	15, // 21: laterna.v1.ControlPartyRequest.queue:type_name -> laterna.v1.PartyQueue
+	2,  // 22: laterna.v1.ControlPartyResponse.state:type_name -> laterna.v1.PartyState
+	31, // 23: laterna.v1.GetServerTimeResponse.now:type_name -> google.protobuf.Timestamp
+	6,  // 24: laterna.v1.PartyService.CreateParty:input_type -> laterna.v1.CreatePartyRequest
+	8,  // 25: laterna.v1.PartyService.JoinParty:input_type -> laterna.v1.JoinPartyRequest
+	10, // 26: laterna.v1.PartyService.GetParty:input_type -> laterna.v1.GetPartyRequest
+	12, // 27: laterna.v1.PartyService.WatchParty:input_type -> laterna.v1.WatchPartyRequest
+	16, // 28: laterna.v1.PartyService.ControlParty:input_type -> laterna.v1.ControlPartyRequest
+	18, // 29: laterna.v1.PartyService.ReportPartyStatus:input_type -> laterna.v1.ReportPartyStatusRequest
+	20, // 30: laterna.v1.PartyService.SendPartyMessage:input_type -> laterna.v1.SendPartyMessageRequest
+	22, // 31: laterna.v1.PartyService.LeaveParty:input_type -> laterna.v1.LeavePartyRequest
+	24, // 32: laterna.v1.PartyService.KickPartyMember:input_type -> laterna.v1.KickPartyMemberRequest
+	26, // 33: laterna.v1.PartyService.EndParty:input_type -> laterna.v1.EndPartyRequest
+	28, // 34: laterna.v1.PartyService.GetServerTime:input_type -> laterna.v1.GetServerTimeRequest
+	7,  // 35: laterna.v1.PartyService.CreateParty:output_type -> laterna.v1.CreatePartyResponse
+	9,  // 36: laterna.v1.PartyService.JoinParty:output_type -> laterna.v1.JoinPartyResponse
+	11, // 37: laterna.v1.PartyService.GetParty:output_type -> laterna.v1.GetPartyResponse
+	13, // 38: laterna.v1.PartyService.WatchParty:output_type -> laterna.v1.WatchPartyResponse
+	17, // 39: laterna.v1.PartyService.ControlParty:output_type -> laterna.v1.ControlPartyResponse
+	19, // 40: laterna.v1.PartyService.ReportPartyStatus:output_type -> laterna.v1.ReportPartyStatusResponse
+	21, // 41: laterna.v1.PartyService.SendPartyMessage:output_type -> laterna.v1.SendPartyMessageResponse
+	23, // 42: laterna.v1.PartyService.LeaveParty:output_type -> laterna.v1.LeavePartyResponse
+	25, // 43: laterna.v1.PartyService.KickPartyMember:output_type -> laterna.v1.KickPartyMemberResponse
+	27, // 44: laterna.v1.PartyService.EndParty:output_type -> laterna.v1.EndPartyResponse
+	29, // 45: laterna.v1.PartyService.GetServerTime:output_type -> laterna.v1.GetServerTimeResponse
+	35, // [35:46] is the sub-list for method output_type
+	24, // [24:35] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_party_proto_init() }
@@ -2006,6 +2058,7 @@ func file_laterna_v1_party_proto_init() {
 		return
 	}
 	file_laterna_v1_catalog_proto_init()
+	file_laterna_v1_events_proto_init()
 	file_laterna_v1_text_proto_init()
 	file_laterna_v1_party_proto_msgTypes[2].OneofWrappers = []any{
 		(*PartyItem_Movie)(nil),
@@ -2018,7 +2071,7 @@ func file_laterna_v1_party_proto_init() {
 		(*WatchPartyResponse_Ended)(nil),
 		(*WatchPartyResponse_Heartbeat)(nil),
 	}
-	file_laterna_v1_party_proto_msgTypes[14].OneofWrappers = []any{
+	file_laterna_v1_party_proto_msgTypes[15].OneofWrappers = []any{
 		(*ControlPartyRequest_Play)(nil),
 		(*ControlPartyRequest_Pause)(nil),
 		(*ControlPartyRequest_Seek)(nil),
@@ -2026,14 +2079,14 @@ func file_laterna_v1_party_proto_init() {
 		(*ControlPartyRequest_Queue)(nil),
 		(*ControlPartyRequest_HostOnly)(nil),
 	}
-	file_laterna_v1_party_proto_msgTypes[16].OneofWrappers = []any{}
+	file_laterna_v1_party_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_laterna_v1_party_proto_rawDesc), len(file_laterna_v1_party_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   28,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

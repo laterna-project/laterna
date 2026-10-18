@@ -21,9 +21,16 @@ Rules of the contract:
   per kind of item, with fields that are always filled in.
 - Reads without side effects are marked `NO_SIDE_EFFECTS`, so they can be called with GET and
   cached.
-- `google.protobuf.Duration` and `Timestamp` for time, cursors for paging.
+- `google.protobuf.Duration` and `Timestamp` for time (a deadline is an `expires_at`, never a
+  duration), cursors for paging.
+- A number with a unit says it in its name: `size_bytes`, `max_bitrate_kbps`. `bitrate` alone, in
+  the streams of a file, is in bit/s as FFmpeg gives it.
+- The same thing has the same name everywhere: `ip` for an address, `finished` for a playback
+  played to the end, `video_transcoded` for a re-encoded picture.
+- Changes go through `Update…` methods with optional fields: unset leaves a field unchanged.
 - `buf lint` (STANDARD rules) and `buf breaking` run in CI: a change that would break an
-  existing client is rejected.
+  existing client is rejected. The contract 1.0 was the last such change; from then on
+  `laterna.v1` only grows.
 - Every new feature starts with the `.proto` file, then `task gen`.
 
 A test checks that every method of the contract is actually served.

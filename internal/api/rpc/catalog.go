@@ -87,7 +87,7 @@ func (s *CatalogService) ListSeries(ctx context.Context, req *connect.Request[la
 	}
 	page, err := s.app.ListSeries(ctx, principal(ctx), app.ListQuery{
 		LibraryID: lib, Sort: itemSortFromMsg(m.GetSort()), Reverse: m.GetReverse(), Genre: m.GetGenre(),
-		FavoritesOnly: m.GetFavoritesOnly(), PageSize: int(m.GetPageSize()), PageToken: m.GetPageToken(),
+		Played: m.Played, FavoritesOnly: m.GetFavoritesOnly(), PageSize: int(m.GetPageSize()), PageToken: m.GetPageToken(),
 	})
 	if err != nil {
 		return nil, err

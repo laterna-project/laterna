@@ -53,31 +53,19 @@ func (s *ProfileService) UpdateProfile(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&laternav1.UpdateProfileResponse{Profile: profileMsg(p)}), nil
 }
 
-// SetSubtitlePreferences changes when playback starts with a subtitle, for the picked profile.
-func (s *ProfileService) SetSubtitlePreferences(ctx context.Context, req *connect.Request[laternav1.SetSubtitlePreferencesRequest]) (*connect.Response[laternav1.SetSubtitlePreferencesResponse], error) {
-	p, err := s.app.SetSubtitlePreferences(ctx, principal(ctx), subtitleModeFromMsg(req.Msg.GetMode()), req.Msg.GetLanguage())
+// UpdatePreferences changes the preferences of the picked profile.
+func (s *ProfileService) UpdatePreferences(ctx context.Context, req *connect.Request[laternav1.UpdatePreferencesRequest]) (*connect.Response[laternav1.UpdatePreferencesResponse], error) {
+	m := req.Msg
+	ch := app.PreferenceChanges{Language: m.Language, SubtitleLanguage: m.SubtitleLanguage, AudioLanguage: m.AudioLanguage}
+	if m.SubtitleMode != nil {
+		mode := subtitleModeFromMsg(m.GetSubtitleMode())
+		ch.SubtitleMode = &mode
+	}
+	p, err := s.app.UpdatePreferences(ctx, principal(ctx), ch)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&laternav1.SetSubtitlePreferencesResponse{Profile: profileMsg(p)}), nil
-}
-
-// SetAudioPreferences changes the audio language playback starts with, for the picked profile.
-func (s *ProfileService) SetAudioPreferences(ctx context.Context, req *connect.Request[laternav1.SetAudioPreferencesRequest]) (*connect.Response[laternav1.SetAudioPreferencesResponse], error) {
-	p, err := s.app.SetAudioPreferences(ctx, principal(ctx), req.Msg.GetLanguage())
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&laternav1.SetAudioPreferencesResponse{Profile: profileMsg(p)}), nil
-}
-
-// SetLanguage changes the language of the picked profile.
-func (s *ProfileService) SetLanguage(ctx context.Context, req *connect.Request[laternav1.SetLanguageRequest]) (*connect.Response[laternav1.SetLanguageResponse], error) {
-	p, err := s.app.SetLanguage(ctx, principal(ctx), req.Msg.GetLanguage())
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&laternav1.SetLanguageResponse{Profile: profileMsg(p)}), nil
+	return connect.NewResponse(&laternav1.UpdatePreferencesResponse{Profile: profileMsg(p)}), nil
 }
 
 // DeleteProfile deletes a profile.

@@ -109,7 +109,7 @@ func TestPartyServiceOverHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, stream := range []*connect.ServerStreamForClient[laternav1.WatchPartyResponse]{first, second} {
-		if r := until(stream, func(r *laternav1.WatchPartyResponse) bool { return r.GetEnded() != "" }); r.GetEnded() == "" {
+		if r := until(stream, func(r *laternav1.WatchPartyResponse) bool { return r.GetEnded() != nil }); r.GetEnded().GetReason() == "" || r.GetEnded().GetReasonText().GetKey() == "" {
 			t.Error("end not received")
 		}
 	}

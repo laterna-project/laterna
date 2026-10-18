@@ -89,7 +89,7 @@ func TestMovieMetadataFromNFO(t *testing.T) {
 <actor><name>Unknown</name><thumb>` + img("missing.jpg") + `</thumb></actor>
 </movie>`
 	writeText(t, filepath.Join(dir, "movie.nfo"), nfo)
-	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
+	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root})
 	mustNil(t, err)
 	waitIdle(t, a)
 
@@ -183,7 +183,7 @@ func TestSeriesMetadataChanges(t *testing.T) {
 	root := t.TempDir()
 	show := filepath.Join(root, "Café Stories (2022)")
 	copyTree(t, filepath.Join(testfixtures.Root(), "Shows", "Café Stories (2022)"), show)
-	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{root}, "")
+	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{root})
 	mustNil(t, err)
 	waitIdle(t, a)
 
@@ -243,7 +243,7 @@ func TestEpisodeStills(t *testing.T) {
 	root := t.TempDir()
 	show := filepath.Join(root, "Café Stories (2022)")
 	copyTree(t, filepath.Join(testfixtures.Root(), "Shows", "Café Stories (2022)"), show)
-	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{root}, "")
+	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{root})
 	mustNil(t, err)
 	waitIdle(t, a)
 

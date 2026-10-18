@@ -51,7 +51,7 @@ func playbackServer(t *testing.T, proxies ...netip.Prefix) (string, string) {
 		t.Fatal(err)
 	}
 	roots := []string{filepath.Join(testfixtures.Root(), "Movies"), filepath.Join(testfixtures.Root(), "Subtitles")}
-	if _, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, roots, ""); err != nil {
+	if _, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, roots); err != nil {
 		t.Fatal(err)
 	}
 	for deadline := time.Now().Add(90 * time.Second); ; time.Sleep(20 * time.Millisecond) {
@@ -208,7 +208,7 @@ func TestPlaybackOverHTTP(t *testing.T) {
 	}
 	font := subs.Msg.GetFonts()[0]
 	if r := get(font.GetUrl()); r.StatusCode != http.StatusOK || r.Header.Get("Content-Type") != "font/ttf" ||
-		!strings.Contains(r.Header.Get("Cache-Control"), "immutable") || r.ContentLength != font.GetSize() {
+		!strings.Contains(r.Header.Get("Cache-Control"), "immutable") || r.ContentLength != font.GetSizeBytes() {
 		t.Errorf("font: %d %v", r.StatusCode, r.Header)
 	}
 	for _, bad := range []string{strings.Replace(font.GetUrl(), ".ttf", ".otf", 1), "/fonts/abc.ttf", "/fonts/..%2F..%2Fsecret.ttf"} {
@@ -309,13 +309,13 @@ func TestBitrateLimitOverHTTP(t *testing.T) {
 
 	rate := int32(800)
 	settings, err := system.UpdateSettings(ctx, authed(&laternav1.UpdateSettingsRequest{
-		RemoteMaxBitrate: &rate, LocalNetworks: &laternav1.StringList{Values: []string{"192.168.1.9/24"}},
+		RemoteMaxBitrateKbps: &rate, LocalNetworks: &laternav1.StringList{Values: []string{"192.168.1.9/24"}},
 	}, token))
-	if err != nil || settings.Msg.GetSettings().GetRemoteMaxBitrate() != 800 || strings.Join(settings.Msg.GetSettings().GetLocalNetworks(), " ") != "192.168.1.0/24" {
+	if err != nil || settings.Msg.GetSettings().GetRemoteMaxBitrateKbps() != 800 || strings.Join(settings.Msg.GetSettings().GetLocalNetworks(), " ") != "192.168.1.0/24" {
 		t.Fatalf("settings: %v %v", settings, err)
 	}
 	low := int32(100)
-	if _, err := system.UpdateSettings(ctx, authed(&laternav1.UpdateSettingsRequest{RemoteMaxBitrate: &low}, token)); errorCode(err) != "settings.invalid_remote_max_bitrate" {
+	if _, err := system.UpdateSettings(ctx, authed(&laternav1.UpdateSettingsRequest{RemoteMaxBitrateKbps: &low}, token)); errorCode(err) != "settings.invalid_remote_max_bitrate" {
 		t.Errorf("limit too low: %v", err)
 	}
 	movies, err := catalog.ListMovies(ctx, authed(&laternav1.ListMoviesRequest{}, token))
@@ -331,7 +331,7 @@ func TestBitrateLimitOverHTTP(t *testing.T) {
 	device := &laternav1.DeviceProfile{Containers: []string{"mp4"}, Video: []*laternav1.VideoSupport{{Codec: "h264"}}, AudioCodecs: []string{"aac"}, Hls: true}
 	start := func(from string, maxRate int32) *laternav1.StartPlaybackResponse {
 		t.Helper()
-		req := authed(&laternav1.StartPlaybackRequest{ItemId: movie, Device: device, MaxBitrate: maxRate}, token)
+		req := authed(&laternav1.StartPlaybackRequest{ItemId: movie, Device: device, MaxBitrateKbps: maxRate}, token)
 		req.Header().Set("X-Forwarded-For", from)
 		resp, err := player.StartPlayback(ctx, req)
 		if err != nil {
@@ -347,21 +347,22 @@ func TestBitrateLimitOverHTTP(t *testing.T) {
 	}
 
 	home := start("192.168.1.5", 0)
-	if home.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_DIRECT || home.GetBitrateLimit() != 0 ||
+	if home.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_DIRECT || home.GetBitrateLimitKbps() != 0 ||
 		home.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_UNSPECIFIED {
 		t.Errorf("at home: %v", home)
 	}
 	stop(home)
 
 	away := start("203.0.113.7", 0)
-	if away.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_HLS_TRANSCODE || !away.GetVideoTranscoded() || away.GetBitrateLimit() != 800 ||
+	if away.GetMethod() != laternav1.PlaybackMethod_PLAYBACK_METHOD_HLS_TRANSCODE || !away.GetVideoTranscoded() || away.GetBitrateLimitKbps() != 800 ||
 		away.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_REMOTE ||
 		len(away.GetReasonTexts()) != 1 || away.GetReasonTexts()[0].GetKey() != "reason.bitrate_above_limit" {
 		t.Errorf("away: %v", away)
 	}
 	playing, err := activity.ListPlaybacks(ctx, authed(&laternav1.ListPlaybacksRequest{}, token))
 	if err != nil || len(playing.Msg.GetPlaybacks()) != 1 || !playing.Msg.GetPlaybacks()[0].GetRemote() ||
-		playing.Msg.GetPlaybacks()[0].GetAddress() != "203.0.113.7" || playing.Msg.GetPlaybacks()[0].GetBitrateLimit() != 800 {
+		playing.Msg.GetPlaybacks()[0].GetIp() != "203.0.113.7" || playing.Msg.GetPlaybacks()[0].GetBitrateLimitKbps() != 800 ||
+		playing.Msg.GetPlaybacks()[0].GetMethod() != away.GetMethod() || playing.Msg.GetPlaybacks()[0].GetVideoTranscoded() != away.GetVideoTranscoded() {
 		t.Errorf("playbacks: %v %v", playing, err)
 	}
 	resp, err := http.Get(base + away.GetMasterUrl())
@@ -376,7 +377,7 @@ func TestBitrateLimitOverHTTP(t *testing.T) {
 	stop(away)
 
 	client := start("192.168.1.5", 600)
-	if client.GetBitrateLimit() != 600 || client.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_CLIENT {
+	if client.GetBitrateLimitKbps() != 600 || client.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_CLIENT {
 		t.Errorf("client limit: %v", client)
 	}
 	stop(client)
@@ -387,13 +388,13 @@ func TestBitrateLimitOverHTTP(t *testing.T) {
 	}
 	accountRate := int32(600)
 	updated, err := accounts.UpdateAccount(ctx, authed(&laternav1.UpdateAccountRequest{
-		AccountId: list.Msg.GetAccounts()[0].GetAccount().GetId(), RemoteMaxBitrate: &accountRate,
+		AccountId: list.Msg.GetAccounts()[0].GetAccount().GetId(), RemoteMaxBitrateKbps: &accountRate,
 	}, token))
-	if err != nil || updated.Msg.GetAccount().GetRemoteMaxBitrate() != 600 {
+	if err != nil || updated.Msg.GetAccount().GetRemoteMaxBitrateKbps() != 600 {
 		t.Fatalf("account: %v %v", updated, err)
 	}
 	account := start("203.0.113.7", 0)
-	if account.GetBitrateLimit() != 600 || account.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_REMOTE {
+	if account.GetBitrateLimitKbps() != 600 || account.GetBitrateLimitSource() != laternav1.BitrateLimitSource_BITRATE_LIMIT_SOURCE_REMOTE {
 		t.Errorf("account limit: %v", account)
 	}
 	stop(account)
@@ -420,7 +421,7 @@ func TestAudioPreferencesOverHTTP(t *testing.T) {
 	device := &laternav1.DeviceProfile{Containers: []string{"mp4"}, Video: []*laternav1.VideoSupport{{Codec: "h264"}}, AudioCodecs: []string{"aac", "opus", "flac"}, Hls: true}
 	audioFor := func(lang string) int32 {
 		t.Helper()
-		resp, err := profiles.SetAudioPreferences(ctx, authed(&laternav1.SetAudioPreferencesRequest{Language: lang}, token))
+		resp, err := profiles.UpdatePreferences(ctx, authed(&laternav1.UpdatePreferencesRequest{AudioLanguage: &lang}, token))
 		if err != nil || resp.Msg.GetProfile().GetAudioLanguage() != lang {
 			t.Fatalf("audio preferences %q: %v %v", lang, resp, err)
 		}

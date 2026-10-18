@@ -31,17 +31,13 @@ service MusicService {
   rpc GetAlbum(GetAlbumRequest) returns (GetAlbumResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // ListTracks returns a page of tracks (all of them, or the favorites).
+  // ListTracks returns a page of tracks: all of them, the favorites, or those of an artist. Those
+  // of an artist in ITEM_SORT_ALBUM order are what plays the artist, album by album.
   rpc ListTracks(ListTracksRequest) returns (ListTracksResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // GetTrack returns a track and its files.
   rpc GetTrack(GetTrackRequest) returns (GetTrackResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  // ListArtistTracks returns all the present tracks of an artist, album by album (oldest first):
-  // enough to play everything, or shuffle everything.
-  rpc ListArtistTracks(ListArtistTracksRequest) returns (ListArtistTracksResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // GetLyrics returns the lyrics of a track (Track.has_lyrics): from a .lrc file next to it, timed
@@ -117,6 +113,8 @@ message ListTracksRequest {
   // 1 to 200; 0 means 50.
   int32 page_size = 5;
   string page_token = 6;
+  // Empty means all artists; otherwise the tracks of the albums of this artist.
+  string artist_id = 7;
 }
 
 message ListTracksResponse {
@@ -161,12 +159,4 @@ message LyricLine {
   // When it is sung; unset for plain lyrics.
   google.protobuf.Duration start = 1;
   string text = 2;
-}
-
-message ListArtistTracksRequest {
-  string artist_id = 1;
-}
-
-message ListArtistTracksResponse {
-  repeated Track tracks = 1;
 }

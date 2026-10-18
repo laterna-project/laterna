@@ -42,7 +42,7 @@ func posterOf(t *testing.T) (http.Handler, domain.Image) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Movies")}, ""); err != nil {
+	if _, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(testfixtures.Root(), "Movies")}); err != nil {
 		t.Fatal(err)
 	}
 	for deadline := time.Now().Add(90 * time.Second); ; time.Sleep(20 * time.Millisecond) {

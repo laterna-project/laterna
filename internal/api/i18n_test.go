@@ -104,10 +104,10 @@ func TestInternationalisation(t *testing.T) {
 	}
 
 	// The profile language: used when the request asks for none.
-	if _, err := profiles.SetLanguage(ctx, authed(&laternav1.SetLanguageRequest{Language: "not a language"}, token)); errorCode(err) != "profile.invalid_language" {
+	if _, err := profiles.UpdatePreferences(ctx, authed(&laternav1.UpdatePreferencesRequest{Language: new("not a language")}, token)); errorCode(err) != "profile.invalid_language" {
 		t.Errorf("invalid language: %v", err)
 	}
-	set, err := profiles.SetLanguage(ctx, authed(&laternav1.SetLanguageRequest{Language: "fr-CA"}, token))
+	set, err := profiles.UpdatePreferences(ctx, authed(&laternav1.UpdatePreferencesRequest{Language: new("fr-CA")}, token))
 	if err != nil || set.Msg.GetProfile().GetLanguage() != "fr-CA" {
 		t.Fatalf("profile language: %v %v", set, err)
 	}
@@ -120,7 +120,7 @@ func TestInternationalisation(t *testing.T) {
 	}
 	// A language the server does not have is allowed (the client may have it). The server then
 	// writes in its own.
-	if set, err := profiles.SetLanguage(ctx, authed(&laternav1.SetLanguageRequest{Language: "pt-BR"}, token)); err != nil || set.Msg.GetProfile().GetLanguage() != "pt-BR" {
+	if set, err := profiles.UpdatePreferences(ctx, authed(&laternav1.UpdatePreferencesRequest{Language: new("pt-BR")}, token)); err != nil || set.Msg.GetProfile().GetLanguage() != "pt-BR" {
 		t.Fatalf("language unknown to the server: %v %v", set, err)
 	}
 	if err := tooLong(""); !errors.As(err, &ce) || ce.Message() != "The profile name is longer than 40 characters" {

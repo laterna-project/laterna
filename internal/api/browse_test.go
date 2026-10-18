@@ -44,7 +44,7 @@ func TestBrowseFolders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(root, "Media", "Movies")}, "")
+	films, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{filepath.Join(root, "Media", "Movies")})
 	if err != nil {
 		t.Fatal(err)
 	}

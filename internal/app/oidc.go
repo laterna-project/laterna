@@ -184,10 +184,11 @@ func (a *App) oidcClient(ctx context.Context) (domain.OIDCProvider, *oidc.Provid
 }
 
 // OIDCLoginStart is an OIDC login that was opened: the secret ID to give PollOIDCLogin and the URL
-// to open in a browser.
+// to open in a browser, before ExpiresAt.
 type OIDCLoginStart struct {
-	LoginID, AuthURL    string
-	Interval, ExpiresIn time.Duration
+	LoginID, AuthURL string
+	Interval         time.Duration
+	ExpiresAt        time.Time
 }
 
 // StartOIDCLogin opens an OIDC login for a device.
@@ -219,7 +220,7 @@ func (a *App) StartOIDCLogin(ctx context.Context, dev domain.Device, ip string) 
 	o.byID[l.idHash], o.byState[l.state] = l, l
 	return OIDCLoginStart{
 		LoginID: id, AuthURL: provider.AuthCodeURL(cfg.ClientID, redirect, l.state, l.nonce, l.verifier),
-		Interval: OIDCPollInterval, ExpiresIn: oidcLoginFor,
+		Interval: OIDCPollInterval, ExpiresAt: l.expires,
 	}, nil
 }
 

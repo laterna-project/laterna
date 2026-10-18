@@ -443,13 +443,13 @@ async function play(itemId, opts = {}) {
   state.itemId = itemId;
   try {
     const s = await call('PlaybackService', 'StartPlayback', {
-      itemId, device: deviceProfile(), subtitleIndex: opts.subtitle, profileSubtitle: opts.subtitle == null, maxBitrate: Number($('max-bitrate').value),
+      itemId, device: deviceProfile(), subtitleIndex: opts.subtitle, profileSubtitle: opts.subtitle == null, maxBitrateKbps: Number($('max-bitrate').value),
     });
     state.session = s;
     const start = opts.start ?? parseFloat(s.resumePosition ?? '0');
     const encoded = [s.videoTranscoded && `video transcoded (${s.videoEncoder}${s.gpu ? ', on the GPU' : ''})`, s.toneMapping && `HDR → SDR (${s.toneMapping})`,
       s.audioTranscoded && 'audio transcoded',
-      s.bitrateLimit && `limited to ${s.bitrateLimit} kbit/s (${(s.bitrateLimitSource ?? '').replace('BITRATE_LIMIT_SOURCE_', '').toLowerCase()}${s.videoBitrate ? `, video at ${s.videoBitrate}` : ''})`].filter(Boolean);
+      s.bitrateLimitKbps && `limited to ${s.bitrateLimitKbps} kbit/s (${(s.bitrateLimitSource ?? '').replace('BITRATE_LIMIT_SOURCE_', '').toLowerCase()}${s.videoBitrateKbps ? `, video at ${s.videoBitrateKbps}` : ''})`].filter(Boolean);
     $('playback').textContent = [s.method.replace('PLAYBACK_METHOD_', ''), ...encoded, `resumed at ${start.toFixed(0)} s`].join(', ');
     log('playback opened', s);
     const url = state.base + s.url;
@@ -641,7 +641,7 @@ async function watchParty() {
 function onPartyUpdate(msg) {
   if (msg.state) applyPartyState(msg.state);
   else if (msg.message) log(msg.message.reaction ? `${msg.message.name} reacts ${msg.message.text}` : `${msg.message.name}: ${msg.message.text}`);
-  else if (msg.ended) { log('party ended:', msg.ended); party.abort?.abort(); party.state = null; showParty(); }
+  else if (msg.ended) { log('party ended:', msg.ended.reason); party.abort?.abort(); party.state = null; showParty(); }
 }
 
 // waitFor waits for an event, ten seconds at most (an item swapped along the way never fires it).

@@ -664,7 +664,8 @@ func (*RevokeDeviceResponse) Descriptor() ([]byte, []int) {
 	return file_laterna_v1_activity_proto_rawDescGZIP(), []int{7}
 }
 
-// ActivePlayback is a playback in progress.
+// ActivePlayback is a playback in progress. Method, streams re-encoded, encoder, conversion and
+// decoder are those of StartPlaybackResponse.
 type ActivePlayback struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -676,16 +677,15 @@ type ActivePlayback struct {
 	Device string `protobuf:"bytes,6,opt,name=device,proto3" json:"device,omitempty"`
 	ItemId string `protobuf:"bytes,7,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
 	// Title (an episode with its series).
-	Title string `protobuf:"bytes,8,opt,name=title,proto3" json:"title,omitempty"`
-	// Playback method: "direct", "remux", "transcode".
-	Method    string `protobuf:"bytes,9,opt,name=method,proto3" json:"method,omitempty"`
-	CopyVideo bool   `protobuf:"varint,10,opt,name=copy_video,json=copyVideo,proto3" json:"copy_video,omitempty"`
-	CopyAudio bool   `protobuf:"varint,11,opt,name=copy_audio,json=copyAudio,proto3" json:"copy_audio,omitempty"`
+	Title           string         `protobuf:"bytes,8,opt,name=title,proto3" json:"title,omitempty"`
+	Method          PlaybackMethod `protobuf:"varint,23,opt,name=method,proto3,enum=laterna.v1.PlaybackMethod" json:"method,omitempty"`
+	VideoTranscoded bool           `protobuf:"varint,24,opt,name=video_transcoded,json=videoTranscoded,proto3" json:"video_transcoded,omitempty"`
+	AudioTranscoded bool           `protobuf:"varint,25,opt,name=audio_transcoded,json=audioTranscoded,proto3" json:"audio_transcoded,omitempty"`
 	// Video encoder and HDR to SDR conversion, if the video is re-encoded.
-	Encoder   string                 `protobuf:"bytes,12,opt,name=encoder,proto3" json:"encoder,omitempty"`
-	ToneMap   string                 `protobuf:"bytes,13,opt,name=tone_map,json=toneMap,proto3" json:"tone_map,omitempty"`
-	Gpu       bool                   `protobuf:"varint,14,opt,name=gpu,proto3" json:"gpu,omitempty"`
-	StartedAt *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	VideoEncoder string                 `protobuf:"bytes,12,opt,name=video_encoder,json=videoEncoder,proto3" json:"video_encoder,omitempty"`
+	ToneMapping  string                 `protobuf:"bytes,13,opt,name=tone_mapping,json=toneMapping,proto3" json:"tone_mapping,omitempty"`
+	Gpu          bool                   `protobuf:"varint,14,opt,name=gpu,proto3" json:"gpu,omitempty"`
+	StartedAt    *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
 	// Last position reported by the client, and duration.
 	Position *durationpb.Duration `protobuf:"bytes,16,opt,name=position,proto3" json:"position,omitempty"`
 	Duration *durationpb.Duration `protobuf:"bytes,17,opt,name=duration,proto3" json:"duration,omitempty"`
@@ -696,10 +696,10 @@ type ActivePlayback struct {
 	Decoder string `protobuf:"bytes,19,opt,name=decoder,proto3" json:"decoder,omitempty"`
 	// The client is outside the local network (Settings.local_networks).
 	Remote bool `protobuf:"varint,20,opt,name=remote,proto3" json:"remote,omitempty"`
-	// Bitrate limit applied (kbit/s, StartPlaybackResponse.bitrate_limit); 0 means none.
-	BitrateLimit int32 `protobuf:"varint,21,opt,name=bitrate_limit,json=bitrateLimit,proto3" json:"bitrate_limit,omitempty"`
+	// Bitrate limit applied (kbit/s, StartPlaybackResponse.bitrate_limit_kbps); 0 means none.
+	BitrateLimitKbps int32 `protobuf:"varint,21,opt,name=bitrate_limit_kbps,json=bitrateLimitKbps,proto3" json:"bitrate_limit_kbps,omitempty"`
 	// Client address, as seen by the server or given by a trusted proxy.
-	Address       string `protobuf:"bytes,22,opt,name=address,proto3" json:"address,omitempty"`
+	Ip            string `protobuf:"bytes,22,opt,name=ip,proto3" json:"ip,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -790,37 +790,37 @@ func (x *ActivePlayback) GetTitle() string {
 	return ""
 }
 
-func (x *ActivePlayback) GetMethod() string {
+func (x *ActivePlayback) GetMethod() PlaybackMethod {
 	if x != nil {
 		return x.Method
 	}
-	return ""
+	return PlaybackMethod_PLAYBACK_METHOD_UNSPECIFIED
 }
 
-func (x *ActivePlayback) GetCopyVideo() bool {
+func (x *ActivePlayback) GetVideoTranscoded() bool {
 	if x != nil {
-		return x.CopyVideo
+		return x.VideoTranscoded
 	}
 	return false
 }
 
-func (x *ActivePlayback) GetCopyAudio() bool {
+func (x *ActivePlayback) GetAudioTranscoded() bool {
 	if x != nil {
-		return x.CopyAudio
+		return x.AudioTranscoded
 	}
 	return false
 }
 
-func (x *ActivePlayback) GetEncoder() string {
+func (x *ActivePlayback) GetVideoEncoder() string {
 	if x != nil {
-		return x.Encoder
+		return x.VideoEncoder
 	}
 	return ""
 }
 
-func (x *ActivePlayback) GetToneMap() string {
+func (x *ActivePlayback) GetToneMapping() string {
 	if x != nil {
-		return x.ToneMap
+		return x.ToneMapping
 	}
 	return ""
 }
@@ -874,16 +874,16 @@ func (x *ActivePlayback) GetRemote() bool {
 	return false
 }
 
-func (x *ActivePlayback) GetBitrateLimit() int32 {
+func (x *ActivePlayback) GetBitrateLimitKbps() int32 {
 	if x != nil {
-		return x.BitrateLimit
+		return x.BitrateLimitKbps
 	}
 	return 0
 }
 
-func (x *ActivePlayback) GetAddress() string {
+func (x *ActivePlayback) GetIp() string {
 	if x != nil {
-		return x.Address
+		return x.Ip
 	}
 	return ""
 }
@@ -1053,7 +1053,7 @@ var File_laterna_v1_activity_proto protoreflect.FileDescriptor
 const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\n" +
 	"\x19laterna/v1/activity.proto\x12\n" +
-	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15laterna/v1/auth.proto\x1a\x18laterna/v1/options.proto\x1a\x15laterna/v1/text.proto\"\xaa\x02\n" +
+	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15laterna/v1/auth.proto\x1a\x18laterna/v1/options.proto\x1a\x19laterna/v1/playback.proto\x1a\x15laterna/v1/text.proto\"\xaa\x02\n" +
 	"\rActivityEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12*\n" +
 	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12,\n" +
@@ -1099,7 +1099,7 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\x13RevokeDeviceRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\x16\n" +
-	"\x14RevokeDeviceResponse\"\xbd\x05\n" +
+	"\x14RevokeDeviceResponse\"\xad\x06\n" +
 	"\x0eActivePlayback\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1110,15 +1110,12 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\fprofile_name\x18\x05 \x01(\tR\vprofileName\x12\x16\n" +
 	"\x06device\x18\x06 \x01(\tR\x06device\x12\x17\n" +
 	"\aitem_id\x18\a \x01(\tR\x06itemId\x12\x14\n" +
-	"\x05title\x18\b \x01(\tR\x05title\x12\x16\n" +
-	"\x06method\x18\t \x01(\tR\x06method\x12\x1d\n" +
-	"\n" +
-	"copy_video\x18\n" +
-	" \x01(\bR\tcopyVideo\x12\x1d\n" +
-	"\n" +
-	"copy_audio\x18\v \x01(\bR\tcopyAudio\x12\x18\n" +
-	"\aencoder\x18\f \x01(\tR\aencoder\x12\x19\n" +
-	"\btone_map\x18\r \x01(\tR\atoneMap\x12\x10\n" +
+	"\x05title\x18\b \x01(\tR\x05title\x122\n" +
+	"\x06method\x18\x17 \x01(\x0e2\x1a.laterna.v1.PlaybackMethodR\x06method\x12)\n" +
+	"\x10video_transcoded\x18\x18 \x01(\bR\x0fvideoTranscoded\x12)\n" +
+	"\x10audio_transcoded\x18\x19 \x01(\bR\x0faudioTranscoded\x12#\n" +
+	"\rvideo_encoder\x18\f \x01(\tR\fvideoEncoder\x12!\n" +
+	"\ftone_mapping\x18\r \x01(\tR\vtoneMapping\x12\x10\n" +
 	"\x03gpu\x18\x0e \x01(\bR\x03gpu\x129\n" +
 	"\n" +
 	"started_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
@@ -1126,9 +1123,13 @@ const file_laterna_v1_activity_proto_rawDesc = "" +
 	"\bduration\x18\x11 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12 \n" +
 	"\vtranscoding\x18\x12 \x01(\bR\vtranscoding\x12\x18\n" +
 	"\adecoder\x18\x13 \x01(\tR\adecoder\x12\x16\n" +
-	"\x06remote\x18\x14 \x01(\bR\x06remote\x12#\n" +
-	"\rbitrate_limit\x18\x15 \x01(\x05R\fbitrateLimit\x12\x18\n" +
-	"\aaddress\x18\x16 \x01(\tR\aaddress\"\x16\n" +
+	"\x06remote\x18\x14 \x01(\bR\x06remote\x12,\n" +
+	"\x12bitrate_limit_kbps\x18\x15 \x01(\x05R\x10bitrateLimitKbps\x12\x0e\n" +
+	"\x02ip\x18\x16 \x01(\tR\x02ipJ\x04\b\t\x10\n" +
+	"J\x04\b\n" +
+	"\x10\vJ\x04\b\v\x10\fR\n" +
+	"copy_videoR\n" +
+	"copy_audio\"\x16\n" +
 	"\x14ListPlaybacksRequest\"Q\n" +
 	"\x15ListPlaybacksResponse\x128\n" +
 	"\tplaybacks\x18\x01 \x03(\v2\x1a.laterna.v1.ActivePlaybackR\tplaybacks\"5\n" +
@@ -1200,7 +1201,8 @@ var file_laterna_v1_activity_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
 	(*Text)(nil),                  // 15: laterna.v1.Text
 	(*Device)(nil),                // 16: laterna.v1.Device
-	(*durationpb.Duration)(nil),   // 17: google.protobuf.Duration
+	(PlaybackMethod)(0),           // 17: laterna.v1.PlaybackMethod
+	(*durationpb.Duration)(nil),   // 18: google.protobuf.Duration
 }
 var file_laterna_v1_activity_proto_depIdxs = []int32{
 	14, // 0: laterna.v1.ActivityEntry.at:type_name -> google.protobuf.Timestamp
@@ -1211,25 +1213,26 @@ var file_laterna_v1_activity_proto_depIdxs = []int32{
 	14, // 5: laterna.v1.DeviceSession.created_at:type_name -> google.protobuf.Timestamp
 	14, // 6: laterna.v1.DeviceSession.last_used_at:type_name -> google.protobuf.Timestamp
 	4,  // 7: laterna.v1.ListDevicesResponse.devices:type_name -> laterna.v1.DeviceSession
-	14, // 8: laterna.v1.ActivePlayback.started_at:type_name -> google.protobuf.Timestamp
-	17, // 9: laterna.v1.ActivePlayback.position:type_name -> google.protobuf.Duration
-	17, // 10: laterna.v1.ActivePlayback.duration:type_name -> google.protobuf.Duration
-	9,  // 11: laterna.v1.ListPlaybacksResponse.playbacks:type_name -> laterna.v1.ActivePlayback
-	2,  // 12: laterna.v1.ActivityService.ListActivity:input_type -> laterna.v1.ListActivityRequest
-	5,  // 13: laterna.v1.ActivityService.ListDevices:input_type -> laterna.v1.ListDevicesRequest
-	7,  // 14: laterna.v1.ActivityService.RevokeDevice:input_type -> laterna.v1.RevokeDeviceRequest
-	10, // 15: laterna.v1.ActivityService.ListPlaybacks:input_type -> laterna.v1.ListPlaybacksRequest
-	12, // 16: laterna.v1.ActivityService.EndPlayback:input_type -> laterna.v1.EndPlaybackRequest
-	3,  // 17: laterna.v1.ActivityService.ListActivity:output_type -> laterna.v1.ListActivityResponse
-	6,  // 18: laterna.v1.ActivityService.ListDevices:output_type -> laterna.v1.ListDevicesResponse
-	8,  // 19: laterna.v1.ActivityService.RevokeDevice:output_type -> laterna.v1.RevokeDeviceResponse
-	11, // 20: laterna.v1.ActivityService.ListPlaybacks:output_type -> laterna.v1.ListPlaybacksResponse
-	13, // 21: laterna.v1.ActivityService.EndPlayback:output_type -> laterna.v1.EndPlaybackResponse
-	17, // [17:22] is the sub-list for method output_type
-	12, // [12:17] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	17, // 8: laterna.v1.ActivePlayback.method:type_name -> laterna.v1.PlaybackMethod
+	14, // 9: laterna.v1.ActivePlayback.started_at:type_name -> google.protobuf.Timestamp
+	18, // 10: laterna.v1.ActivePlayback.position:type_name -> google.protobuf.Duration
+	18, // 11: laterna.v1.ActivePlayback.duration:type_name -> google.protobuf.Duration
+	9,  // 12: laterna.v1.ListPlaybacksResponse.playbacks:type_name -> laterna.v1.ActivePlayback
+	2,  // 13: laterna.v1.ActivityService.ListActivity:input_type -> laterna.v1.ListActivityRequest
+	5,  // 14: laterna.v1.ActivityService.ListDevices:input_type -> laterna.v1.ListDevicesRequest
+	7,  // 15: laterna.v1.ActivityService.RevokeDevice:input_type -> laterna.v1.RevokeDeviceRequest
+	10, // 16: laterna.v1.ActivityService.ListPlaybacks:input_type -> laterna.v1.ListPlaybacksRequest
+	12, // 17: laterna.v1.ActivityService.EndPlayback:input_type -> laterna.v1.EndPlaybackRequest
+	3,  // 18: laterna.v1.ActivityService.ListActivity:output_type -> laterna.v1.ListActivityResponse
+	6,  // 19: laterna.v1.ActivityService.ListDevices:output_type -> laterna.v1.ListDevicesResponse
+	8,  // 20: laterna.v1.ActivityService.RevokeDevice:output_type -> laterna.v1.RevokeDeviceResponse
+	11, // 21: laterna.v1.ActivityService.ListPlaybacks:output_type -> laterna.v1.ListPlaybacksResponse
+	13, // 22: laterna.v1.ActivityService.EndPlayback:output_type -> laterna.v1.EndPlaybackResponse
+	18, // [18:23] is the sub-list for method output_type
+	13, // [13:18] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_laterna_v1_activity_proto_init() }
@@ -1239,6 +1242,7 @@ func file_laterna_v1_activity_proto_init() {
 	}
 	file_laterna_v1_auth_proto_init()
 	file_laterna_v1_options_proto_init()
+	file_laterna_v1_playback_proto_init()
 	file_laterna_v1_text_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

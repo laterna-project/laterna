@@ -212,13 +212,13 @@ On a NAS, three videos transcoded at once saturate the CPU and everyone stutters
 A file the device plays is not always one the connection carries: a 4K remux at 60 Mbit/s plays
 at home and stalls on a phone away from it. A playback can have a **bitrate limit**:
 
-- the **client's**, `StartPlaybackRequest.max_bitrate`: the quality the viewer picked, or what the
+- the **client's**, `StartPlaybackRequest.max_bitrate_kbps`: the quality the viewer picked, or what the
   client measured;
-- outside the local network, the **server's** (`remote_max_bitrate` setting) and the
-  **account's** (`Account.remote_max_bitrate`), which protect the upload of the server's
+- outside the local network, the **server's** (`remote_max_bitrate_kbps` setting) and the
+  **account's** (`Account.remote_max_bitrate_kbps`), which protect the upload of the server's
   connection.
 
-The lowest one applies. The response says which (`bitrate_limit`, `bitrate_limit_source`) so
+The lowest one applies. The response says which (`bitrate_limit_kbps`, `bitrate_limit_source`) so
 that a client can tell the viewer why the picture is softer. Administrators see it in the
 playbacks in progress, with the client's address and whether it is remote.
 
@@ -253,7 +253,7 @@ nine tenths of the limit. The same settings cap offline downloads below the orig
 
 There is a single variant per playback, not an adaptive ladder: the server would have to encode
 several qualities at once for one viewer. A client that sees playback stall reopens it with a lower
-`max_bitrate`, at the current position.
+`max_bitrate_kbps`, at the current position.
 
 ## Scrubbing thumbnails
 

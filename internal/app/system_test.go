@@ -237,7 +237,7 @@ func TestActivePlaybacks(t *testing.T) {
 	info, err := a.StartPlayback(ctx, p, PlayRequest{ItemID: movies["Dual Audio"].ID, Audio: -1, Device: browser})
 	mustNil(t, err)
 	plays := a.Playbacks()
-	if len(plays) != 1 || plays[0].ID != info.SessionID || plays[0].Title != "Dual Audio" || plays[0].Method != string(info.Method) ||
+	if len(plays) != 1 || plays[0].ID != info.SessionID || plays[0].Title != "Dual Audio" || plays[0].Method != info.Method ||
 		plays[0].ProfileName == "" || plays[0].Device != "PC" || plays[0].Duration == 0 {
 		t.Fatalf("playbacks: %+v", plays)
 	}

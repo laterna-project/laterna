@@ -22,7 +22,7 @@ func TestDownloads(t *testing.T) {
 		name string
 		kind domain.LibraryKind
 	}{{"Movies", domain.LibraryMovies}, {"Music", domain.LibraryMusic}} {
-		_, err := a.CreateLibrary(ctx, l.name, l.kind, []string{testRoot(l.name)}, "")
+		_, err := a.CreateLibrary(ctx, l.name, l.kind, []string{testRoot(l.name)})
 		mustNil(t, err)
 	}
 	waitIdle(t, a)

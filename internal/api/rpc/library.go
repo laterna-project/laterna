@@ -52,7 +52,7 @@ func (s *LibraryService) ReorderLibraries(ctx context.Context, req *connect.Requ
 // CreateLibrary creates a library.
 func (s *LibraryService) CreateLibrary(ctx context.Context, req *connect.Request[laternav1.CreateLibraryRequest]) (*connect.Response[laternav1.CreateLibraryResponse], error) {
 	m := req.Msg
-	lib, err := s.app.CreateLibrary(ctx, m.GetName(), libraryKindFromMsg(m.GetKind()), m.GetPaths(), m.GetLanguage())
+	lib, err := s.app.CreateLibrary(ctx, m.GetName(), libraryKindFromMsg(m.GetKind()), m.GetPaths())
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (s *LibraryService) UpdateLibrary(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, err
 	}
-	ch := app.LibraryChanges{Name: m.Name, Language: m.Language}
+	ch := app.LibraryChanges{Name: m.Name}
 	if len(m.GetPaths()) > 0 {
 		ch.Paths = m.GetPaths()
 	}

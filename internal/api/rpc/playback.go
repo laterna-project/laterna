@@ -100,7 +100,7 @@ func (s *PlaybackService) StartPlayback(ctx context.Context, req *connect.Reques
 	info, err := s.app.StartPlayback(ctx, principal(ctx), app.PlayRequest{
 		ItemID: item, FileID: file, Audio: audio, Device: profile, Subtitle: subtitle,
 		ProfileSubtitle: m.GetProfileSubtitle(), Language: firstLanguage(req.Header().Get("Accept-Language")),
-		MaxBitrate: max(int(m.GetMaxBitrate()), 0), Client: client,
+		MaxBitrate: max(int(m.GetMaxBitrateKbps()), 0), Client: client,
 	})
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (s *PlaybackService) StartPlayback(ctx context.Context, req *connect.Reques
 		Reasons: renderAll(ctx, info.Reasons), ReasonTexts: textsMsg(ctx, info.Reasons), VideoTranscoded: !info.CopyVideo, AudioTranscoded: !info.CopyAudio, VideoEncoder: info.Encoder,
 		SubtitlesReady: info.SubtitlesReady, Subtitles: subtitleTracks(info), Fonts: fonts(info.Fonts),
 		ToneMapping: info.ToneMap, Gpu: info.GPU, Decoder: info.Decoder, Segments: mediaSegments(info.File.Segments),
-		BitrateLimit: clampInt32(info.Limit.Rate), BitrateLimitSource: limitSources[info.Limit.Source], VideoBitrate: clampInt32(info.VideoRate),
+		BitrateLimitKbps: clampInt32(info.Limit.Rate), BitrateLimitSource: limitSources[info.Limit.Source], VideoBitrateKbps: clampInt32(info.VideoRate),
 	}
 	if info.Subtitle != nil {
 		n := clampInt32(*info.Subtitle)
@@ -166,7 +166,7 @@ func subtitleTracks(info app.PlayInfo) []*laternav1.SubtitleTrack {
 func fonts(list []domain.Font) []*laternav1.Font {
 	out := make([]*laternav1.Font, 0, len(list))
 	for _, f := range list {
-		out = append(out, &laternav1.Font{Names: f.Names, Url: FontPath(f), Size: f.Size})
+		out = append(out, &laternav1.Font{Names: f.Names, Url: FontPath(f), SizeBytes: f.Size})
 	}
 	return out
 }

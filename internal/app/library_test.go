@@ -128,7 +128,7 @@ func TestMoviesLibraryEndToEnd(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "Movies")
 	copyTree(t, filepath.Join(testfixtures.Root(), "Movies"), root)
 
-	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "")
+	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +210,7 @@ func TestOfflineRootKeepsEverything(t *testing.T) {
 	ctx := context.Background()
 	root := filepath.Join(t.TempDir(), "Movies")
 	copyTree(t, filepath.Join(testfixtures.Root(), "Movies", "Versions (2017)"), filepath.Join(root, "Versions (2017)"))
-	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root}, "fr-FR")
+	lib, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestShowsLibraryEndToEnd(t *testing.T) {
 	copyTree(t, filepath.Join(testfixtures.Root(), "Shows"), series)
 	copyTree(t, filepath.Join(testfixtures.Root(), "Anime"), animeRoot)
 
-	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{series, animeRoot}, "")
+	lib, err := a.CreateLibrary(ctx, "Shows", domain.LibraryShows, []string{series, animeRoot})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,17 +315,17 @@ func TestLibraryValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range cases {
-		if _, err := a.CreateLibrary(ctx, tc.name, tc.kind, tc.paths, ""); !errors.Is(err, tc.want) {
+		if _, err := a.CreateLibrary(ctx, tc.name, tc.kind, tc.paths); !errors.Is(err, tc.want) {
 			t.Errorf("%q %v %v: %v", tc.name, tc.kind, tc.paths, err)
 		}
 	}
-	if _, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{dir}, "fr-FR"); err != nil {
+	if _, err := a.CreateLibrary(ctx, "Movies", domain.LibraryMovies, []string{dir}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.CreateLibrary(ctx, "Other", domain.LibraryShows, []string{filepath.Join(dir, "sub")}, ""); !errors.Is(err, domain.ErrConflict) {
+	if _, err := a.CreateLibrary(ctx, "Other", domain.LibraryShows, []string{filepath.Join(dir, "sub")}); !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("folder in another library: %v", err)
 	}
-	if _, err := a.CreateLibrary(ctx, "movies", domain.LibraryShows, []string{t.TempDir()}, ""); !errors.Is(err, domain.ErrConflict) {
+	if _, err := a.CreateLibrary(ctx, "movies", domain.LibraryShows, []string{t.TempDir()}); !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("duplicate name: %v", err)
 	}
 }

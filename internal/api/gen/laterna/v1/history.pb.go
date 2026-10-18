@@ -98,8 +98,8 @@ type HistoryEntry struct {
 	// Time actually watched. position is where playback stopped.
 	Watched  *durationpb.Duration `protobuf:"bytes,10,opt,name=watched,proto3" json:"watched,omitempty"`
 	Position *durationpb.Duration `protobuf:"bytes,11,opt,name=position,proto3" json:"position,omitempty"`
-	// Played up to the end credits.
-	Completed bool `protobuf:"varint,12,opt,name=completed,proto3" json:"completed,omitempty"`
+	// Played up to the end credits (as OfflinePlay.finished).
+	Finished bool `protobuf:"varint,12,opt,name=finished,proto3" json:"finished,omitempty"`
 	// Device that played it.
 	Device string `protobuf:"bytes,13,opt,name=device,proto3" json:"device,omitempty"`
 	// Played offline and reported later (watched is then the position reached).
@@ -228,9 +228,9 @@ func (x *HistoryEntry) GetPosition() *durationpb.Duration {
 	return nil
 }
 
-func (x *HistoryEntry) GetCompleted() bool {
+func (x *HistoryEntry) GetFinished() bool {
 	if x != nil {
-		return x.Completed
+		return x.Finished
 	}
 	return false
 }
@@ -1055,7 +1055,7 @@ var File_laterna_v1_history_proto protoreflect.FileDescriptor
 const file_laterna_v1_history_proto_rawDesc = "" +
 	"\n" +
 	"\x18laterna/v1/history.proto\x12\n" +
-	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/catalog.proto\"\xc1\x04\n" +
+	"laterna.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18laterna/v1/catalog.proto\"\xbf\x04\n" +
 	"\fHistoryEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x120\n" +
 	"\x05movie\x18\x02 \x01(\v2\x18.laterna.v1.MovieSummaryH\x00R\x05movie\x12/\n" +
@@ -1069,8 +1069,8 @@ const file_laterna_v1_history_proto_rawDesc = "" +
 	"\bended_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x123\n" +
 	"\awatched\x18\n" +
 	" \x01(\v2\x19.google.protobuf.DurationR\awatched\x125\n" +
-	"\bposition\x18\v \x01(\v2\x19.google.protobuf.DurationR\bposition\x12\x1c\n" +
-	"\tcompleted\x18\f \x01(\bR\tcompleted\x12\x16\n" +
+	"\bposition\x18\v \x01(\v2\x19.google.protobuf.DurationR\bposition\x12\x1a\n" +
+	"\bfinished\x18\f \x01(\bR\bfinished\x12\x16\n" +
 	"\x06device\x18\r \x01(\tR\x06device\x12\x18\n" +
 	"\aoffline\x18\x0e \x01(\bR\aofflineB\x06\n" +
 	"\x04item\"P\n" +

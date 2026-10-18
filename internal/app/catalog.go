@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -24,15 +25,15 @@ const (
 type ListQuery struct {
 	// LibraryID restricts to one library; nil means all.
 	LibraryID *domain.ID
-	// ArtistID restricts albums to those of an artist, SeriesID books to those of a series; nil
-	// means all.
+	// ArtistID restricts albums and tracks to those of an artist, SeriesID books to those of a
+	// series; nil means all.
 	ArtistID *domain.ID
 	SeriesID *domain.ID
 	// Sort: "" means by title.
 	Sort    domain.ItemSort
 	Reverse bool
 	Genre   string
-	// Played filters on the played state (movies only).
+	// Played filters on the played state (movies and series).
 	Played        *bool
 	FavoritesOnly bool
 	PageSize      int
@@ -80,6 +81,8 @@ type FileVersion struct {
 type pageToken struct {
 	Sort    domain.ItemSort `json:"s"`
 	Reverse bool            `json:"r,omitempty"`
+	// Offset is the position of the page in a list read at once (the tracks of an artist).
+	Offset int `json:"o,omitempty"`
 	store.Cursor
 }
 
@@ -141,11 +144,9 @@ func (a *App) ListMovies(ctx context.Context, p domain.Principal, lq ListQuery) 
 	return a.list(ctx, p, domain.ItemMovie, lq)
 }
 
-// ListSeries returns a page of series.
+// ListSeries returns a page of series; played keeps those whose present episodes are all played, or
+// those with one left to play.
 func (a *App) ListSeries(ctx context.Context, p domain.Principal, lq ListQuery) (ListPage, error) {
-	if lq.Played != nil {
-		return ListPage{}, domain.Invalid("catalog.played_filter_unsupported")
-	}
 	return a.list(ctx, p, domain.ItemSeries, lq)
 }
 
@@ -170,9 +171,71 @@ func (a *App) ListAlbums(ctx context.Context, p domain.Principal, lq ListQuery) 
 	return a.list(ctx, p, domain.ItemAlbum, lq)
 }
 
-// ListTracks returns a page of tracks (all of them, or the favorites).
+// ListTracks returns a page of tracks: all of them, the favorites, or those of the albums of an
+// artist. Those of an artist in domain.SortAlbum order come album by album, oldest first, each in
+// disc order: what plays the artist.
 func (a *App) ListTracks(ctx context.Context, p domain.Principal, lq ListQuery) (ListPage, error) {
+	if lq.Played != nil {
+		return ListPage{}, domain.Invalid("catalog.played_filter_unsupported")
+	}
+	if lq.ArtistID != nil {
+		if err := a.checkKind(ctx, *lq.ArtistID, domain.ItemArtist); err != nil {
+			return ListPage{}, err
+		}
+	}
+	if lq.Sort == domain.SortAlbum {
+		return a.artistTracks(ctx, p, lq)
+	}
 	return a.list(ctx, p, domain.ItemTrack, lq)
+}
+
+// artistTracks is a page of the tracks of an artist, album by album. An artist has a few thousand
+// tracks at most: they are read at once, and the page token holds the position in that order.
+func (a *App) artistTracks(ctx context.Context, p domain.Principal, lq ListQuery) (ListPage, error) {
+	if lq.ArtistID == nil {
+		return ListPage{}, domain.Invalid("catalog.album_sort_without_artist")
+	}
+	v, err := viewerOf(p)
+	if err != nil {
+		return ListPage{}, err
+	}
+	size, err := pageSize(lq.PageSize)
+	if err != nil {
+		return ListPage{}, err
+	}
+	offset := 0
+	if lq.PageToken != "" {
+		tok, err := decodePageToken(lq.PageToken)
+		if err != nil || tok.Sort != lq.Sort || tok.Reverse != lq.Reverse || tok.Offset <= 0 {
+			return ListPage{}, domain.Invalid("request.invalid_page_token")
+		}
+		offset = tok.Offset
+	}
+	view, err := a.visible(ctx, v, *lq.ArtistID)
+	if err != nil {
+		return ListPage{}, err
+	}
+	var tracks []domain.ItemView
+	if lq.LibraryID == nil || *lq.LibraryID == view.Item.LibraryID {
+		if tracks, err = a.store.Read().Tracks(ctx, v, view.Item); err != nil {
+			return ListPage{}, err
+		}
+	}
+	if lq.FavoritesOnly {
+		tracks = slices.DeleteFunc(tracks, func(t domain.ItemView) bool { return !t.UserData.Favorite })
+	}
+	if lq.Reverse {
+		slices.Reverse(tracks)
+	}
+	page := ListPage{Total: len(tracks)}
+	if offset < len(tracks) {
+		end := min(offset+size, len(tracks))
+		page.Items = tracks[offset:end]
+		if end < len(tracks) {
+			page.NextPageToken = encodePageToken(pageToken{Sort: lq.Sort, Reverse: lq.Reverse, Offset: end})
+		}
+	}
+	return page, nil
 }
 
 func (a *App) list(ctx context.Context, p domain.Principal, kind domain.ItemKind, lq ListQuery) (ListPage, error) {
@@ -186,20 +249,22 @@ func (a *App) list(ctx context.Context, p domain.Principal, kind domain.ItemKind
 	if !lq.Sort.Valid() {
 		return ListPage{}, domain.Invalid("catalog.unknown_sort")
 	}
-	size := lq.PageSize
-	switch {
-	case size == 0:
-		size = defaultPageSize
-	case size < 0 || size > maxPageSize:
-		return ListPage{}, domain.Invalid("request.invalid_page_size", "max", maxPageSize)
-	}
-	parent := lq.ArtistID
-	if lq.SeriesID != nil {
-		parent = lq.SeriesID
+	size, err := pageSize(lq.PageSize)
+	if err != nil {
+		return ListPage{}, err
 	}
 	iq := store.ItemQuery{
-		Kind: kind, LibraryID: lq.LibraryID, ParentID: parent, Viewer: v, Genre: strings.TrimSpace(lq.Genre),
+		Kind: kind, LibraryID: lq.LibraryID, Viewer: v, Genre: strings.TrimSpace(lq.Genre),
 		Played: lq.Played, Favorite: lq.FavoritesOnly, Sort: lq.Sort, Reverse: lq.Reverse, Limit: size,
+	}
+	switch {
+	case lq.SeriesID != nil:
+		iq.ParentID = lq.SeriesID
+	case kind == domain.ItemTrack:
+		// A track belongs to its album, and the album to the artist.
+		iq.ArtistID = lq.ArtistID
+	default:
+		iq.ParentID = lq.ArtistID
 	}
 	if lq.PageToken != "" {
 		tok, err := decodePageToken(lq.PageToken)
@@ -229,6 +294,17 @@ func (a *App) list(ctx context.Context, p domain.Principal, kind domain.ItemKind
 		page.NextPageToken = encodePageToken(pageToken{Sort: lq.Sort, Reverse: lq.Reverse, Cursor: *next})
 	}
 	return page, nil
+}
+
+// pageSize checks the size of a page; 0 means the default one.
+func pageSize(size int) (int, error) {
+	switch {
+	case size == 0:
+		return defaultPageSize, nil
+	case size < 0 || size > maxPageSize:
+		return 0, domain.Invalid("request.invalid_page_size", "max", maxPageSize)
+	}
+	return size, nil
 }
 
 func encodePageToken(t pageToken) string {
@@ -346,23 +422,6 @@ func (a *App) Album(ctx context.Context, p domain.Principal, id domain.ID) (doma
 // Track returns the details of a track and its files.
 func (a *App) Track(ctx context.Context, p domain.Principal, id domain.ID) (domain.ItemView, Details, error) {
 	return a.itemWithDetails(ctx, p, id, domain.ItemTrack, true)
-}
-
-// ArtistTracks lists the present tracks of all the albums of an artist, album by album (to play
-// everything in one go).
-func (a *App) ArtistTracks(ctx context.Context, p domain.Principal, artistID domain.ID) ([]domain.ItemView, error) {
-	v, err := viewerOf(p)
-	if err != nil {
-		return nil, err
-	}
-	if err := a.checkKind(ctx, artistID, domain.ItemArtist); err != nil {
-		return nil, err
-	}
-	view, err := a.visible(ctx, v, artistID)
-	if err != nil {
-		return nil, err
-	}
-	return a.store.Read().Tracks(ctx, v, view.Item)
 }
 
 // checkKind checks that an item exists and is of the expected kind: a series ID passed as a movie
